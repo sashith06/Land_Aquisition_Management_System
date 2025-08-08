@@ -8,13 +8,15 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import Dashboard from "../pages/Dashboard";
 import PlanDetail from "../pages/PlanDetail";
 import Profile from "../pages/Profile";
-import Analysis from "../pages/Analysis";
+import UserManagement from "../pages/UserManagement";
 import Messages from "../pages/Messages";
 import Reports from "../pages/Reports";
 import Settings from "../pages/Settings";
 import Info from "../pages/Info";
+import ProjectRequests from "../pages/ProjectRequests";
 
 import MainLayout from "../layouts/MainLayout";
+
 
 export default function AppRoutes() {
   return (
@@ -33,11 +35,12 @@ export default function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="plan/:id" element={<PlanDetail />} />
         <Route path="profile" element={<Profile />} />
-        <Route path="analysis" element={<Analysis />} />
+        <Route path="usermanagement" element={<UserManagement/>} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
         <Route path="info" element={<Info />} />
+        <Route path="projectrequests" element={<ProjectRequests />} />
       </Route>
     </Routes>
   );
