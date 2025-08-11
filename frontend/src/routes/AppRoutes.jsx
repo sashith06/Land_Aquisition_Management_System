@@ -5,7 +5,7 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 
 import DashboardLayout from "../layouts/DashboardLayout";
-import Dashboard from "../pages/Dashboard";
+import Dashboard from "../pages/Dashboards/Dashboard";
 import PlanDetail from "../pages/PlanDetail";
 import Profile from "../pages/Profile";
 import Analysis from "../pages/Analysis";

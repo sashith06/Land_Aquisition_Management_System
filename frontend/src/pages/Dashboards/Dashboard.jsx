@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import PlanList from '../components/PlanList';
-import ProgressBar from '../components/ProgressBar';
-import SearchBar from '../components/SearchBar';
-import ProjectDetails from '../components/ProjectDetails';
-import ProjectOptionButtons from '../components/ProjectOptionButtons';
-import { plansData } from '../data/mockData';
+import PlanList from '../../components/PlanList';
+import ProgressBar from '../../components/ProgressBar';
+import SearchBar from '../../components/SearchBar';
+import ProjectDetails from '../../components/ProjectDetails';
+import ProjectOptionButtons from '../../components/ProjectOptionButtons';
+import { plansData } from '../../data/mockData';
 
 const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -17,7 +17,7 @@ const Dashboard = () => {
     );
   }, [searchTerm]);
 
-  const handlePlanSelect = (plan) => {
+  const handlePlanSelect = (plan) => {s
     setSelectedPlan(plan);
   };
 
