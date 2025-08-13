@@ -17,7 +17,7 @@ const Dashboard = () => {
     );
   }, [searchTerm]);
 
-  const handlePlanSelect = (plan) => {s
+  const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
   };
 

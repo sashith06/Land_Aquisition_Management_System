@@ -1,5 +1,5 @@
 import React from 'react';
-import Header from '../components/Header'; // Adjust the path if needed
+import Header from '../components/Header'; 
 import Hero from '../components/Hero';
 import About from '../components/About';
 import MissionVission from '../components/MissionVission';

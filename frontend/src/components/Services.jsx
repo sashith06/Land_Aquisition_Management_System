@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { FileText, BarChart3, ArrowRight, MapPin, Clock } from 'lucide-react';
 
 const Services = () => {
@@ -27,8 +28,8 @@ const Services = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Property and Progress Card */}
-          <a 
-            href="#property-progress" 
+          <Link 
+            to="/landowner" 
             className="group relative block overflow-hidden rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-3"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-purple-700"></div>
@@ -76,7 +77,7 @@ const Services = () => {
                 <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform duration-300" />
               </div>
             </div>
-          </a>
+          </Link>
 
           {/* View Projects Card */}
           <a 
@@ -131,25 +132,7 @@ const Services = () => {
           </a>
         </div>
 
-        {/* Additional Info Section */}
-        <div className="mt-16 text-center">
-          <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-8 md:p-12 shadow-2xl border border-white/20 max-w-4xl mx-auto">
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-              Need Help Getting Started?
-            </h3>
-            <p className="text-lg text-gray-600 mb-8">
-              Our support team is ready to assist you with navigating our digital services and answering any questions you may have.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-gradient-to-r from-green-500 to-teal-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-green-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
-                Contact Support
-              </button>
-              <button className="bg-white text-gray-700 px-8 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 border border-gray-200">
-                View Documentation
-              </button>
-            </div>
-          </div>
-        </div>
+
       </div>
     </section>
   );

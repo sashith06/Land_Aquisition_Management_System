@@ -1,6 +1,11 @@
+// NavLink.jsx
+import React from 'react';
+import { HashLink } from 'react-router-hash-link';
+
 const NavLink = ({ href, label, isActive = false, onClick }) => (
-  <a
-    href={href}
+  <HashLink
+    smooth
+    to={href}
     onClick={onClick}
     className={`relative font-medium transition-all duration-300 group ${
       isActive ? 'text-orange-500 font-semibold' : 'text-gray-600 hover:text-orange-500'
@@ -12,6 +17,7 @@ const NavLink = ({ href, label, isActive = false, onClick }) => (
         isActive ? 'w-full' : 'w-0 group-hover:w-full'
       }`}
     ></span>
-  </a>
+  </HashLink>
 );
+
 export default NavLink;
