@@ -1,23 +1,23 @@
 import { useState, useMemo } from 'react';
-import PlanList from '../../components/PlanList';
-import ProgressBar from '../../components/ProgressBar';
 import SearchBar from '../../components/SearchBar';
 import ProjectDetails from '../../components/ProjectDetails';
 import ProjectOptionButtons from '../../components/ProjectOptionButtons';
+import PlanProgressList from '../../components/PlanProgressList'; // ✅ correct import
 import { plansData } from '../../data/mockData';
 
 const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Filter plans based on search term
   const filteredPlans = useMemo(() => {
     return plansData.filter(plan =>
-      plan.id.includes(searchTerm) ||
+      plan.id.toString().includes(searchTerm) ||
       plan.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [searchTerm]);
 
-  const handlePlanSelect = (plan) => {s
+  const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
   };
 
@@ -27,15 +27,11 @@ const Dashboard = () => {
         alert('Create new plan functionality will be implemented');
         break;
       case 'edit':
-        if (selectedPlan) {
-          alert(`Edit project: ${selectedPlan.name}`);
-        }
+        if (selectedPlan) alert(`Edit project: ${selectedPlan.name}`);
         break;
       case 'delete':
-        if (selectedPlan) {
-          if (window.confirm(`Are you sure you want to delete project: ${selectedPlan.name}?`)) {
-            alert('Delete functionality will be implemented');
-          }
+        if (selectedPlan && window.confirm(`Delete project: ${selectedPlan.name}?`)) {
+          alert('Delete functionality will be implemented');
         }
         break;
       default:
@@ -48,14 +44,11 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         {/* Main Content */}
         <div className="xl:col-span-3 space-y-8">
-          <PlanList
+          <PlanProgressList
             plans={filteredPlans}
             onPlanSelect={handlePlanSelect}
             selectedPlan={selectedPlan}
           />
-          
-          <ProgressBar plans={filteredPlans} />
-          
           <ProjectOptionButtons
             onAction={handleProjectAction}
             selectedProject={selectedPlan}
@@ -68,7 +61,6 @@ const Dashboard = () => {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
           />
-          
           <ProjectDetails project={selectedPlan} />
         </div>
       </div>

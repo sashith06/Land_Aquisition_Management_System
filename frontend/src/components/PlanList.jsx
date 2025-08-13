@@ -1,4 +1,4 @@
-import { Building2 } from 'lucide-react';
+/*import { Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const PlanList = ({ plans, onPlanSelect, selectedPlan }) => {
@@ -40,4 +40,4 @@ const PlanList = ({ plans, onPlanSelect, selectedPlan }) => {
   );
 };
 
-export default PlanList;
+export default PlanList;*/

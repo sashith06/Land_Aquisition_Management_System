@@ -32,12 +32,14 @@ export default function AppRoutes() {
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="plan/:id" element={<PlanDetail />} />
-        <Route path="profile" element={<Profile />} />
+        <Route path="profile" element={<Profile />} />       {/* Nested route */}
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
         <Route path="info" element={<Info />} />
+        
+
       </Route>
     </Routes>
   );
