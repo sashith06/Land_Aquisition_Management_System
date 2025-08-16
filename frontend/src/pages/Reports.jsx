@@ -1,7 +1,20 @@
 import { FileText, Download, Calendar, Filter } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { plansData } from '../data/mockData';
 
+const reportTypes = [
+  { id: 'item-details', name: 'Item-wise Details', path: '/report/item-details' },
+  { id: 'item-progress', name: 'Item-wise Progress', path: '/report/item-progress' },
+  { id: 'lot-info', name: 'Lot-wise Information', path: '/report/lot-info' },
+  { id: 'plan-number', name: 'Plan Number-wise Info', path: '/report/plan-number' },
+  { id: 'project-wise', name: 'Project-wise Info', path: '/report/project-wise' },
+];
+
 const Reports = () => {
+  const navigate = useNavigate();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const reports = [
     { id: 1, title: 'Monthly Progress Report', description: 'Comprehensive progress report for all active projects', date: '2025-01-15', type: 'PDF', size: '2.4 MB' },
     { id: 2, title: 'Budget Utilization Report', description: 'Financial analysis and budget allocation report', date: '2025-01-10', type: 'Excel', size: '1.8 MB' },
@@ -11,22 +24,49 @@ const Reports = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Nav / Header */}
-        <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200 flex-shrink-0">
+        {/* Header */}
+        <header className="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200 flex-shrink-0 relative">
           <h1 className="text-2xl font-bold text-gray-800">Reports</h1>
-          <div className="flex space-x-4">
-            <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <Filter size={16} /> <span>Filter</span>
-            </button>
+          <div className="flex space-x-4 relative">
+            {/* Filter Button */}
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Filter size={16} /> <span>Filter</span>
+              </button>
+
+              {/* Dropdown Menu */}
+              {isMenuOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10"
+                >
+                  {reportTypes.map((type) => (
+                    <div
+                      key={type.id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer rounded"
+                      onClick={() => {
+                        navigate(type.path);
+                        setIsMenuOpen(false); // close menu after selection
+                      }}
+                    >
+                      {type.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Date Range Button */}
             <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
               <Calendar size={16} /> <span>Date Range</span>
             </button>
           </div>
         </header>
 
-        {/* Content Area with scroll */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

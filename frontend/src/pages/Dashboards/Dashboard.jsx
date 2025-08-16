@@ -10,12 +10,14 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Filter plans based on search term
-  const filteredPlans = useMemo(() => {
-    return plansData.filter(plan =>
-      plan.id.toString().includes(searchTerm) ||
-      plan.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+const filteredPlans = useMemo(() => {
+  const term = searchTerm.trim(); // no need toLowerCase because id is string
+
+  if (!term) return plansData; // show all plans if search is empty
+
+  return plansData.filter(plan => plan.id.includes(term));
+}, [searchTerm]);
+
 
   const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
