@@ -65,7 +65,7 @@ const Hero = () => {
           <div className="relative mt-8 lg:mt-0">
             <div className="relative group">
               <img
-                src="/image1.png"
+                src="/image6.png"
                 alt="Highway through trees at sunrise"
                 className="rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-2 w-full h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] object-cover object-center group-hover:scale-[1.02]"
                 loading="lazy"

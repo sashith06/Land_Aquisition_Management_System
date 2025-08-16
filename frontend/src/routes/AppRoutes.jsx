@@ -1,4 +1,4 @@
-// src/routes/AppRoutes.jsx
+
 import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home";
 import Login from "../pages/Login";
@@ -15,6 +15,7 @@ import Settings from "../pages/Settings";
 import Info from "../pages/Info";
 
 import MainLayout from "../layouts/MainLayout";
+import LandownerLogin from "../pages/Landownerlogin"; 
 
 export default function AppRoutes() {
   return (
@@ -22,6 +23,7 @@ export default function AppRoutes() {
       {/* Public Routes With Layout */}
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/landowner" element={<LandownerLogin />} /> 
       </Route>
 
       {/* Full Page Routes (No Layout) */}
