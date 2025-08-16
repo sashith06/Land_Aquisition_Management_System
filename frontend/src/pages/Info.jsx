@@ -41,11 +41,10 @@ const Info = () => {
               </div>
               <ul className="space-y-2 text-gray-600">
                 <li>• Project progress tracking</li>
-                <li>• Interest Calculation</li>
-                <li>• Real Time Dashboard</li>
+                <li>• Budget monitoring</li>
+                <li>• Land acquisition management</li>
                 <li>• Environmental compliance</li>
                 <li>• Real-time reporting</li>
-                <li>• User Management</li>
               </ul>
             </div>
 
@@ -61,7 +60,7 @@ const Info = () => {
                 <li>• Project Managers</li>
                 <li>• Finance Officers</li>
                 <li>• System Administrators</li>
-                <li>• Chief Engineers</li>
+                <li>• Site Engineers</li>
               </ul>
             </div>
           </div>
