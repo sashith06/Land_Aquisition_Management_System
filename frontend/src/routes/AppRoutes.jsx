@@ -5,6 +5,7 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 
 import DashboardLayout from "../layouts/DashboardLayout";
+import CEDashboardLayout from "../layouts/CEDashboardLayout";
 import Dashboard from "../pages/Dashboards/Dashboard";
 import PlanDetail from "../pages/PlanDetail";
 import Profile from "../pages/Profile";
@@ -17,6 +18,11 @@ import Info from "../pages/Info";
 import MainLayout from "../layouts/MainLayout";
 import LandownerLogin from "../pages/Landowner/Landownerlogin"; 
 import LODashboard from "../pages/Landowner/landownerdashboard/LODashboard";
+
+import CEDashboard from "../pages/ChiefEngineer/chiefengineerdashboard/CEDashboard";
+import CEDashboardMain from "../pages/ChiefEngineer/CEDashboardMain";
+import UserManagement from "../pages/ChiefEngineer/UserManagement";
+import ProjectRequests from "../pages/ChiefEngineer/ProjectRequests";
 
 export default function AppRoutes() {
   return (
@@ -32,8 +38,20 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/lodashboard" element={<LODashboard />} />
+      <Route path="/cedashboard" element={<CEDashboard />} />
 
-      {/* Dashboard Routes With Shared Layout */}
+      {/* Chief Engineer Dashboard Routes With CE Layout */}
+      <Route path="/ce-dashboard" element={<CEDashboardLayout />}>
+        <Route index element={<CEDashboardMain />} />
+        <Route path="analysis" element={<Analysis />} />
+        <Route path="messages" element={<Messages />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="user-management" element={<UserManagement />} />
+        <Route path="project-requests" element={<ProjectRequests />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
+
+      {/* Regular Dashboard Routes With Shared Layout */}
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="plan/:id" element={<PlanDetail />} />
