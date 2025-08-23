@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  
+  User,
   BarChart3,
   MessageSquare,
   FileText,
@@ -12,7 +12,7 @@ import { navigationItems } from "../data/mockData";
 
 const iconMap = {
   LayoutDashboard,
-  
+  User,
   BarChart3,
   MessageSquare,
   FileText,
@@ -24,12 +24,9 @@ const Sidebar = () => {
   const location = useLocation();
 
   const bottomItems = [
-
-  { path: '/dashboard/settings', label: 'Settings', icon: 'Settings' },
-  { path: '/dashboard/info', label: 'Info', icon: 'Info' }
-];
-
-
+    { path: "/settings", label: "Settings", icon: "Settings" },
+    { path: "/info", label: "Info", icon: "Info" },
+  ];
 
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");

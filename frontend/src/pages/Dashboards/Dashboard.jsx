@@ -7,6 +7,7 @@ import ProjectList from "../../components/ProjectList";
 import BreadcrumbsNav from "../../components/BreadcrumbsNav";
 import { plansData, projectsData } from "../../data/mockData";
 
+
 const Dashboard = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -32,6 +33,7 @@ const Dashboard = () => {
     setSelectedProject(null);
     setSelectedPlan(null);
     setSearchTerm("");
+
   };
 
   const handleProjectAction = (action) => {
@@ -49,6 +51,7 @@ const Dashboard = () => {
         ) {
           alert("Delete project functionality will be implemented");
           handleBackToProjects();
+
         }
         break;
       default:
@@ -94,6 +97,7 @@ const Dashboard = () => {
               />
             </>
           )}
+
         </div>
 
         {/* Right Column */}
@@ -105,6 +109,7 @@ const Dashboard = () => {
           />
 
           {selectedProject && <ProjectDetails project={selectedProject} />}
+
         </div>
       </div>
     </div>

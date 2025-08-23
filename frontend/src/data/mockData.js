@@ -27,6 +27,7 @@ export const plansData = [
   {
     id: '8890',
     projectId: 'p1', // belongs to Colombo project ✅
+
     estimatedCost: '$105 Mn',
     estimatedExtent: '104.2 ha',
     projectDate: '2025.01.01',
@@ -36,6 +37,7 @@ export const plansData = [
   {
     id: '8894',
     projectId: 'p1',
+
     estimatedCost: '$89 Mn',
     estimatedExtent: '87.5 ha',
     projectDate: '2025.02.15',
@@ -45,6 +47,7 @@ export const plansData = [
   {
     id: '8893',
     projectId: 'p2', // belongs to Kandy expressway
+
     estimatedCost: '$124 Mn',
     estimatedExtent: '156.8 ha',
     projectDate: '2025.03.10',
@@ -54,6 +57,7 @@ export const plansData = [
   {
     id: '8891',
     projectId: 'p2',
+
     estimatedCost: '$78 Mn',
     estimatedExtent: '92.3 ha',
     projectDate: '2025.04.20',
@@ -63,6 +67,7 @@ export const plansData = [
   {
     id: '8895',
     projectId: 'p3',
+
     estimatedCost: '$198 Mn',
     estimatedExtent: '245.1 ha',
     projectDate: '2025.05.05',
@@ -72,6 +77,7 @@ export const plansData = [
   {
     id: '8896',
     projectId: 'p3',
+
     estimatedCost: '$156 Mn',
     estimatedExtent: '178.9 ha',
     projectDate: '2025.06.30',
@@ -89,7 +95,7 @@ export const userData = {
 
 export const navigationItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  
+  { path: '/dashboard/profile', label: 'Profile', icon: 'User' },
   { path: '/dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
   { path: '/dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
   { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' }
@@ -101,6 +107,7 @@ export const bottomItems = [
 ];
 
 // src/data/mockData.js
+
 
 
 
