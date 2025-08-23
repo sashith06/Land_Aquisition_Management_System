@@ -1,9 +1,32 @@
 // src/data/mockData.js
 
+// src/data/mockData.js
+
+export const projectsData = [
+  {
+    id: 'p1',
+    name: 'Colombo Expansion Project',
+    description: 'Urban land development in Colombo district',
+    createdDate: '2024.12.01',
+  },
+  {
+    id: 'p2',
+    name: 'Kandy Expressway Project',
+    description: 'Highway land acquisition for expressway',
+    createdDate: '2025.01.10',
+  },
+  {
+    id: 'p3',
+    name: 'Northern Province Development',
+    description: 'Large-scale agricultural land allocation',
+    createdDate: '2025.02.20',
+  }
+];
+
 export const plansData = [
   {
     id: '8890',
-    name: 'Kottawa Diyagama',
+    projectId: 'p1', // belongs to Colombo project ✅
     estimatedCost: '$105 Mn',
     estimatedExtent: '104.2 ha',
     projectDate: '2025.01.01',
@@ -12,7 +35,7 @@ export const plansData = [
   },
   {
     id: '8894',
-    name: 'Colombo Highway Extension',
+    projectId: 'p1',
     estimatedCost: '$89 Mn',
     estimatedExtent: '87.5 ha',
     projectDate: '2025.02.15',
@@ -21,7 +44,7 @@ export const plansData = [
   },
   {
     id: '8893',
-    name: 'Galle Road Development',
+    projectId: 'p2', // belongs to Kandy expressway
     estimatedCost: '$124 Mn',
     estimatedExtent: '156.8 ha',
     projectDate: '2025.03.10',
@@ -30,7 +53,7 @@ export const plansData = [
   },
   {
     id: '8891',
-    name: 'Kandy Ring Road',
+    projectId: 'p2',
     estimatedCost: '$78 Mn',
     estimatedExtent: '92.3 ha',
     projectDate: '2025.04.20',
@@ -39,7 +62,7 @@ export const plansData = [
   },
   {
     id: '8895',
-    name: 'Northern Expressway',
+    projectId: 'p3',
     estimatedCost: '$198 Mn',
     estimatedExtent: '245.1 ha',
     projectDate: '2025.05.05',
@@ -48,7 +71,7 @@ export const plansData = [
   },
   {
     id: '8896',
-    name: 'Southern Coastal Road',
+    projectId: 'p3',
     estimatedCost: '$156 Mn',
     estimatedExtent: '178.9 ha',
     projectDate: '2025.06.30',
@@ -66,7 +89,7 @@ export const userData = {
 
 export const navigationItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { path: '/dashboard/profile', label: 'Profile', icon: 'User' },
+  
   { path: '/dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
   { path: '/dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
   { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' }
@@ -76,3 +99,9 @@ export const bottomItems = [
   { path: '/dashboard/settings', label: 'Settings', icon: 'Settings' },
   { path: '/dashboard/info', label: 'Info', icon: 'Info' }
 ];
+
+// src/data/mockData.js
+
+
+
+
