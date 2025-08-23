@@ -4,12 +4,20 @@ import { useState } from 'react';
 import { userData } from '../data/mockData';
 import Logo from './Logo';
 
-const Navbar = () => {
+const Navigation = ({ type = "default" }) => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
   // Dynamic breadcrumbs
   const pathnames = location.pathname.split('/').filter(Boolean);
+
+  // Determine the correct profile path based on current location
+  const getProfilePath = () => {
+    if (location.pathname.startsWith('/ce-dashboard')) {
+      return '/ce-dashboard/profile';
+    }
+    return '/dashboard/profile';
+  };
 
   return (
     <div className="bg-white border-b border-gray-200 h-16 w-full shadow-sm">
@@ -75,7 +83,7 @@ const Navbar = () => {
             {open && (
               <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                 <Link
-                  to="/dashboard/profile"
+                  to={getProfilePath()}
                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   Profile
@@ -95,4 +103,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar;
+export default Navigation;

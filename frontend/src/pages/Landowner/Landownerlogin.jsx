@@ -1,7 +1,7 @@
 import React from "react";
-import Header from '../components/Header'; 
-import Footer from '../components/Footer';
-import LandownerHero from "../components/LandownerHero";
+import Header from '../Home/Header'; 
+import Footer from '../Home/Footer';
+import LandownerHero from "./LandownerHero";
 
 export default function LandownerLogin() {
     return (
