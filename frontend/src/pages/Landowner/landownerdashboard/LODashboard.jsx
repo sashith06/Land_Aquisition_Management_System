@@ -93,7 +93,9 @@ function LODashboard() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
                 {" "}Land
               </span>
-              in Our
+              
+               {""} in Our
+             
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
                 {" "}Process
               </span>

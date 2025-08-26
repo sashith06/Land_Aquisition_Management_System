@@ -3,6 +3,8 @@ import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import ForgetPassword from "../pages/ForgetPassword";
+import ResetPassword from "../pages/ResetPassword";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import Dashboard from "../pages/Dashboards/Dashboard";
@@ -31,6 +33,8 @@ export default function AppRoutes() {
       {/* Full Page Routes (No Layout) */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forget-password" element={<ForgetPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/lodashboard" element={<LODashboard />} />
 
       {/* Dashboard Routes With Shared Layout */}
