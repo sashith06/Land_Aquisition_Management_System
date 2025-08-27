@@ -1,22 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Plus, ArrowLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { sampleCreatedProjects, projectsData, plansData } from '../../data/mockData';
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
 
 const CreateProject = ({ onProjectCreate }) => {
-  const navigate = useNavigate();
-  const [createdProjects, setCreatedProjects] = useState(sampleCreatedProjects);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-
-  // Load created projects from localStorage on component mount
-  useEffect(() => {
-    const savedProjects = JSON.parse(localStorage.getItem('createdProjects') || '[]');
-    setCreatedProjects([...sampleCreatedProjects, ...savedProjects]);
-  }, []);
-
-  // Get plans for selected project
-  const filteredPlans = selectedProject ? plansData.filter(plan => plan.projectId === selectedProject.id) : [];
   const [formData, setFormData] = useState({
     projectName: '',
     estimatedCost: '',
@@ -51,19 +36,23 @@ const CreateProject = ({ onProjectCreate }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (formData.projectName && formData.estimatedCost) {
-      // Save to localStorage for now (you can replace with API call)
-      const existingProjects = JSON.parse(localStorage.getItem('createdProjects') || '[]');
+      // Create new project object for pending approval
       const newProject = {
         ...formData,
-        id: Date.now(),
-        createdDate: new Date().toISOString().split('T')[0]
+        id: `pp${Date.now()}`, // Generate unique ID with 'pp' prefix for pending
+        createdBy: 'PE001', // This should come from user context in real app
+        createdDate: new Date().toISOString().split('T')[0].replace(/-/g, '.'),
+        status: 'pending' // Mark as pending approval
       };
-      existingProjects.push(newProject);
-      localStorage.setItem('createdProjects', JSON.stringify(existingProjects));
+
+      // Save to localStorage as pending project
+      const existingPendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
+      existingPendingProjects.push(newProject);
+      localStorage.setItem('pendingProjects', JSON.stringify(existingPendingProjects));
       
       // Call parent callback if provided
       if (onProjectCreate) {
-        onProjectCreate(formData);
+        onProjectCreate(newProject);
       }
       
       // Reset form
@@ -90,12 +79,7 @@ const CreateProject = ({ onProjectCreate }) => {
         note: ''
       });
       
-      alert('Project created successfully!');
-      // Update the local state to show the new project immediately
-      const updatedProjects = JSON.parse(localStorage.getItem('createdProjects') || '[]');
-      setCreatedProjects([...sampleCreatedProjects, ...updatedProjects]);
-      // Navigate back to dashboard
-      navigate('/pe-dashboard');
+      alert('Project submitted for approval! It will appear in Projects & Overview after Chief Engineer approval.');
     } else {
       alert('Please fill in required fields (Project Name and Estimated Cost)');
     }
@@ -107,25 +91,18 @@ const CreateProject = ({ onProjectCreate }) => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-            Create New Project
+            Project Information
           </h1>
           <p className="text-sm sm:text-base text-slate-600">
             Fill in the project details and proposal information
           </p>
         </div>
-        <button
-          onClick={() => navigate('/pe-dashboard')}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Dashboard</span>
-        </button>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Create Project Form */}
-        <div className="lg:col-span-2">
+      {/* Single Column Layout */}
+      <div className="grid grid-cols-1 gap-6">
+        {/* Create Project Form */}
+        <div className="w-full">
           <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-slate-900">Project Information</h2>
@@ -232,7 +209,6 @@ const CreateProject = ({ onProjectCreate }) => {
                 placeholder="YY"
                 className="w-20 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="23"
-                max="99"
               />
             </div>
           </div>
@@ -269,7 +245,6 @@ const CreateProject = ({ onProjectCreate }) => {
                 placeholder="YY"
                 className="w-20 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="23"
-                max="99"
               />
             </div>
           </div>
@@ -315,7 +290,6 @@ const CreateProject = ({ onProjectCreate }) => {
                   placeholder="YY"
                   className="w-20 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   min="23"
-                  max="99"
                 />
               </div>
             </div>
@@ -362,7 +336,6 @@ const CreateProject = ({ onProjectCreate }) => {
                   placeholder="YY"
                   className="w-20 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   min="23"
-                  max="99"
                 />
               </div>
             </div>
@@ -466,94 +439,6 @@ const CreateProject = ({ onProjectCreate }) => {
           </button>
         </div>
       </form>
-          </div>
-        </div>
-
-        {/* Right Column - My Created Projects */}
-        <div className="lg:col-span-1">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900">
-                {!selectedProject ? 'My Created Projects' : 'Project Plans'}
-              </h3>
-              {selectedProject && (
-                <button
-                  onClick={() => {
-                    setSelectedProject(null);
-                    setSelectedPlan(null);
-                  }}
-                  className="text-sm text-blue-600 hover:text-blue-800"
-                >
-                  ← Back to Projects
-                </button>
-              )}
-            </div>
-            
-            {!selectedProject ? (
-              // Show Projects List
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {projectsData.map((project) => (
-                  <div 
-                    key={project.id} 
-                    className="p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => setSelectedProject(project)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-sm text-slate-900">{project.name}</div>
-                        <div className="text-xs text-slate-600">{project.description}</div>
-                        <div className="text-xs text-slate-500">Created: {project.createdDate}</div>
-                      </div>
-                      <ChevronRight size={16} className="text-slate-400" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              // Show Plans for Selected Project
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 mb-3">
-                  <div className="font-medium text-sm text-blue-900">{selectedProject.name}</div>
-                  <div className="text-xs text-blue-600">{selectedProject.description}</div>
-                </div>
-                
-                {filteredPlans.length > 0 ? (
-                  filteredPlans.map((plan) => (
-                    <div 
-                      key={plan.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedPlan?.id === plan.id 
-                          ? 'bg-orange-50 border-orange-200' 
-                          : 'bg-gray-50 hover:bg-gray-100'
-                      }`}
-                      onClick={() => setSelectedPlan(plan)}
-                    >
-                      <div className="font-medium text-sm text-slate-900">Plan #{plan.id}</div>
-                      <div className="text-xs text-slate-600">Cost: {plan.estimatedCost}</div>
-                      <div className="text-xs text-slate-600">Extent: {plan.estimatedExtent}</div>
-                      <div className="text-xs text-slate-600">Progress: {plan.progress}%</div>
-                      <div className="text-xs text-slate-500">Date: {plan.projectDate}</div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-500 text-center py-4">No plans found for this project</p>
-                )}
-              </div>
-            )}
-            
-            {/* Selected Plan Details */}
-            {selectedPlan && (
-              <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <h4 className="font-medium text-sm text-orange-900 mb-2">Selected Plan Details</h4>
-                <div className="space-y-1 text-xs">
-                  <div><strong>Plan ID:</strong> {selectedPlan.id}</div>
-                  <div><strong>Cost:</strong> {selectedPlan.estimatedCost}</div>
-                  <div><strong>Extent:</strong> {selectedPlan.estimatedExtent}</div>
-                  <div><strong>Progress:</strong> {selectedPlan.progress}%</div>
-                  <div><strong>Date:</strong> {selectedPlan.projectDate}</div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

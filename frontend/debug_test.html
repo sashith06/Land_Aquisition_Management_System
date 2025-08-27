@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>LocalStorage Debug Test</h1>
+    <button onclick="testPendingProjects()">Test Pending Projects</button>
+    <button onclick="testApprovedProjects()">Test Approved Projects</button>
+    <button onclick="clearAll()">Clear All</button>
+    <div id="output"></div>
+
+    <script>
+        function testPendingProjects() {
+            const testProject = {
+                id: 'pp' + Date.now(),
+                projectName: 'Test Project',
+                estimatedCost: '$100 Mn',
+                status: 'pending',
+                createdDate: '2025.08.27'
+            };
+            
+            const existing = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
+            existing.push(testProject);
+            localStorage.setItem('pendingProjects', JSON.stringify(existing));
+            
+            document.getElementById('output').innerHTML = `
+                <h3>Pending Projects:</h3>
+                <pre>${JSON.stringify(existing, null, 2)}</pre>
+            `;
+        }
+        
+        function testApprovedProjects() {
+            const approved = JSON.parse(localStorage.getItem('approvedProjects') || '[]');
+            document.getElementById('output').innerHTML = `
+                <h3>Approved Projects:</h3>
+                <pre>${JSON.stringify(approved, null, 2)}</pre>
+            `;
+        }
+        
+        function clearAll() {
+            localStorage.removeItem('pendingProjects');
+            localStorage.removeItem('approvedProjects');
+            document.getElementById('output').innerHTML = '<p>LocalStorage cleared!</p>';
+        }
+    </script>
+</body>
+</html>

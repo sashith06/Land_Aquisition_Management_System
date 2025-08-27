@@ -3,22 +3,22 @@ import {
   BarChart3,
   MessageSquare,
   FileText,
-  Plus,
+  LayoutDashboard,
 } from "lucide-react";
 
-// Project Engineer specific navigation items (removed User Management and Project Requests)
+// Project Engineer specific navigation items
 const peNavigationItems = [
+  { path: '/pe-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/pe-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
   { path: '/pe-dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
   { path: '/pe-dashboard/reports', label: 'Reports', icon: 'FileText' },
-  { path: '/pe-dashboard/create-project', label: 'Create Project', icon: 'Plus' },
 ];
 
 const iconMap = {
   BarChart3,
   MessageSquare,
   FileText,
-  Plus,
+  LayoutDashboard,
 };
 
 const PESidebar = () => {

@@ -8,18 +8,40 @@ export const projectsData = [
     name: 'Colombo Expansion Project',
     description: 'Urban land development in Colombo district',
     createdDate: '2024.12.01',
+    status: 'approved'
   },
   {
     id: 'p2',
     name: 'Kandy Expressway Project',
     description: 'Highway land acquisition for expressway',
     createdDate: '2025.01.10',
+    status: 'approved'
   },
   {
     id: 'p3',
     name: 'Northern Province Development',
     description: 'Large-scale agricultural land allocation',
     createdDate: '2025.02.20',
+    status: 'approved'
+  }
+];
+
+// Pending projects awaiting Chief Engineer approval
+export const pendingProjectsData = [
+  {
+    id: 'pp2',
+    projectName: 'Ampara District Development',
+    estimatedCost: '$75 Mn',
+    extentHa: '125.8',
+    extentPerch: '310',
+    section02OrderDay: '20',
+    section02OrderMonth: '08',
+    section02OrderYear: '25',
+    acquisitionType: 'larc',
+    note: 'Agricultural land development project',
+    createdBy: 'PE002',
+    createdDate: '2025.08.26',
+    status: 'pending'
   }
 ];
 

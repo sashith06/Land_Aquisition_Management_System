@@ -61,7 +61,6 @@ export default function AppRoutes() {
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
-        <Route path="create-project" element={<CreateProject />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 
