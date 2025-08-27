@@ -87,6 +87,34 @@ export const userData = {
   notifications: 2
 };
 
+// Sample created projects data for Project Engineer
+export const sampleCreatedProjects = [
+  {
+    projectName: 'Walgama - Diyagama Project',
+    estimatedCost: '$105 Mn',
+    extentHa: '104.2',
+    extentPerch: '256',
+    acquisitionType: 'regulation',
+    createdDate: '2025-08-20'
+  },
+  {
+    projectName: 'Kottawa - Thalagala Project', 
+    estimatedCost: '$89 Mn',
+    extentHa: '87.5',
+    extentPerch: '215',
+    acquisitionType: 'larc',
+    createdDate: '2025-08-21'
+  },
+  {
+    projectName: 'Kotte - Bope Project',
+    estimatedCost: '$124 Mn', 
+    extentHa: '156.8',
+    extentPerch: '385',
+    acquisitionType: 'special',
+    createdDate: '2025-08-22'
+  }
+];
+
 export const navigationItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   

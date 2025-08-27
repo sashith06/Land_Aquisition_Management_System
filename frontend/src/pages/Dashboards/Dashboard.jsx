@@ -4,7 +4,6 @@ import ProjectDetails from "../../components/ProjectDetails";
 import ProjectOptionButtons from "../../components/ProjectOptionButtons";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
-import BreadcrumbsNav from "../../components/BreadcrumbsNav";
 import { plansData, projectsData } from "../../data/mockData";
 
 const Dashboard = () => {
@@ -58,11 +57,6 @@ const Dashboard = () => {
 
   return (
     <div className="p-6">
-      <BreadcrumbsNav
-        selectedProject={selectedProject}
-        onBack={handleBackToProjects}
-      />
-
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         {/* Left Column */}
         <div className="xl:col-span-3 space-y-8">
@@ -101,7 +95,9 @@ const Dashboard = () => {
           <SearchBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            placeholder={!selectedProject ? "Search projects..." : "Search plans..."}
+            placeholder={
+              !selectedProject ? "Search projects..." : "Search plans..."
+            }
           />
 
           {selectedProject && <ProjectDetails project={selectedProject} />}

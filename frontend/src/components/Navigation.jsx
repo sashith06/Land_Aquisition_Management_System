@@ -15,6 +15,8 @@ const Navigation = ({ type = "default" }) => {
   const getProfilePath = () => {
     if (location.pathname.startsWith('/ce-dashboard')) {
       return '/ce-dashboard/profile';
+    } else if (location.pathname.startsWith('/pe-dashboard')) {
+      return '/pe-dashboard/profile';
     }
     return '/dashboard/profile';
   };

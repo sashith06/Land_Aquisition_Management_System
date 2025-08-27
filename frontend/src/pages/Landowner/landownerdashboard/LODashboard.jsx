@@ -11,7 +11,7 @@ import {
   Paperclip,
   Phone,
 } from "lucide-react";
-import Navbar from "../../../components/Navbar";
+import Navigation from "../../../components/Navigation";
 
 const NAVBAR_HEIGHT = "64px"; // define navbar height
 
@@ -81,7 +81,7 @@ function LODashboard() {
         className="fixed top-0 left-0 right-0 bg-white shadow z-20 flex items-center"
         style={{ height: NAVBAR_HEIGHT }}
       >
-        <Navbar />
+        <Navigation />
       </header>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6 pt-[80px]">

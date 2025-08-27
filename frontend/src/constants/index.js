@@ -13,3 +13,12 @@ export const CE_ROUTES = {
   USER_MANAGEMENT: '/ce-dashboard/user-management',
   PROJECT_REQUESTS: '/ce-dashboard/project-requests',
 };
+
+// Navigation paths for Project Engineer
+export const PE_ROUTES = {
+  DASHBOARD: '/pe-dashboard',
+  ANALYSIS: '/pe-dashboard/analysis',
+  MESSAGES: '/pe-dashboard/messages',
+  REPORTS: '/pe-dashboard/reports',
+  CREATE_PROJECT: '/pe-dashboard/create-project',
+};

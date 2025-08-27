@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight, TrendingUp, Users, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Hero = () => {
   return (
@@ -28,6 +29,22 @@ const Hero = () => {
               Track land acquisition progress, manage documents, and receive real-time updates with our centralized digital platform designed for efficiency and transparency.
             </p>
             
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-8 justify-center lg:justify-start">
+              <Link
+                to="/dashboards"
+                className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              >
+                Access Dashboard
+                <ArrowRight size={20} className="ml-2" />
+              </Link>
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+              >
+                Login
+              </Link>
+            </div>
 
             {/* Enhanced Stats */}
             <div className="grid grid-cols-3 gap-6 md:gap-8">
