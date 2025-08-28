@@ -1,8 +1,10 @@
 // src/pages/LotsPage.jsx
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { lotsData } from "../data/mockData";
+import Breadcrumb from "../components/Breadcrumb";
 
 
 
@@ -70,21 +72,16 @@ const LotsPage = () => {
 
   return (
     <div className="p-6">
-      {/* Header with back button */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleBackToPlansProgress}
-            className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Plans & Progress</span>
-          </button>
-          <h1 className="text-2xl font-bold text-gray-800">
-            Lots for Plan {planId}
-          </h1>
-        </div>
-      </div>
+      {/* Breadcrumb navigation */}
+      <Breadcrumb
+        items={[
+          { label: "Plans & Progress", to: "#", onClick: handleBackToPlansProgress },
+          { label: `Lots for Plan ${planId}` }
+        ]}
+      />
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">
+        Lots for Plan {planId}
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
         {/* Left side panel */}
@@ -136,16 +133,6 @@ const LotsPage = () => {
                 {lot.id.replace("L", "")}
               </button>
             ))}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <button className="flex-1 bg-black text-white py-2 rounded-lg font-semibold hover:bg-gray-800">
-              Mark All
-            </button>
-            <button className="flex-1 bg-gray-600 text-white py-2 rounded-lg font-semibold hover:bg-gray-700">
-              Unmark All
-            </button>
           </div>
         </div>
 
