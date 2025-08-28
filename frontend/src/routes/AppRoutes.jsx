@@ -27,6 +27,7 @@ import ProjectRequests from "../pages/ChiefEngineer/ProjectRequests";
 
 import PEDashboardMain from "../pages/ProjectEngineer/PEDashboardMain";
 import CreateProject from "../pages/ProjectEngineer/CreateProject";
+import EditProject from "../pages/ProjectEngineer/EditProject";
 
 import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
 import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
@@ -72,6 +73,7 @@ export default function AppRoutes() {
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="create-project" element={<CreateProject />} />
+        <Route path="edit-project/:projectId" element={<EditProject />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

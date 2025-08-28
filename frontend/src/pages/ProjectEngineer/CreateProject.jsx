@@ -1,17 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { sampleCreatedProjects } from '../../data/mockData';
 
-const CreateProject = ({ onProjectCreate }) => {
+const CreateProject = () => {
   const navigate = useNavigate();
-  const [createdProjects, setCreatedProjects] = useState(sampleCreatedProjects);
-
-  // Load created projects from localStorage on component mount
-  useEffect(() => {
-    const savedProjects = JSON.parse(localStorage.getItem('createdProjects') || '[]');
-    setCreatedProjects([...sampleCreatedProjects, ...savedProjects]);
-  }, []);
   const [formData, setFormData] = useState({
     projectName: '',
     estimatedCost: '',

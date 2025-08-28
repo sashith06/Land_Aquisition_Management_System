@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { userData } from '../data/mockData';
 import Logo from './Logo';
 
-const Navigation = ({ type = "default" }) => {
+const Navigation = () => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
 

@@ -33,7 +33,7 @@ const LotDetail = () => {
           } 
           className="hover:text-blue-600 transition-colors"
         >
-          Dashboard
+          Plans & Progress
         </Link>
         <span>/</span>
         <Link 

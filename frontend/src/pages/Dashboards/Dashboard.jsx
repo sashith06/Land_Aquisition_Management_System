@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
-import ProjectOptionButtons from "../../components/ProjectOptionButtons";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
 import { plansData, projectsData } from "../../data/mockData";
@@ -12,15 +12,37 @@ const Dashboard = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [allProjects, setAllProjects] = useState(projectsData);
+
+  // Load approved projects from localStorage
+  useEffect(() => {
+    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
+    setAllProjects([...projectsData, ...savedProjects]);
+  }, []);
+
+  // Handle navigation state when returning from lots page
+  useEffect(() => {
+    if (location.state?.returnToProject && location.state?.planId) {
+      // Find the project that contains the plan with the given planId
+      const planId = location.state.planId;
+      const plan = plansData.find(p => p.id === planId);
+      if (plan) {
+        const project = allProjects.find(proj => proj.id === plan.projectId);
+        if (project) {
+          setSelectedProject(project);
+        }
+      }
+    }
+  }, [location.state, allProjects]);
 
   // Check if we're on the Chief Engineer dashboard
   const isChiefEngineerDashboard = location.pathname.startsWith('/ce-dashboard');
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return projectsData;
-    return projectsData.filter((p) => p.name.toLowerCase().includes(term));
-  }, [searchTerm]);
+    if (!term) return allProjects;
+    return allProjects.filter((p) => p.name.toLowerCase().includes(term));
+  }, [searchTerm, allProjects]);
 
   const filteredPlans = useMemo(() => {
     if (!selectedProject) return [];
@@ -36,28 +58,6 @@ const Dashboard = () => {
     setSelectedProject(null);
     setSelectedPlan(null);
     setSearchTerm("");
-  };
-
-  const handleProjectAction = (action) => {
-    switch (action) {
-      case "create":
-        alert("Create new project functionality will be implemented");
-        break;
-      case "edit":
-        if (selectedProject) alert(`Edit project: ${selectedProject.name}`);
-        break;
-      case "delete":
-        if (
-          selectedProject &&
-          window.confirm(`Delete project: ${selectedProject.name}?`)
-        ) {
-          alert("Delete project functionality will be implemented");
-          handleBackToProjects();
-        }
-        break;
-      default:
-        break;
-    }
   };
 
   return (
@@ -92,15 +92,22 @@ const Dashboard = () => {
             </>
           ) : (
             <>
+              {/* Back to Dashboard Button */}
+              <div className="mb-6">
+                <button
+                  onClick={handleBackToProjects}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                  <span>Back to Dashboard</span>
+                </button>
+              </div>
+              
               {/* Plans for selected project */}
               <PlanProgressList
                 plans={filteredPlans}
                 onPlanSelect={setSelectedPlan}
                 selectedPlan={selectedPlan}
-              />
-              <ProjectOptionButtons
-                onAction={handleProjectAction}
-                selectedProject={selectedProject}
               />
             </>
           )}

@@ -30,17 +30,41 @@ const LotsPage = () => {
     setSelectedLot(lot);
   };
 
-  const handleBackToDashboard = () => {
-    // Determine which dashboard to navigate back to based on current path
+  const handleBackToPlansProgress = () => {
+    // Navigate back to the plans & progress view of the respective dashboard
+    // We need to pass the project information back so the dashboard knows which project to show
     const currentPath = window.location.pathname;
+    
+    // Extract project info from the plan - this would typically come from a more robust state management
+    // For now, we'll navigate back and let the dashboard handle the state
     if (currentPath.includes('/pe-dashboard')) {
-      navigate('/pe-dashboard');
+      navigate('/pe-dashboard', { 
+        state: { 
+          returnToProject: true, 
+          planId: planId 
+        } 
+      });
     } else if (currentPath.includes('/ce-dashboard')) {
-      navigate('/ce-dashboard');
+      navigate('/ce-dashboard', { 
+        state: { 
+          returnToProject: true, 
+          planId: planId 
+        } 
+      });
     } else if (currentPath.includes('/fo-dashboard')) {
-      navigate('/fo-dashboard');
+      navigate('/fo-dashboard', { 
+        state: { 
+          returnToProject: true, 
+          planId: planId 
+        } 
+      });
     } else {
-      navigate('/dashboard');
+      navigate('/dashboard', { 
+        state: { 
+          returnToProject: true, 
+          planId: planId 
+        } 
+      });
     }
   };
 
@@ -50,11 +74,11 @@ const LotsPage = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <button
-            onClick={handleBackToDashboard}
+            onClick={handleBackToPlansProgress}
             className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
           >
             <ArrowLeft size={20} />
-            <span>Back to Dashboard</span>
+            <span>Back to Plans & Progress</span>
           </button>
           <h1 className="text-2xl font-bold text-gray-800">
             Lots for Plan {planId}

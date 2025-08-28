@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, Edit, Trash2, Search, Filter, CheckCircle, XCircle, Clock, UserCheck, Mail, Phone } from 'lucide-react';
 
 // Mock user data with more comprehensive structure
@@ -265,12 +265,7 @@ const UserManagement = () => {
     ...rejectedUsers.map(r => r.role)
   ])];
 
-  // Update filtered data when search/filter changes
-  useEffect(() => {
-    filterData();
-  }, [users, pendingRequests, rejectedUsers, searchTerm, selectedRole]);
-
-  const filterData = () => {
+  const filterData = useCallback(() => {
     // Filter users
     const filteredUsersData = users.filter(user => {
       const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -301,7 +296,12 @@ const UserManagement = () => {
     setFilteredUsers(filteredUsersData);
     setFilteredRequests(filteredRequestsData);
     setFilteredRejectedUsers(filteredRejectedData);
-  };
+  }, [users, pendingRequests, rejectedUsers, searchTerm, selectedRole]);
+
+  // Update filtered data when search/filter changes
+  useEffect(() => {
+    filterData();
+  }, [filterData]);
 
   // Utility function for role colors
   const getRoleColor = (role) => {

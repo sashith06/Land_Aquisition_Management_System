@@ -1,14 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
+import { DollarSign, ArrowLeft } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
 import { plansData, projectsData } from "../../data/mockData";
-import { DollarSign } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const FODashboardMain = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,6 +20,21 @@ const FODashboardMain = () => {
     const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
     setAllProjects([...projectsData, ...savedProjects]);
   }, []);
+
+  // Handle navigation state when returning from lots page
+  useEffect(() => {
+    if (location.state?.returnToProject && location.state?.planId) {
+      // Find the project that contains the plan with the given planId
+      const planId = location.state.planId;
+      const plan = plansData.find(p => p.id === planId);
+      if (plan) {
+        const project = allProjects.find(proj => proj.id === plan.projectId);
+        if (project) {
+          setSelectedProject(project);
+        }
+      }
+    }
+  }, [location.state, allProjects]);
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -80,6 +96,17 @@ const FODashboardMain = () => {
             </>
           ) : (
             <>
+              {/* Back to Dashboard Button */}
+              <div className="mb-6">
+                <button
+                  onClick={handleBackToProjects}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                  <span>Back to Dashboard</span>
+                </button>
+              </div>
+              
               {/* Plans for selected project */}
               <PlanProgressList
                 plans={filteredPlans}

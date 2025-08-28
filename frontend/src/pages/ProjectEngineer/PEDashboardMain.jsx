@@ -1,15 +1,15 @@
 import { useState, useMemo, useEffect } from "react";
+import { Plus, ArrowLeft } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
-import ProjectOptionButtons from "../../components/ProjectOptionButtons";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
 import { plansData, projectsData } from "../../data/mockData";
-import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const PEDashboardMain = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,6 +20,37 @@ const PEDashboardMain = () => {
     const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
     setAllProjects([...projectsData, ...savedProjects]);
   }, []);
+
+  // Refresh projects when coming back from edit (detect route change)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
+      setAllProjects([...projectsData, ...savedProjects]);
+    };
+
+    // Listen for storage changes and location changes
+    window.addEventListener('storage', handleStorageChange);
+    handleStorageChange(); // Refresh on component mount/route change
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [location.pathname]);
+
+  // Handle navigation state when returning from lots page
+  useEffect(() => {
+    if (location.state?.returnToProject && location.state?.planId) {
+      // Find the project that contains the plan with the given planId
+      const planId = location.state.planId;
+      const plan = plansData.find(p => p.id === planId);
+      if (plan) {
+        const project = allProjects.find(proj => proj.id === plan.projectId);
+        if (project) {
+          setSelectedProject(project);
+        }
+      }
+    }
+  }, [location.state, allProjects]);
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -43,26 +74,26 @@ const PEDashboardMain = () => {
     setSearchTerm("");
   };
 
-  const handleProjectAction = (action) => {
-    switch (action) {
-      case "create":
-        navigate("/pe-dashboard/create-project");
-        break;
-      case "edit":
-        if (selectedProject) alert(`Edit project: ${selectedProject.name}`);
-        break;
-      case "delete":
-        if (
-          selectedProject &&
-          window.confirm(`Delete project: ${selectedProject.name}?`)
-        ) {
-          alert("Delete project functionality will be implemented");
-          handleBackToProjects();
-        }
-        break;
-      default:
-        break;
+  const handleEditProject = (project) => {
+    navigate(`/pe-dashboard/edit-project/${project.id}`);
+  };
+
+  const handleDeleteProject = (projectId) => {
+    // Remove project from localStorage
+    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
+    const updatedProjects = savedProjects.filter(p => p.id !== projectId);
+    localStorage.setItem('projectsData', JSON.stringify(updatedProjects));
+    
+    // Update local state
+    setAllProjects(prev => prev.filter(p => p.id !== projectId));
+    
+    // If the deleted project was selected, clear selection
+    if (selectedProject?.id === projectId) {
+      setSelectedProject(null);
+      setSelectedPlan(null);
     }
+    
+    alert('Project deleted successfully!');
   };
 
   return (
@@ -91,19 +122,29 @@ const PEDashboardMain = () => {
                 projects={filteredProjects}
                 onSelect={setSelectedProject}
                 selectedProject={selectedProject}
+                showActions={true}
+                onEdit={handleEditProject}
+                onDelete={handleDeleteProject}
               />
             </>
           ) : (
             <>
+              {/* Back to Dashboard Button */}
+              <div className="mb-6">
+                <button
+                  onClick={handleBackToProjects}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  <ArrowLeft size={16} />
+                  <span>Back to Dashboard</span>
+                </button>
+              </div>
+              
               {/* Plans for selected project */}
               <PlanProgressList
                 plans={filteredPlans}
                 onPlanSelect={setSelectedPlan}
                 selectedPlan={selectedPlan}
-              />
-              <ProjectOptionButtons
-                onAction={handleProjectAction}
-                selectedProject={selectedProject}
               />
             </>
           )}

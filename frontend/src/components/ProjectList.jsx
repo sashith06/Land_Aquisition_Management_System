@@ -1,6 +1,6 @@
-import { Building2 } from "lucide-react";
+import { Building2, Edit2, Trash2 } from "lucide-react";
 
-const ProjectList = ({ projects, onSelect, selectedProject }) => {
+const ProjectList = ({ projects, onSelect, selectedProject, showActions = false, onEdit, onDelete }) => {
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -35,6 +35,34 @@ const ProjectList = ({ projects, onSelect, selectedProject }) => {
 
             {/* Created Date */}
             <p className="text-xs text-gray-400 mt-1">Created: {project.createdDate}</p>
+
+            {/* Action Buttons for PE Dashboard */}
+            {showActions && (
+              <div className="flex space-x-2 mt-4 pt-4 border-t border-gray-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(project);
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Edit2 size={14} />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)) {
+                      onDelete(project.id);
+                    }
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete</span>
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

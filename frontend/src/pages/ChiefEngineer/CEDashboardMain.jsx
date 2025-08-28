@@ -1,7 +1,11 @@
-import { useState, useMemo } from 'react';
-import { plansData } from '../../data/mockData';
+import { useState, useMemo, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { plansData, projectsData } from '../../data/mockData';
 import PlanList from '../../components/PlanList';
+import ProjectList from '../../components/ProjectList';
 import ProjectDetails from '../../components/ProjectDetails';
+import PlanProgressList from '../../components/PlanProgressList';
 import SearchBar from '../../components/SearchBar';
 
 // Header component for the dashboard
@@ -16,77 +20,152 @@ const CEDashboardHeader = () => (
   </div>
 );
 
-// Main content grid component - VIEW ONLY
-const MainContent = ({ filteredPlans, selectedPlan, onPlanSelect }) => (
+// Main content grid component - Shows projects and plans
+const MainContent = ({ filteredProjects, filteredPlans, selectedProject, selectedPlan, onProjectSelect, onPlanSelect, onBackToProjects }) => (
   <div className="space-y-6 sm:space-y-8">
-    <PlanList
-      plans={filteredPlans}
-      onPlanSelect={onPlanSelect}
-      selectedPlan={selectedPlan}
-    />
-    
-    {/* Project Summary Stats */}
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">Project Overview</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">{filteredPlans.length}</div>
-          <div className="text-sm text-slate-600">Total Projects</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {filteredPlans.filter(p => p.progress >= 75).length}
+    {!selectedProject ? (
+      <>
+        {/* Project List */}
+        <ProjectList
+          projects={filteredProjects}
+          onSelect={onProjectSelect}
+          selectedProject={selectedProject}
+        />
+        
+        {/* Project Summary Stats */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">Project Overview</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{filteredProjects.length}</div>
+              <div className="text-sm text-slate-600">Total Projects</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {filteredProjects.filter(p => p.progress >= 75).length}
+              </div>
+              <div className="text-sm text-slate-600">Near Completion</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {filteredProjects.filter(p => p.progress >= 25 && p.progress < 75).length}
+              </div>
+              <div className="text-sm text-slate-600">In Progress</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {filteredProjects.filter(p => p.progress < 25).length}
+              </div>
+              <div className="text-sm text-slate-600">Early Stage</div>
+            </div>
           </div>
-          <div className="text-sm text-slate-600">Near Completion</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-yellow-600">
-            {filteredPlans.filter(p => p.progress >= 25 && p.progress < 75).length}
-          </div>
-          <div className="text-sm text-slate-600">In Progress</div>
+      </>
+    ) : (
+      <>
+        {/* Back to Dashboard Button */}
+        <div className="mb-6">
+          <button
+            onClick={onBackToProjects}
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Dashboard</span>
+          </button>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {filteredPlans.filter(p => p.progress < 25).length}
-          </div>
-          <div className="text-sm text-slate-600">Early Stage</div>
-        </div>
-      </div>
-    </div>
+        
+        {/* Plans for selected project */}
+        <PlanProgressList
+          plans={filteredPlans}
+          onPlanSelect={onPlanSelect}
+          selectedPlan={selectedPlan}
+        />
+      </>
+    )}
   </div>
 );
 
 // Sidebar component
-const CEDashboardSidebar = ({ searchTerm, onSearchChange, selectedPlan }) => (
+const CEDashboardSidebar = ({ searchTerm, onSearchChange, selectedProject, selectedPlan }) => (
   <div className="space-y-6">
     <SearchBar
       searchTerm={searchTerm}
       onSearchChange={onSearchChange}
+      placeholder={
+        !selectedProject ? "Search projects..." : "Search plans..."
+      }
     />
     
-    <ProjectDetails project={selectedPlan} />
+    <ProjectDetails project={selectedProject || selectedPlan} />
   </div>
 );
 
 const CEDashboardMain = () => {
+  const location = useLocation();
+  const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [allProjects, setAllProjects] = useState(projectsData);
 
-  // Memoized filtered plans for better performance
-  const filteredPlans = useMemo(() => {
-    if (!searchTerm.trim()) return plansData;
+  // Load approved projects from localStorage
+  useEffect(() => {
+    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
+    setAllProjects([...projectsData, ...savedProjects]);
+  }, []);
+
+  // Handle navigation state when returning from lots page
+  useEffect(() => {
+    if (location.state?.returnToProject && location.state?.planId) {
+      // Find the project that contains the plan with the given planId
+      const planId = location.state.planId;
+      const plan = plansData.find(p => p.id === planId);
+      if (plan) {
+        const project = allProjects.find(proj => proj.id === plan.projectId);
+        if (project) {
+          setSelectedProject(project);
+        }
+      }
+    }
+  }, [location.state, allProjects]);
+
+  // Memoized filtered projects for better performance
+  const filteredProjects = useMemo(() => {
+    if (!searchTerm.trim()) return allProjects;
     
     const term = searchTerm.toLowerCase();
-    return plansData.filter(plan =>
-      plan.id.toLowerCase().includes(term) ||
-      plan.name.toLowerCase().includes(term) ||
-      plan.estimatedCost.toLowerCase().includes(term)
+    return allProjects.filter(project =>
+      project.id.toLowerCase().includes(term) ||
+      project.name.toLowerCase().includes(term) ||
+      (project.description && project.description.toLowerCase().includes(term))
     );
-  }, [searchTerm]);
+  }, [searchTerm, allProjects]);
+
+  // Memoized filtered plans for selected project
+  const filteredPlans = useMemo(() => {
+    if (!selectedProject) return [];
+    const term = searchTerm.trim();
+    return plansData.filter(
+      (plan) =>
+        plan.projectId === selectedProject.id &&
+        (!term || plan.id.includes(term))
+    );
+  }, [searchTerm, selectedProject]);
+
+  const handleProjectSelect = (project) => {
+    console.log('Project selected for viewing:', project);
+    setSelectedProject(project);
+    setSelectedPlan(null); // Reset plan selection when project changes
+  };
 
   const handlePlanSelect = (plan) => {
     console.log('Plan selected for viewing:', plan);
     setSelectedPlan(plan);
+  };
+
+  const handleBackToProjects = () => {
+    setSelectedProject(null);
+    setSelectedPlan(null);
+    setSearchTerm("");
   };
 
   return (
@@ -97,9 +176,13 @@ const CEDashboardMain = () => {
         {/* Main Content Area */}
         <div className="xl:col-span-3 order-2 xl:order-1">
           <MainContent
+            filteredProjects={filteredProjects}
             filteredPlans={filteredPlans}
+            selectedProject={selectedProject}
             selectedPlan={selectedPlan}
+            onProjectSelect={handleProjectSelect}
             onPlanSelect={handlePlanSelect}
+            onBackToProjects={handleBackToProjects}
           />
         </div>
         {/* Right Sidebar */}
@@ -107,6 +190,7 @@ const CEDashboardMain = () => {
           <CEDashboardSidebar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
+            selectedProject={selectedProject}
             selectedPlan={selectedPlan}
           />
         </div>

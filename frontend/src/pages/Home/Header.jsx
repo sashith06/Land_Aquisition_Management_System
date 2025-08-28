@@ -89,7 +89,7 @@ const FloatingMobileNav = ({ activeSection, setActiveSection }) => (
   <div className="lg:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
     <div className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-2xl shadow-2xl px-2 py-2">
       <div className="flex items-center space-x-1">
-        {mobileNavItems.map(({ id, label, icon: Icon, href }) => (
+        {mobileNavItems.map(({ id, label, icon: Icon, href }) => ( // eslint-disable-line no-unused-vars
           <HashLink
             key={id}
             to={href}

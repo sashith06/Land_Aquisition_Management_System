@@ -24,6 +24,13 @@ const Analysis = () => {
       bgColor: 'bg-green-100'
     },
     {
+      title: 'Completed',
+      value: completedProjects,
+      icon: Activity,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100'
+    },
+    {
       title: 'Not Started',
       value: notStartedProjects,
       icon: TrendingDown,
