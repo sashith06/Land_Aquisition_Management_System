@@ -4,6 +4,8 @@ import Home from "../pages/Home/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import DashboardSelector from "../pages/DashboardSelector";
+import ForgetPassword from "../pages/ForgetPassword";
+import ResetPassword from "../pages/ResetPassword";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import CEDashboardLayout from "../layouts/CEDashboardLayout";
@@ -49,6 +51,8 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/dashboards" element={<DashboardSelector />} />
+      <Route path="/forget-password" element={<ForgetPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/lodashboard" element={<LODashboard />} />
 
       {/* Chief Engineer Dashboard Routes With CE Layout */}
