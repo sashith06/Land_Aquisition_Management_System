@@ -8,18 +8,21 @@ export const projectsData = [
     name: 'Colombo Expansion Project',
     description: 'Urban land development in Colombo district',
     createdDate: '2024.12.01',
+    progress: 63, // Average of plans: (74 + 52) / 2 = 63
   },
   {
     id: 'p2',
     name: 'Kandy Expressway Project',
     description: 'Highway land acquisition for expressway',
     createdDate: '2025.01.10',
+    progress: 18, // Average of plans: (36 + 0) / 2 = 18
   },
   {
     id: 'p3',
     name: 'Northern Province Development',
     description: 'Large-scale agricultural land allocation',
     createdDate: '2025.02.20',
+    progress: 18, // Average of plans: (36 + 0) / 2 = 18
   }
 ];
 
@@ -79,6 +82,18 @@ export const plansData = [
     image: 'https://images.pexels.com/photos/1906658/pexels-photo-1906658.jpeg?auto=compress&cs=tinysrgb&w=400'
   }
 ];
+// Mock lots data for now - this should come from your actual data source
+export const lotsData = [
+  { id: "L001", owner: "John Doe", status: "active" },
+  { id: "L002", owner: "Jane Smith", status: "pending" },
+  { id: "L003", owner: "Bob Johnson", status: "completed" },
+  { id: "L004", owner: "Alice Brown", status: "active" },
+  { id: "L005", owner: "Charlie Wilson", status: "pending" },
+  { id: "L006", owner: "Diana Davis", status: "active" },
+  { id: "L007", owner: "Eva Martinez", status: "completed" },
+  { id: "L008", owner: "Frank Anderson", status: "active" },
+];
+
 
 export const userData = {
   name: 'Umesh Sandeepa',

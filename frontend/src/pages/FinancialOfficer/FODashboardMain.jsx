@@ -1,26 +1,30 @@
-import { useState, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
-import ProjectOptionButtons from "../../components/ProjectOptionButtons";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
 import { plansData, projectsData } from "../../data/mockData";
+import { DollarSign } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-const Dashboard = () => {
-  const location = useLocation();
+const FODashboardMain = () => {
+  const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [allProjects, setAllProjects] = useState(projectsData);
 
-  // Check if we're on the Chief Engineer dashboard
-  const isChiefEngineerDashboard = location.pathname.startsWith('/ce-dashboard');
+  // Load approved projects from localStorage
+  useEffect(() => {
+    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
+    setAllProjects([...projectsData, ...savedProjects]);
+  }, []);
 
   const filteredProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return projectsData;
-    return projectsData.filter((p) => p.name.toLowerCase().includes(term));
-  }, [searchTerm]);
+    if (!term) return allProjects;
+    return allProjects.filter((p) => p.name.toLowerCase().includes(term));
+  }, [searchTerm, allProjects]);
 
   const filteredPlans = useMemo(() => {
     if (!selectedProject) return [];
@@ -40,20 +44,13 @@ const Dashboard = () => {
 
   const handleProjectAction = (action) => {
     switch (action) {
-      case "create":
-        alert("Create new project functionality will be implemented");
-        break;
-      case "edit":
-        if (selectedProject) alert(`Edit project: ${selectedProject.name}`);
-        break;
-      case "delete":
-        if (
-          selectedProject &&
-          window.confirm(`Delete project: ${selectedProject.name}?`)
-        ) {
-          alert("Delete project functionality will be implemented");
-          handleBackToProjects();
+      case "financial":
+        if (selectedProject) {
+          navigate(`/fo-dashboard/financial-details/${selectedProject.id}`);
         }
+        break;
+      case "view":
+        if (selectedProject) alert(`View project: ${selectedProject.name}`);
         break;
       default:
         break;
@@ -67,21 +64,12 @@ const Dashboard = () => {
         <div className="xl:col-span-3 space-y-8">
           {!selectedProject ? (
             <>
-              {/* Section Title */}
-              {isChiefEngineerDashboard ? (
-                <div className="mb-6 sm:mb-8">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-                    Chief Engineer Dashboard
-                  </h1>
-                  <p className="text-sm sm:text-base text-slate-600">
-                    Overview and management of all land acquisition projects
-                  </p>
-                </div>
-              ) : (
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                  Projects & Overview
+              {/* Section Title and Add Financial Details Button */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Projects & Financial Overview
                 </h2>
-              )}
+              </div>
 
               {/* Project Cards */}
               <ProjectList
@@ -98,7 +86,7 @@ const Dashboard = () => {
                 onPlanSelect={setSelectedPlan}
                 selectedPlan={selectedPlan}
               />
-              <ProjectOptionButtons
+              <FOProjectActionButtons
                 onAction={handleProjectAction}
                 selectedProject={selectedProject}
               />
@@ -123,4 +111,37 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+// Financial Officer specific action buttons
+const FOProjectActionButtons = ({ onAction, selectedProject }) => {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+      <h3 className="text-lg font-semibold text-slate-900 mb-4">
+        Financial Actions
+      </h3>
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={() => onAction("financial")}
+          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <DollarSign size={16} />
+          <span>Add Financial Details</span>
+        </button>
+        <button
+          onClick={() => onAction("view")}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <span>View Details</span>
+        </button>
+      </div>
+      {selectedProject && (
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Selected Project:</strong> {selectedProject.name}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FODashboardMain;

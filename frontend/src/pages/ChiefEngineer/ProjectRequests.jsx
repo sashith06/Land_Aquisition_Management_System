@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FolderPlus, Clock, CheckCircle, XCircle, Eye, Filter, Search } from 'lucide-react';
 
 // Mock project request data
@@ -61,10 +61,28 @@ const mockRequests = [
 ];
 
 const ProjectRequests = () => {
-  const [requests, setRequests] = useState(mockRequests);
+  const [requests, setRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedPriority, setSelectedPriority] = useState('');
+
+  // Load pending projects on component mount
+  useEffect(() => {
+    const pendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
+    const formattedRequests = pendingProjects.map(project => ({
+      id: `REQ-${project.id}`,
+      title: project.projectName,
+      requester: project.submittedBy || 'Project Engineer',
+      department: 'Land Acquisition',
+      priority: 'High',
+      status: project.status === 'pending_approval' ? 'Pending' : project.status,
+      submittedDate: project.createdDate,
+      estimatedCost: project.estimatedCost,
+      description: `Land acquisition project: ${project.projectName}`,
+      originalProject: project
+    }));
+    setRequests([...mockRequests, ...formattedRequests]);
+  }, []);
 
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,15 +94,58 @@ const ProjectRequests = () => {
   });
 
   const handleApprove = (requestId) => {
+    const request = requests.find(req => req.id === requestId);
+    
+    if (request && request.originalProject) {
+      // Move project from pending to approved projects
+      const pendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
+      const approvedProjects = JSON.parse(localStorage.getItem('approvedProjects') || '[]');
+      
+      // Remove from pending
+      const updatedPending = pendingProjects.filter(p => p.id !== request.originalProject.id);
+      localStorage.setItem('pendingProjects', JSON.stringify(updatedPending));
+      
+      // Add to approved and main projects data
+      const approvedProject = {
+        ...request.originalProject,
+        status: 'approved',
+        approvedBy: 'Chief Engineer',
+        approvedAt: new Date().toISOString()
+      };
+      approvedProjects.push(approvedProject);
+      localStorage.setItem('approvedProjects', JSON.stringify(approvedProjects));
+      
+      // Add to main projects data for display in PE dashboard
+      const existingProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
+      const newProjectForDisplay = {
+        id: `p${Date.now()}`,
+        name: approvedProject.projectName,
+        description: `Land acquisition project: ${approvedProject.projectName}`,
+        createdDate: approvedProject.createdDate,
+        progress: 0
+      };
+      existingProjects.push(newProjectForDisplay);
+      localStorage.setItem('projectsData', JSON.stringify(existingProjects));
+    }
+    
     setRequests(requests.map(req => 
       req.id === requestId ? { ...req, status: 'Approved' } : req
     ));
-    alert(`Request ${requestId} approved successfully`);
+    alert(`Request ${requestId} approved successfully! The project is now available in the Project Engineer dashboard.`);
   };
 
   const handleReject = (requestId) => {
     const confirmed = window.confirm('Are you sure you want to reject this request?');
     if (confirmed) {
+      const request = requests.find(req => req.id === requestId);
+      
+      if (request && request.originalProject) {
+        // Remove from pending projects
+        const pendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
+        const updatedPending = pendingProjects.filter(p => p.id !== request.originalProject.id);
+        localStorage.setItem('pendingProjects', JSON.stringify(updatedPending));
+      }
+      
       setRequests(requests.map(req => 
         req.id === requestId ? { ...req, status: 'Rejected' } : req
       ));

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, Settings, Plus } from 'lucide-react';
+import { User, Settings, Plus, DollarSign } from 'lucide-react';
 
 const DashboardSelector = () => {
   return (
@@ -15,7 +15,7 @@ const DashboardSelector = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Chief Engineer Dashboard */}
           <Link
             to="/ce-dashboard"
@@ -58,6 +58,29 @@ const DashboardSelector = () => {
                 • Manage Proposals
                 <br />
                 • Track Progress
+              </div>
+            </div>
+          </Link>
+
+          {/* Financial Officer Dashboard */}
+          <Link
+            to="/fo-dashboard"
+            className="group bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl p-6 transition-all duration-300 hover:scale-105 hover:shadow-lg"
+          >
+            <div className="text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-white/30 transition-colors">
+                <DollarSign size={32} />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Financial Officer</h3>
+              <p className="text-emerald-100 text-sm">
+                Manage financial details and budget tracking
+              </p>
+              <div className="mt-4 text-sm opacity-75">
+                • Financial Details
+                <br />
+                • Budget Management
+                <br />
+                • Cost Tracking
               </div>
             </div>
           </Link>

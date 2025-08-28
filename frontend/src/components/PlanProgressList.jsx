@@ -6,7 +6,17 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan }) => {
 
   const handlePlanClick = (plan) => {
     onPlanSelect(plan);
-    navigate(`/plan/${plan.id}`, { state: { plan } });
+    // Determine which dashboard context we're in
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/pe-dashboard')) {
+      navigate(`/pe-dashboard/plan/${plan.id}/lots`);
+    } else if (currentPath.includes('/ce-dashboard')) {
+      navigate(`/ce-dashboard/plan/${plan.id}/lots`);
+    } else if (currentPath.includes('/fo-dashboard')) {
+      navigate(`/fo-dashboard/plan/${plan.id}/lots`);
+    } else {
+      navigate(`/dashboard/plan/${plan.id}/lots`);
+    }
   };
 
   return (

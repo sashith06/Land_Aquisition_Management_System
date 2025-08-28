@@ -4,14 +4,16 @@ import {
   BarChart3,
   MessageSquare,
   FileText,
+  DollarSign,
 } from "lucide-react";
 
-// Project Engineer specific navigation items
-const peNavigationItems = [
-  { path: '/pe-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { path: '/pe-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
-  { path: '/pe-dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
-  { path: '/pe-dashboard/reports', label: 'Reports', icon: 'FileText' },
+// Financial Officer specific navigation items
+const foNavigationItems = [
+  { path: '/fo-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { path: '/fo-dashboard/financial-reports', label: 'Financial Reports', icon: 'DollarSign' },
+  { path: '/fo-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+  { path: '/fo-dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 2 },
+  { path: '/fo-dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
 
 const iconMap = {
@@ -19,9 +21,10 @@ const iconMap = {
   BarChart3,
   MessageSquare,
   FileText,
+  DollarSign,
 };
 
-const PESidebar = () => {
+const FOSidebar = () => {
   const location = useLocation();
 
   const isActive = (path) =>
@@ -37,7 +40,7 @@ const PESidebar = () => {
         aria-current={active ? "page" : undefined}
         className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
           active
-            ? "bg-orange-500 text-white shadow-lg"
+            ? "bg-green-500 text-white shadow-lg"
             : "text-gray-100 hover:bg-slate-800 hover:text-white"
         }`}
       >
@@ -58,13 +61,13 @@ const PESidebar = () => {
     <div className="bg-slate-900 text-white w-64 h-full flex flex-col">
       {/* Header */}
       <div className="px-4 py-6 border-b border-slate-700">
-        <h2 className="text-lg font-semibold text-white">Project Engineer</h2>
+        <h2 className="text-lg font-semibold text-white">Financial Officer</h2>
         <p className="text-sm text-gray-300">Control Panel</p>
       </div>
 
       {/* Main Navigation */}
       <div className="flex-1 px-4 py-6 space-y-2">
-        {peNavigationItems.map((item) => (
+        {foNavigationItems.map((item) => (
           <NavItem key={item.path} item={item} />
         ))}
       </div>
@@ -72,11 +75,11 @@ const PESidebar = () => {
       {/* Footer */}
       <div className="px-4 py-4 border-t border-slate-700">
         <div className="text-xs text-gray-400">
-          Project Engineer Dashboard v1.0
+          Financial Officer Dashboard v1.0
         </div>
       </div>
     </div>
   );
 };
 
-export default PESidebar;
+export default FOSidebar;

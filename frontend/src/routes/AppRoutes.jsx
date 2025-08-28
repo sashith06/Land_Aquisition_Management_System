@@ -8,6 +8,7 @@ import DashboardSelector from "../pages/DashboardSelector";
 import DashboardLayout from "../layouts/DashboardLayout";
 import CEDashboardLayout from "../layouts/CEDashboardLayout";
 import PEDashboardLayout from "../layouts/PEDashboardLayout";
+import FODashboardLayout from "../layouts/FODashboardLayout";
 import Dashboard from "../pages/Dashboards/Dashboard";
 import PlanDetail from "../pages/PlanDetail";
 import Profile from "../pages/Profile";
@@ -21,12 +22,17 @@ import MainLayout from "../layouts/MainLayout";
 import LandownerLogin from "../pages/Landowner/Landownerlogin"; 
 import LODashboard from "../pages/Landowner/landownerdashboard/LODashboard";
 
-import CEDashboardMain from "../pages/ChiefEngineer/CEDashboardMain";
 import UserManagement from "../pages/ChiefEngineer/UserManagement";
 import ProjectRequests from "../pages/ChiefEngineer/ProjectRequests";
 
 import PEDashboardMain from "../pages/ProjectEngineer/PEDashboardMain";
 import CreateProject from "../pages/ProjectEngineer/CreateProject";
+
+import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
+import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
+
+import LotsPage from "../pages/LotsPage";
+import LotDetail from "../pages/LotDetail";
 
 export default function AppRoutes() {
   return (
@@ -46,7 +52,9 @@ export default function AppRoutes() {
 
       {/* Chief Engineer Dashboard Routes With CE Layout */}
       <Route path="/ce-dashboard" element={<CEDashboardLayout />}>
-        <Route index element={<CEDashboardMain />} />
+        <Route index element={<Dashboard />} />
+        <Route path="plan/:planId/lots" element={<LotsPage />} />
+        <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
@@ -58,6 +66,8 @@ export default function AppRoutes() {
       {/* Project Engineer Dashboard Routes With PE Layout */}
       <Route path="/pe-dashboard" element={<PEDashboardLayout />}>
         <Route index element={<PEDashboardMain />} />
+        <Route path="plan/:planId/lots" element={<LotsPage />} />
+        <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
@@ -65,10 +75,24 @@ export default function AppRoutes() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
+      {/* Financial Officer Dashboard Routes With FO Layout */}
+      <Route path="/fo-dashboard" element={<FODashboardLayout />}>
+        <Route index element={<FODashboardMain />} />
+        <Route path="plan/:planId/lots" element={<LotsPage />} />
+        <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
+        <Route path="financial-details/:projectId" element={<FinancialDetails />} />
+        <Route path="analysis" element={<Analysis />} />
+        <Route path="messages" element={<Messages />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
+
       {/* Regular Dashboard Routes With Shared Layout */}
       <Route path="/dashboard" element={<DashboardLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="plan/:id" element={<PlanDetail />} />
+        <Route path="plan/:planId/lots" element={<LotsPage />} />
+        <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="profile" element={<Profile />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />

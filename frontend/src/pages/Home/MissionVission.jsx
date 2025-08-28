@@ -27,16 +27,16 @@ const MissionVision = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Mission Card */}
-          <div className="group relative">
+          <div className="group relative h-full">
             <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-orange-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
-            <div className="relative bg-white rounded-3xl p-8 lg:p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-3 border border-gray-100">
+            <div className="relative bg-white rounded-3xl p-8 lg:p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-3 border border-gray-100 h-full flex flex-col">
               <div className="flex items-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
                   <Target size={32} className="text-white" />
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Our Mission</h3>
               </div>
-              <p className="text-lg text-gray-700 leading-relaxed">
+              <p className="text-lg text-gray-700 leading-relaxed flex-grow">
                 As the premier national organization of the road sector, to develop and maintain the national 
                 network of national highways, to ensure mobility and accessibility at an acceptable level of safety 
                 and comfort, in the most effective and efficient manner, for the movement of people and goods 
@@ -62,16 +62,16 @@ const MissionVision = () => {
           </div>
 
           {/* Vision Card */}
-          <div className="group relative">
+          <div className="group relative h-full">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl blur-xl opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
-            <div className="relative bg-white rounded-3xl p-8 lg:p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-3 border border-gray-100">
+            <div className="relative bg-white rounded-3xl p-8 lg:p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-3 border border-gray-100 h-full flex flex-col">
               <div className="flex items-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform duration-300">
                   <Eye size={32} className="text-white" />
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Our Vision</h3>
               </div>
-              <p className="text-lg text-gray-700 leading-relaxed mb-8">
+              <p className="text-lg text-gray-700 leading-relaxed mb-8 flex-grow">
                 "Empowering Connectivity, Driving Prosperity Sustainably: A Future-Ready Sri Lanka Connected by World-Class Roads."
               </p>
               
