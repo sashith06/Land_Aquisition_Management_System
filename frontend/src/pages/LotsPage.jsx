@@ -1,6 +1,6 @@
 // src/pages/LotsPage.jsx
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { lotsData } from "../data/mockData";
@@ -22,6 +22,12 @@ const LotsPage = () => {
   const [activeTab, setActiveTab] = useState("Owner Details");
   const [search, setSearch] = useState("");
   const [selectedLot, setSelectedLot] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [ownerFields, setOwnerFields] = useState([{ name: '', nic: '', mobile: '', address: '' }]);
+  const [modalPosition, setModalPosition] = useState({ x: 100, y: 100 });
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const mouseStart = useRef({ x: 0, y: 0 });
 
   // Filter lots by search term
   const filteredLots = lotsData.filter((lot) =>
@@ -70,6 +76,60 @@ const LotsPage = () => {
     }
   };
 
+  const handleAddOwner = () => {
+    setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: '' }]);
+  };
+
+  const handleRemoveOwner = (idx) => {
+    setOwnerFields(ownerFields.filter((_, i) => i !== idx));
+  };
+
+  const handleOwnerChange = (idx, field, value) => {
+    const updated = ownerFields.map((owner, i) => i === idx ? { ...owner, [field]: value } : owner);
+    setOwnerFields(updated);
+  };
+
+  const handleClearForm = () => {
+    setOwnerFields([{ name: '', nic: '', mobile: '', address: '' }]);
+    setSearch("");
+    setSelectedLot(null);
+    setActiveTab("Owner Details");
+  };
+
+  // Drag and drop handlers
+  function handleHeaderMouseDown(e) {
+    setDragging(true);
+    dragStart.current = { x: modalPosition.x, y: modalPosition.y };
+    mouseStart.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function handleMouseUp() { setDragging(false); }
+
+  function handleMouseMove(e) {
+    if (dragging) {
+      const dx = e.clientX - mouseStart.current.x;
+      const dy = e.clientY - mouseStart.current.y;
+      setModalPosition({
+        x: dragStart.current.x + dx,
+        y: dragStart.current.y + dy
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (dragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragging]);
+
   return (
     <div className="p-6">
       {/* Breadcrumb navigation */}
@@ -85,7 +145,7 @@ const LotsPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
         {/* Left side panel */}
-        <div className="bg-green-100 p-4 rounded-xl space-y-4">
+        <div className="bg-green-100 p-4 rounded-xl space-y-4 flex flex-col h-full">
           {/* Tab buttons */}
           <div className="space-y-2">
             {tabs.map((tab) => (
@@ -103,8 +163,6 @@ const LotsPage = () => {
             ))}
           </div>
 
-          
-
           {/* Search Bar */}
           <input
             type="text"
@@ -115,7 +173,7 @@ const LotsPage = () => {
           />
 
           {/* Lots grid */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-2 mb-4">
             {filteredLots.map((lot, i) => (
               <button
                 key={lot.id}
@@ -134,6 +192,14 @@ const LotsPage = () => {
               </button>
             ))}
           </div>
+
+          {/* Create Lot Button below left panel */}
+          <button
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-auto"
+            onClick={() => setShowCreateModal(true)}
+          >
+            Create Lot
+          </button>
         </div>
 
         {/* Right side content */}
@@ -145,68 +211,36 @@ const LotsPage = () => {
               {selectedLot ? (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-lg mb-3">Selected Lot: {selectedLot.id}</h3>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p>
-                        <span className="font-semibold">Name:</span> {selectedLot.owner}
-                      </p>
-                      <p>
-                        <span className="font-semibold">NIC:</span> 200127702072
-                      </p>
-                      <p>
-                        <span className="font-semibold">Mobile:</span> 077-9504969
-                      </p>
-                      <p>
-                        <span className="font-semibold">Address:</span> 1st mile
-                        post, Pituwela road, Elpitiya
-                      </p>
-                      <p>
-                        <span className="font-semibold">Status:</span> 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
-                          selectedLot.status === 'active' ? 'bg-green-200 text-green-800' :
-                          selectedLot.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
-                          'bg-blue-200 text-blue-800'
-                        }`}>
-                          {selectedLot.status}
-                        </span>
-                      </p>
+                  <div className="flex flex-col items-start">
+                    <span className="font-semibold mb-2">Owners:</span>
+                    <div className="flex gap-2 mb-4">
+                      {selectedLot.owners.map((owner, idx) => (
+                        <button
+                          key={idx}
+                          className={`px-3 py-1 rounded-lg font-semibold border border-green-600 text-green-700 bg-white hover:bg-green-100 ${selectedLot.selectedOwnerIdx === idx ? 'bg-green-200' : ''}`}
+                          onClick={() => setSelectedLot({ ...selectedLot, selectedOwnerIdx: idx })}
+                        >
+                          Owner {idx + 1}
+                        </button>
+                      ))}
                     </div>
-                    <button className="bg-black text-white px-4 py-1 rounded-lg hover:bg-gray-800">
-                      Edit
-                    </button>
+                    {selectedLot.selectedOwnerIdx !== undefined && selectedLot.owners[selectedLot.selectedOwnerIdx] ? (
+                      <div className="bg-white p-4 rounded-lg border w-full mb-4">
+                        <p><span className="font-semibold">Name:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].name}</p>
+                        <p><span className="font-semibold">NIC:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].nic}</p>
+                        <p><span className="font-semibold">Mobile:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].mobile}</p>
+                        <p><span className="font-semibold">Address:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].address}</p>
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 mb-4">Select an owner to view details.</div>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <p>Select a lot from the left panel to view owner details</p>
+                <div className="text-gray-500 text-center py-8">
+                  <p>No lot selected. Please select a lot to view details.</p>
                 </div>
               )}
-
-              {/* Show all lots for reference */}
-              <div className="mt-6">
-                <h4 className="font-semibold mb-3">All Lots in this Plan:</h4>
-                <div className="space-y-2">
-                  {filteredLots.map((lot) => (
-                    <div
-                      key={lot.id}
-                      className="flex justify-between items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleLotClick(lot)}
-                    >
-                      <div>
-                        <p>
-                          <span className="font-semibold">Name:</span> {lot.owner}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          <span className="font-semibold">Lot ID:</span> {lot.id}
-                        </p>
-                      </div>
-                      <button className="bg-black text-white px-4 py-1 rounded-lg hover:bg-gray-800">
-                        Edit
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
@@ -239,16 +273,76 @@ const LotsPage = () => {
           )}
 
           {/* Bottom Buttons */}
-          <div className="flex gap-2 justify-end mt-6">
-            <button className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
-              Add new
-            </button>
-            <button className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
-              Import
-            </button>
-          </div>
+          {/* Bottom Buttons removed as requested */}
         </div>
       </div>
+
+      {/* Modal for Create Lot */}
+      {showCreateModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div
+            className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md"
+            style={{ maxHeight: '80vh', overflowY: 'auto', position: 'absolute', left: modalPosition.x, top: modalPosition.y }}
+          >
+            <div
+              className="font-semibold text-lg mb-3 cursor-move bg-gray-200 p-2 rounded"
+              onMouseDown={handleHeaderMouseDown}
+              style={{ userSelect: 'none' }}
+            >
+              Create New Lot
+            </div>
+            <form className="space-y-4">
+              <div>
+                <label className="font-semibold">Lot Number:</label>
+                <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="e.g. L009" />
+              </div>
+              <div>
+                <label className="font-semibold">Status:</label>
+                <select className="ml-2 p-1 border rounded w-full">
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              {/* Dynamic owner fields */}
+              {Array.isArray(ownerFields) ? ownerFields.map((owner, idx) => (
+                <div key={idx} className="border rounded p-2 mb-2 relative">
+                  <div>
+                    <label className="font-semibold">Owner {idx + 1} Name:</label>
+                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="Owner Name" value={owner.name} onChange={e => handleOwnerChange(idx, 'name', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="font-semibold">NIC:</label>
+                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="NIC" value={owner.nic} onChange={e => handleOwnerChange(idx, 'nic', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="font-semibold">Mobile:</label>
+                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="Mobile" value={owner.mobile} onChange={e => handleOwnerChange(idx, 'mobile', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="font-semibold">Address:</label>
+                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="Address" value={owner.address} onChange={e => handleOwnerChange(idx, 'address', e.target.value)} />
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs"
+                    onClick={() => handleRemoveOwner(idx)}
+                    title="Remove owner"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )) : null}
+              <button type="button" className="bg-blue-500 text-white px-2 py-1 rounded-full" onClick={handleAddOwner}>+</button>
+              <div className="flex gap-2 mt-4">
+                <button type="button" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Create Lot</button>
+                <button type="button" className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="button" className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onClick={handleClearForm}>Clear All</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

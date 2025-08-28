@@ -24,8 +24,8 @@ const Sidebar = () => {
   const location = useLocation();
 
   const bottomItems = [
-    { path: "/settings", label: "Settings", icon: "Settings" },
-    { path: "/info", label: "Info", icon: "Info" },
+    { path: "/dashboard/settings", label: "Settings", icon: "Settings" },
+    { path: "/dashboard/info", label: "Info", icon: "Info" },
   ];
 
   const isActive = (path) =>
