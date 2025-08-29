@@ -3,7 +3,6 @@ import { HashLink } from 'react-router-hash-link';
 import { Menu, X, Home, Info, Target, Briefcase, Phone } from 'lucide-react';
 import Logo from '../../components/Logo';
 import LoginButton from '../../components/LoginButton';
-import RegisterButton from '../../components/RegisterButton';
 
 // Navigation data
 const desktopNavItems = [
@@ -79,7 +78,6 @@ const MobileNav = () => (
         Contact Us
       </a>
       <LoginButton />
-      <RegisterButton />
     </div>
   </div>
 );
@@ -151,7 +149,6 @@ const Header = () => {
             {/* Desktop Auth Buttons */}
             <div className="hidden lg:flex items-center justify-end flex-1 space-x-2">
               <LoginButton />
-              <RegisterButton />
             </div>
 
             {/* Mobile Menu Button */}
