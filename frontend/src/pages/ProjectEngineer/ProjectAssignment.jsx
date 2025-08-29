@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, UserCheck, Search, Users, FolderOpen, CheckCircle, AlertCircle, RefreshCw, Edit2, Save, X } from 'lucide-react';
+import { ArrowLeft, UserCheck, Search, Users, FolderOpen, CheckCircle, AlertCircle, Edit2, Save, X, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { projectsData } from '../../data/mockData'; // Import mock projects data
 
@@ -224,6 +224,15 @@ const ProjectAssignment = () => {
     setEditFormData({ projectId: '', officerId: '' });
   };
 
+  const handleDeleteAssignment = (assignmentId, projectName) => {
+    if (window.confirm(`Are you sure you want to delete the assignment for "${projectName}"? This action cannot be undone.`)) {
+      const updatedAssignments = assignments.filter(assignment => assignment.id !== assignmentId);
+      setAssignments(updatedAssignments);
+      localStorage.setItem('projectAssignments', JSON.stringify(updatedAssignments));
+      alert(`Assignment for "${projectName}" has been deleted successfully.`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -237,6 +246,20 @@ const ProjectAssignment = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          {/* Breadcrumb Navigation */}
+          <div className="mb-4">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <button
+                onClick={() => navigate('/pe-dashboard')}
+                className="text-gray-500 hover:text-orange-500 font-medium transition-colors"
+              >
+                Projects & Overview
+              </button>
+              <span className="text-gray-400">›</span>
+              <span className="text-orange-500 font-medium">Project Assignment</span>
+            </div>
+          </div>
+          
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
             Project Assignment
           </h1>
@@ -250,23 +273,6 @@ const ProjectAssignment = () => {
               </p>
             </div>
           )}
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={loadData}
-            className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-            title="Refresh data"
-          >
-            <RefreshCw size={16} />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button
-            onClick={() => navigate('/pe-dashboard')}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Dashboard</span>
-          </button>
         </div>
       </div>
 
@@ -552,13 +558,22 @@ const ProjectAssignment = () => {
                   <div>
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-gray-900">{assignment.projectName}</h4>
-                      <button
-                        onClick={() => handleEditAssignment(assignment)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Edit Assignment"
-                      >
-                        <Edit2 size={16} />
-                      </button>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handleEditAssignment(assignment)}
+                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Edit Assignment"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAssignment(assignment.id, assignment.projectName)}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
+                          title="Delete Assignment"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">
                       Assigned: {assignment.assignedDate}
