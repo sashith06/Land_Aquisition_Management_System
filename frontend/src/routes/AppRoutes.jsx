@@ -4,7 +4,7 @@ import Home from "../pages/Home/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import DashboardSelector from "../pages/DashboardSelector";
-import ForgetPassword from "../pages/ForgetPassword";
+import ForgetPassword from "../pages/Forgetpassword";
 import ResetPassword from "../pages/ResetPassword";
 
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -30,6 +30,7 @@ import ProjectRequests from "../pages/ChiefEngineer/ProjectRequests";
 import PEDashboardMain from "../pages/ProjectEngineer/PEDashboardMain";
 import CreateProject from "../pages/ProjectEngineer/CreateProject";
 import EditProject from "../pages/ProjectEngineer/EditProject";
+import ProjectAssignment from "../pages/ProjectEngineer/ProjectAssignment";
 
 import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
 import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
@@ -78,6 +79,7 @@ export default function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="create-project" element={<CreateProject />} />
         <Route path="edit-project/:projectId" element={<EditProject />} />
+        <Route path="project-assignment" element={<ProjectAssignment />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

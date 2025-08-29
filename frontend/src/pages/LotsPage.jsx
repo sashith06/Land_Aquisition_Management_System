@@ -75,7 +75,7 @@ const LotsPage = () => {
         <div className="flex items-center space-x-4">
           <button
             onClick={handleBackToPlansProgress}
-            className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
           >
             <ArrowLeft size={20} />
             <span>Back to Plans & Progress</span>

@@ -258,6 +258,30 @@ const UserManagement = () => {
   const [selectedRole, setSelectedRole] = useState('');
   const [activeTab, setActiveTab] = useState('approved');
 
+  // Initialize localStorage with approved users including existing mock users
+  useEffect(() => {
+    const existingApprovedUsers = localStorage.getItem('approvedUsers');
+    if (!existingApprovedUsers) {
+      // Include existing mock users (like John Doe) as already approved
+      const initialApprovedUsers = mockUsers.map(user => ({
+        ...user,
+        status: 'Active' // Ensure they have Active status
+      }));
+      localStorage.setItem('approvedUsers', JSON.stringify(initialApprovedUsers));
+    } else {
+      // Clean up any duplicates that might exist
+      const currentUsers = JSON.parse(existingApprovedUsers);
+      const uniqueUsers = currentUsers.filter((user, index, self) =>
+        index === self.findIndex(u => u.email === user.email)
+      );
+      
+      // Only update if we found duplicates
+      if (uniqueUsers.length !== currentUsers.length) {
+        localStorage.setItem('approvedUsers', JSON.stringify(uniqueUsers));
+      }
+    }
+  }, []);
+
   // Get all unique roles
   const allRoles = [...new Set([
     ...users.map(u => u.role),
@@ -327,8 +351,23 @@ const UserManagement = () => {
       phone: '+94 77 XXX XXXX' // Default phone
     };
 
-    setUsers([...users, newUser]);
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
     setPendingRequests(pendingRequests.filter(req => req.id !== requestId));
+    
+    // Get existing approved users from localStorage and add the new one (avoiding duplicates)
+    const existingApprovedUsers = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
+    
+    // Check if user already exists (by email or name)
+    const userExists = existingApprovedUsers.some(user => 
+      user.email === newUser.email || user.name === newUser.name
+    );
+    
+    if (!userExists) {
+      const updatedApprovedUsers = [...existingApprovedUsers, newUser];
+      localStorage.setItem('approvedUsers', JSON.stringify(updatedApprovedUsers));
+    }
+    
     setActiveTab('approved');
     alert(`User ${request.name} has been approved and activated. You can now see them in the Approved Users tab.`);
   };
