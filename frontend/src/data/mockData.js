@@ -84,14 +84,67 @@ export const plansData = [
 ];
 // Mock lots data for now - this should come from your actual data source
 export const lotsData = [
-  { id: "L001", owner: "John Doe", status: "active" },
-  { id: "L002", owner: "Jane Smith", status: "pending" },
-  { id: "L003", owner: "Bob Johnson", status: "completed" },
-  { id: "L004", owner: "Alice Brown", status: "active" },
-  { id: "L005", owner: "Charlie Wilson", status: "pending" },
-  { id: "L006", owner: "Diana Davis", status: "active" },
-  { id: "L007", owner: "Eva Martinez", status: "completed" },
-  { id: "L008", owner: "Frank Anderson", status: "active" },
+  {
+    id: "L001",
+    owners: [
+      { name: "John Doe", nic: "200127702072", mobile: "077-9504969", address: "1st mile, Colombo" },
+      { name: "Jane Smith", nic: "200127702073", mobile: "077-9504970", address: "2nd mile, Colombo" }
+    ],
+    status: "active"
+  },
+  {
+    id: "L002",
+    owners: [
+      { name: "Jane Smith", nic: "200127702073", mobile: "077-9504970", address: "2nd mile, Colombo" }
+    ],
+    status: "pending"
+  },
+  {
+    id: "L003",
+    owners: [
+      { name: "Bob Johnson", nic: "200127702074", mobile: "077-9504971", address: "3rd mile, Kandy" },
+      { name: "Alice Brown", nic: "200127702075", mobile: "077-9504972", address: "4th mile, Kandy" }
+    ],
+    status: "completed"
+  },
+  {
+    id: "L004",
+    owners: [
+      { name: "Alice Brown", nic: "200127702075", mobile: "077-9504972", address: "4th mile, Kandy" }
+    ],
+    status: "active"
+  },
+  {
+    id: "L005",
+    owners: [
+      { name: "Charlie Wilson", nic: "200127702076", mobile: "077-9504973", address: "5th mile, Galle" },
+      { name: "Diana Davis", nic: "200127702077", mobile: "077-9504974", address: "6th mile, Galle" },
+      { name: "Diana ", nic: "200027702077", mobile: "071-9504974", address: "7th mile, Galle" }
+    ],
+    status: "pending"
+  },
+  {
+    id: "L006",
+    owners: [
+      { name: "Diana Davis", nic: "200127702077", mobile: "077-9504974", address: "6th mile, Galle" }
+    ],
+    status: "active"
+  },
+  {
+    id: "L007",
+    owners: [
+      { name: "Eva Martinez", nic: "200127702078", mobile: "077-9504975", address: "7th mile, Jaffna" },
+      { name: "Frank Anderson", nic: "200127702079", mobile: "077-9504976", address: "8th mile, Jaffna" }
+    ],
+    status: "completed"
+  },
+  {
+    id: "L008",
+    owners: [
+      { name: "Frank Anderson", nic: "200127702079", mobile: "077-9504976", address: "8th mile, Jaffna" }
+    ],
+    status: "active"
+  },
 ];
 
 
