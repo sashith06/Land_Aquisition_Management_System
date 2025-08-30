@@ -1,20 +1,33 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { forgotPassword } from '../api.js';
 
 const ForgetPassword = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleReset = (e) => {
+  const handleReset = async (e) => {
     e.preventDefault();
 
-    // Simulate password reset logic
-    if (email) {
-      alert(`Password reset link sent to ${email}`);
-      navigate('/login'); // Redirect to login after sending link
-    } else {
+    if (!email) {
       alert('Please enter your email');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await forgotPassword({ email });
+      alert(response.data.message || `Password reset link sent to ${email}`);
+      setEmail('');
+      navigate('/login'); // Redirect after successful request
+    } catch (err) {
+      console.error(err);
+      alert(
+        err.response?.data?.message || 'Failed to send reset link. Please try again.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -50,14 +63,20 @@ const ForgetPassword = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="Enter your email"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg font-medium"
+              disabled={loading}
+              className={`w-full text-white py-2 rounded-lg font-medium ${
+                loading
+                  ? 'bg-orange-300 cursor-not-allowed'
+                  : 'bg-orange-500 hover:bg-orange-600'
+              }`}
             >
-              Send Reset Link
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
           </form>
 
