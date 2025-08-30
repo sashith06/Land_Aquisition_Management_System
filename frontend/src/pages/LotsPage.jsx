@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { lotsData } from "../data/mockData";
+import { lotsData as initialLots } from "../data/mockData";
 import Breadcrumb from "../components/Breadcrumb";
-
-
 
 const tabs = [
   "Owner Details",
@@ -21,68 +18,42 @@ const LotsPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Owner Details");
   const [search, setSearch] = useState("");
+  const [lotsData, setLotsData] = useState(initialLots);
   const [selectedLot, setSelectedLot] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [ownerFields, setOwnerFields] = useState([{ name: '', nic: '', mobile: '', address: '' }]);
+  const [lotNumber, setLotNumber] = useState("");
+  const [lotStatus, setLotStatus] = useState("active");
+  const [deletedLot, setDeletedLot] = useState(null);
+
   const [modalPosition, setModalPosition] = useState({ x: 100, y: 100 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseStart = useRef({ x: 0, y: 0 });
 
-  // Filter lots by search term
+  // Filter lots by search
   const filteredLots = lotsData.filter((lot) =>
     lot.id.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleLotClick = (lot) => {
-    setSelectedLot(lot);
-  };
+  const handleLotClick = (lot) => setSelectedLot(lot);
 
   const handleBackToPlansProgress = () => {
-    // Navigate back to the plans & progress view of the respective dashboard
-    // We need to pass the project information back so the dashboard knows which project to show
     const currentPath = window.location.pathname;
-    
-    // Extract project info from the plan - this would typically come from a more robust state management
-    // For now, we'll navigate back and let the dashboard handle the state
     if (currentPath.includes('/pe-dashboard')) {
-      navigate('/pe-dashboard', { 
-        state: { 
-          returnToProject: true, 
-          planId: planId 
-        } 
-      });
+      navigate('/pe-dashboard', { state: { returnToProject: true, planId: planId } });
     } else if (currentPath.includes('/ce-dashboard')) {
-      navigate('/ce-dashboard', { 
-        state: { 
-          returnToProject: true, 
-          planId: planId 
-        } 
-      });
+      navigate('/ce-dashboard', { state: { returnToProject: true, planId: planId } });
     } else if (currentPath.includes('/fo-dashboard')) {
-      navigate('/fo-dashboard', { 
-        state: { 
-          returnToProject: true, 
-          planId: planId 
-        } 
-      });
+      navigate('/fo-dashboard', { state: { returnToProject: true, planId: planId } });
     } else {
-      navigate('/dashboard', { 
-        state: { 
-          returnToProject: true, 
-          planId: planId 
-        } 
-      });
+      navigate('/dashboard', { state: { returnToProject: true, planId: planId } });
     }
   };
 
-  const handleAddOwner = () => {
-    setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: '' }]);
-  };
+  const handleAddOwner = () => setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: ''}]);
 
-  const handleRemoveOwner = (idx) => {
-    setOwnerFields(ownerFields.filter((_, i) => i !== idx));
-  };
+  const handleRemoveOwner = (idx) => setOwnerFields(ownerFields.filter((_, i) => i !== idx));
 
   const handleOwnerChange = (idx, field, value) => {
     const updated = ownerFields.map((owner, i) => i === idx ? { ...owner, [field]: value } : owner);
@@ -94,9 +65,11 @@ const LotsPage = () => {
     setSearch("");
     setSelectedLot(null);
     setActiveTab("Owner Details");
+    setLotNumber("");
+    setLotStatus("active");
   };
 
-  // Drag and drop handlers
+  // Drag & drop handlers
   function handleHeaderMouseDown(e) {
     setDragging(true);
     dragStart.current = { x: modalPosition.x, y: modalPosition.y };
@@ -130,9 +103,56 @@ const LotsPage = () => {
     };
   }, [dragging]);
 
+  // Auto-hide deleted lot banner after 5 seconds
+  useEffect(() => {
+    if (deletedLot) {
+      const timer = setTimeout(() => setDeletedLot(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [deletedLot]);
+
+  // Create or Edit Lot
+  const handleSubmitLot = () => {
+    if (!lotNumber) return;
+
+    if (!selectedLot) {
+      // Create new
+      const newLot = { id: lotNumber, status: lotStatus, owners: ownerFields };
+      setLotsData([...lotsData, newLot]);
+      setSelectedLot(newLot);
+    } else {
+      // Edit existing
+      const updatedLots = lotsData.map((lot) =>
+        lot.id === selectedLot.id
+          ? { ...lot, id: lotNumber, status: lotStatus, owners: ownerFields }
+          : lot
+      );
+      setLotsData(updatedLots);
+      setSelectedLot({ id: lotNumber, status: lotStatus, owners: ownerFields });
+    }
+    setShowCreateModal(false);
+    handleClearForm();
+  };
+
+  const handleEditLot = () => {
+    if (!selectedLot) return;
+    setLotNumber(selectedLot.id);
+    setLotStatus(selectedLot.status);
+    setOwnerFields(selectedLot.owners);
+    setShowCreateModal(true);
+  };
+
+  const handleDeleteLot = () => {
+    if (!selectedLot) return;
+    setDeletedLot(selectedLot);
+    const updatedLots = lotsData.filter((lot) => lot.id !== selectedLot.id);
+    setLotsData(updatedLots);
+    setSelectedLot(null);
+  };
+
   return (
     <div className="p-6">
-      {/* Breadcrumb navigation */}
+      {/* Breadcrumb */}
       <Breadcrumb
         items={[
           { label: "Plans & Progress", to: "#", onClick: handleBackToPlansProgress },
@@ -143,10 +163,25 @@ const LotsPage = () => {
         Lots for Plan {planId}
       </h1>
 
+      {/* Undo Deleted Lot */}
+      {deletedLot && (
+        <div className="mb-2 p-2 bg-yellow-100 text-yellow-800 rounded flex justify-between items-center">
+          <span>Lot {deletedLot.id} deleted.</span>
+          <button
+            className="bg-yellow-600 text-white px-2 py-1 rounded hover:bg-yellow-700"
+            onClick={() => {
+              setLotsData([...lotsData, deletedLot]);
+              setDeletedLot(null);
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-        {/* Left side panel */}
+        {/* Left Panel */}
         <div className="bg-green-100 p-4 rounded-xl space-y-4 flex flex-col h-full">
-          {/* Tab buttons */}
           <div className="space-y-2">
             {tabs.map((tab) => (
               <button
@@ -163,7 +198,6 @@ const LotsPage = () => {
             ))}
           </div>
 
-          {/* Search Bar */}
           <input
             type="text"
             placeholder="Search lots..."
@@ -172,7 +206,6 @@ const LotsPage = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          {/* Lots grid */}
           <div className="grid grid-cols-4 gap-2 mb-4">
             {filteredLots.map((lot, i) => (
               <button
@@ -193,24 +226,24 @@ const LotsPage = () => {
             ))}
           </div>
 
-          {/* Create Lot Button below left panel */}
           <button
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-auto"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => { handleClearForm(); setShowCreateModal(true); }}
           >
             Create Lot
           </button>
         </div>
 
-        {/* Right side content */}
+        {/* Right Panel */}
         <div className="md:col-span-2 bg-white p-6 rounded-xl border">
           <h2 className="text-xl font-bold mb-4 text-gray-800">{activeTab}</h2>
-          
+
           {activeTab === "Owner Details" && (
             <div className="space-y-4">
               {selectedLot ? (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="font-semibold text-lg mb-3">Selected Lot: {selectedLot.id}</h3>
+                  <p className="mb-2"><span className="font-semibold">Status:</span> {selectedLot.status}</p>
                   <div className="flex flex-col items-start">
                     <span className="font-semibold mb-2">Owners:</span>
                     <div className="flex gap-2 mb-4">
@@ -234,6 +267,20 @@ const LotsPage = () => {
                     ) : (
                       <div className="text-gray-500 mb-4">Select an owner to view details.</div>
                     )}
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={handleEditLot}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                      >
+                        Edit Lot
+                      </button>
+                      <button
+                        onClick={handleDeleteLot}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                      >
+                        Delete Lot
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -244,40 +291,16 @@ const LotsPage = () => {
             </div>
           )}
 
-          {activeTab === "Valuation Details" && (
+          {activeTab !== "Owner Details" && (
             <div className="text-center text-gray-500 py-8">
-              <p>Valuation details will be shown here</p>
+              <p>{activeTab} will be shown here</p>
               {selectedLot && <p className="mt-2">for Lot: {selectedLot.id}</p>}
             </div>
           )}
-
-          {activeTab === "Compensation Details" && (
-            <div className="text-center text-gray-500 py-8">
-              <p>Compensation details will be shown here</p>
-              {selectedLot && <p className="mt-2">for Lot: {selectedLot.id}</p>}
-            </div>
-          )}
-
-          {activeTab === "Land Details" && (
-            <div className="text-center text-gray-500 py-8">
-              <p>Land details will be shown here</p>
-              {selectedLot && <p className="mt-2">for Lot: {selectedLot.id}</p>}
-            </div>
-          )}
-
-          {activeTab === "Inquiries" && (
-            <div className="text-center text-gray-500 py-8">
-              <p>Inquiries will be shown here</p>
-              {selectedLot && <p className="mt-2">for Lot: {selectedLot.id}</p>}
-            </div>
-          )}
-
-          {/* Bottom Buttons */}
-          {/* Bottom Buttons removed as requested */}
         </div>
       </div>
 
-      {/* Modal for Create Lot */}
+      {/* Modal for Create/Edit Lot */}
       {showCreateModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div
@@ -289,55 +312,115 @@ const LotsPage = () => {
               onMouseDown={handleHeaderMouseDown}
               style={{ userSelect: 'none' }}
             >
-              Create New Lot
+              {selectedLot ? "Edit Lot" : "Create New Lot"}
             </div>
             <form className="space-y-4">
               <div>
                 <label className="font-semibold">Lot Number:</label>
-                <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="e.g. L009" />
+                <input
+                  type="text"
+                  className="ml-2 p-1 border rounded w-full"
+                  placeholder="e.g. L009"
+                  value={lotNumber}
+                  onChange={(e) => setLotNumber(e.target.value)}
+                />
               </div>
               <div>
                 <label className="font-semibold">Status:</label>
-                <select className="ml-2 p-1 border rounded w-full">
+                <select
+                  className="ml-2 p-1 border rounded w-full"
+                  value={lotStatus}
+                  onChange={(e) => setLotStatus(e.target.value)}
+                >
                   <option value="active">Active</option>
                   <option value="pending">Pending</option>
                   <option value="completed">Completed</option>
                 </select>
               </div>
-              {/* Dynamic owner fields */}
-              {Array.isArray(ownerFields) ? ownerFields.map((owner, idx) => (
+
+              {/* Owner Fields */}
+              {ownerFields.map((owner, idx) => (
                 <div key={idx} className="border rounded p-2 mb-2 relative">
                   <div>
                     <label className="font-semibold">Owner {idx + 1} Name:</label>
-                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="Owner Name" value={owner.name} onChange={e => handleOwnerChange(idx, 'name', e.target.value)} />
+                    <input
+                      type="text"
+                      className="ml-2 p-1 border rounded w-full"
+                      placeholder="Owner Name"
+                      value={owner.name}
+                      onChange={e => handleOwnerChange(idx, 'name', e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="font-semibold">NIC:</label>
-                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="NIC" value={owner.nic} onChange={e => handleOwnerChange(idx, 'nic', e.target.value)} />
+                    <input
+                      type="text"
+                      className="ml-2 p-1 border rounded w-full"
+                      placeholder="NIC"
+                      value={owner.nic}
+                      onChange={e => handleOwnerChange(idx, 'nic', e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="font-semibold">Mobile:</label>
-                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="Mobile" value={owner.mobile} onChange={e => handleOwnerChange(idx, 'mobile', e.target.value)} />
+                    <input
+                      type="text"
+                      className="ml-2 p-1 border rounded w-full"
+                      placeholder="Mobile"
+                      value={owner.mobile}
+                      onChange={e => handleOwnerChange(idx, 'mobile', e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="font-semibold">Address:</label>
-                    <input type="text" className="ml-2 p-1 border rounded w-full" placeholder="Address" value={owner.address} onChange={e => handleOwnerChange(idx, 'address', e.target.value)} />
+                    <input
+                      type="text"
+                      className="ml-2 p-1 border rounded w-full"
+                      placeholder="Address"
+                      value={owner.address}
+                      onChange={e => handleOwnerChange(idx, 'address', e.target.value)}
+                    />
                   </div>
                   <button
                     type="button"
                     className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs"
                     onClick={() => handleRemoveOwner(idx)}
-                    title="Remove owner"
                   >
                     &times;
                   </button>
                 </div>
-              )) : null}
-              <button type="button" className="bg-blue-500 text-white px-2 py-1 rounded-full" onClick={handleAddOwner}>+</button>
+              ))}
+
+              <button
+                type="button"
+                className="bg-blue-500 text-white px-2 py-1 rounded-full"
+                onClick={handleAddOwner}
+              >
+                +
+              </button>
+
               <div className="flex gap-2 mt-4">
-                <button type="button" className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Create Lot</button>
-                <button type="button" className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <button type="button" className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" onClick={handleClearForm}>Clear All</button>
+                <button
+                  type="button"
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                  onClick={handleSubmitLot}
+                >
+                  {selectedLot ? "Save Changes" : "Create Lot"}
+                </button>
+                <button
+                  type="button"
+                  className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                  onClick={handleClearForm}
+                >
+                  Clear All
+                </button>
               </div>
             </form>
           </div>
