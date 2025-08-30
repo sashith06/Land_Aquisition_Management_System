@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import Breadcrumb from "../../components/Breadcrumb";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
 import PlanProgressList from "../../components/PlanProgressList";
@@ -92,17 +92,13 @@ const Dashboard = () => {
             </>
           ) : (
             <>
-              {/* Back to Dashboard Button */}
-              <div className="mb-6">
-                <button
-                  onClick={handleBackToProjects}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                >
-                  <ArrowLeft size={16} />
-                  <span>Back to Dashboard</span>
-                </button>
-              </div>
-              
+              {/* Breadcrumb navigation for Plans & Progress */}
+              <Breadcrumb
+                items={[
+                  { label: "Projects & Overview", onClick: handleBackToProjects },
+                  { label: "Plans & Progress" }
+                ]}
+              />
               {/* Plans for selected project */}
               <PlanProgressList
                 plans={filteredPlans}

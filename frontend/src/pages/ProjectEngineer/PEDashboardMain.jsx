@@ -129,15 +129,18 @@ const PEDashboardMain = () => {
             </>
           ) : (
             <>
-              {/* Back to Dashboard Button */}
+              {/* Breadcrumb Navigation */}
               <div className="mb-6">
-                <button
-                  onClick={handleBackToProjects}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                >
-                  <ArrowLeft size={16} />
-                  <span>Back to Dashboard</span>
-                </button>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <button
+                    onClick={handleBackToProjects}
+                    className="text-gray-500 hover:text-orange-500 font-medium transition-colors"
+                  >
+                    Projects & Overview
+                  </button>
+                  <span className="text-gray-400">›</span>
+                  <span className="text-orange-500 font-medium">Plans & Progress</span>
+                </div>
               </div>
               
               {/* Plans for selected project */}

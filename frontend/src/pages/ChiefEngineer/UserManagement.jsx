@@ -204,6 +204,7 @@ const UserManagement = () => {
   const [selectedRole, setSelectedRole] = useState('');
   const [activeTab, setActiveTab] = useState('approved');
 
+
   // Fetch from backend
   useEffect(() => {
     const fetchData = async () => {
@@ -219,6 +220,7 @@ const UserManagement = () => {
         console.error("Error fetching users:", err);
       }
     };
+
 
     fetchData();
   }, []);
@@ -249,6 +251,7 @@ const UserManagement = () => {
     return roleColors[role] || 'bg-gray-100 text-gray-800';
   };
 
+
   // Approve / Reject / Delete
   const handleApproveUser = async (requestId) => {
     try {
@@ -260,6 +263,8 @@ const UserManagement = () => {
     } catch (err) {
       alert("Failed to approve user");
     }
+
+ 
   };
 
   const handleRejectUser = async (requestId) => {

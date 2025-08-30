@@ -4,11 +4,13 @@ import {
   BarChart3,
   MessageSquare,
   FileText,
+  UserCheck,
 } from "lucide-react";
 
 // Project Engineer specific navigation items
 const peNavigationItems = [
   { path: '/pe-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { path: '/pe-dashboard/project-assignment', label: 'Assign Projects', icon: 'UserCheck' },
   { path: '/pe-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
   { path: '/pe-dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
   { path: '/pe-dashboard/reports', label: 'Reports', icon: 'FileText' },
@@ -19,6 +21,7 @@ const iconMap = {
   BarChart3,
   MessageSquare,
   FileText,
+  UserCheck,
 };
 
 const PESidebar = () => {
