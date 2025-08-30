@@ -1,6 +1,7 @@
 // src/pages/ResetPassword.jsx
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 
 const ResetPassword = () => {
   const { token } = useParams(); // token from URL
@@ -8,7 +9,7 @@ const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleReset = (e) => {
+  const handleReset = async (e) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
@@ -16,9 +17,16 @@ const ResetPassword = () => {
       return;
     }
 
-    // Simulate API call to reset password using the token
-    alert('Password reset successful!');
-    navigate('/login');
+    try {
+      await axios.put(`http://localhost:5000/api/auth/reset-password/${token}`, {
+        password
+      });
+      alert('Password reset successful!');
+      navigate('/login');
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || 'Failed to reset password');
+    }
   };
 
   return (

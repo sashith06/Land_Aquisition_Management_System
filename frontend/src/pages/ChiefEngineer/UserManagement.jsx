@@ -1,92 +1,49 @@
+// src/pages/UserManagement.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Edit, Trash2, Search, Filter, CheckCircle, XCircle, Clock, UserCheck, Mail, Phone } from 'lucide-react';
+import { 
+  Users, Edit, Trash2, Search, Filter, CheckCircle, 
+  XCircle, Clock, UserCheck 
+} from 'lucide-react';
+import {
+  getApprovedUsers,
+  getPendingUsers,
+  getRejectedUsers,
+  approveUser,
+  rejectUser,
+  deleteUser,
+  updateUser
+} from '../../api.js';
 
-// Mock user data with more comprehensive structure
-const mockUsers = [
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+94 77 123 4567',
-    role: 'Land Officer',
-    department: 'Land Acquisition',
-    joinDate: '2023-01-15',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150'
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane.smith@example.com',
-    phone: '+94 77 987 6543',
-    role: 'Project Manager',
-    department: 'Project Management',
-    joinDate: '2022-03-20',
-    avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150'
-  },
-  {
-    id: 3,
-    name: 'Mike Johnson',
-    email: 'mike.johnson@example.com',
-    phone: '+94 77 555 1234',
-    role: 'Project Manager',
-    department: 'Project Management',
-    joinDate: '2023-06-10',
-    avatar: 'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=150'
-  },
-  {
-    id: 4,
-    name: 'Sarah Wilson',
-    email: 'sarah.wilson@example.com',
-    phone: '+94 77 111 2222',
-    role: 'Financial Officer',
-    department: 'Finance',
-    joinDate: '2023-02-28',
-    avatar: 'https://images.pexels.com/photos/1065084/pexels-photo-1065084.jpeg?auto=compress&cs=tinysrgb&w=150'
-  },
-];
-
-// Mock pending requests data
-const mockPendingRequests = [
-  {
-    id: 101,
-    name: 'David Brown',
-    email: 'david.brown@example.com',
-    role: 'Land Officer',
-    department: 'Land Acquisition',
-    requestDate: '2024-01-15',
-    avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150'
-  },
-  {
-    id: 102,
-    name: 'Lisa Chang',
-    email: 'lisa.chang@example.com',
-    role: 'Financial Officer',
-    department: 'Finance',
-    requestDate: '2024-01-18',
-    avatar: 'https://images.pexels.com/photos/1130626/pexels-photo-1130626.jpeg?auto=compress&cs=tinysrgb&w=150'
+// Helper to safely format a date value (string or Date). Returns fallback or '-' when absent.
+const formatDate = (value, fallback = '-') => {
+  if (!value) return fallback;
+  try {
+    if (typeof value === 'string') {
+      // If it's already an ISO-like string, split on 'T'
+      if (value.includes('T')) return value.split('T')[0];
+      // Otherwise try to parse
+      const parsed = new Date(value);
+      if (!isNaN(parsed)) return parsed.toISOString().split('T')[0];
+    }
+    if (value instanceof Date) return value.toISOString().split('T')[0];
+    // Fallback: attempt to construct Date
+    const parsed = new Date(value);
+    if (!isNaN(parsed)) return parsed.toISOString().split('T')[0];
+  } catch (e) {
+    // ignore
   }
-];
+  return fallback;
+};
 
-// Mock rejected users data
-const mockRejectedUsers = [
-  {
-    id: 201,
-    name: 'Tom Wilson',
-    email: 'tom.wilson@example.com',
-    role: 'Project Manager',
-    department: 'Project Management',
-    requestDate: '2024-01-10',
-    rejectionDate: '2024-01-12',
-    avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150'
-  }
-];
-
-// Subcomponents for better organization
+// Table header component
 const UserTableHeader = ({ columns }) => (
   <thead className="bg-gray-50">
     <tr>
       {columns.map((column) => (
-        <th key={column.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <th
+          key={column.key}
+          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+        >
           {column.label}
         </th>
       ))}
@@ -94,6 +51,7 @@ const UserTableHeader = ({ columns }) => (
   </thead>
 );
 
+// Approved user row
 const UserTableRow = ({ user, onEdit, onDelete, getRoleColor }) => (
   <tr className="hover:bg-gray-50">
     <td className="px-6 py-4 whitespace-nowrap">
@@ -110,12 +68,8 @@ const UserTableRow = ({ user, onEdit, onDelete, getRoleColor }) => (
         {user.role}
       </span>
     </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {user.department}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {user.joinDate}
-    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department}</td>
+  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.approved_at, user.joinDate || '-')}</td>
     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
       <div className="flex space-x-2">
         <button
@@ -137,6 +91,7 @@ const UserTableRow = ({ user, onEdit, onDelete, getRoleColor }) => (
   </tr>
 );
 
+// Pending request row
 const PendingRequestRow = ({ request, onApprove, onReject, getRoleColor }) => (
   <tr className="hover:bg-yellow-50">
     <td className="px-6 py-4 whitespace-nowrap">
@@ -153,12 +108,8 @@ const PendingRequestRow = ({ request, onApprove, onReject, getRoleColor }) => (
         {request.role}
       </span>
     </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {request.department}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {request.requestDate}
-    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.department}</td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.requestDate}</td>
     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
       <div className="flex space-x-2">
         <button
@@ -180,6 +131,7 @@ const PendingRequestRow = ({ request, onApprove, onReject, getRoleColor }) => (
   </tr>
 );
 
+// Rejected user row
 const RejectedUserRow = ({ user, getRoleColor }) => (
   <tr className="hover:bg-red-50">
     <td className="px-6 py-4 whitespace-nowrap">
@@ -196,18 +148,13 @@ const RejectedUserRow = ({ user, getRoleColor }) => (
         {user.role}
       </span>
     </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {user.department}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {user.requestDate}
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-      {user.rejectionDate}
-    </td>
+    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department}</td>
+  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.requestDate}</td>
+  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.rejected_at, user.rejectionDate || '-')}</td>
   </tr>
 );
 
+// Search + filter component
 const SearchAndFilter = ({ searchTerm, onSearchChange, selectedRole, onRoleChange, roles, resultCount, activeTab }) => (
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
     <div className="flex flex-col sm:flex-row gap-4">
@@ -236,21 +183,20 @@ const SearchAndFilter = ({ searchTerm, onSearchChange, selectedRole, onRoleChang
       </div>
     </div>
     <div className="text-sm text-gray-500">
-      {resultCount} {activeTab === 'approved' 
-        ? 'approved users' 
-        : activeTab === 'pending' 
-        ? 'pending requests' 
-        : 'rejected users'
-      }
+      {resultCount} {activeTab === 'approved'
+        ? 'approved users'
+        : activeTab === 'pending'
+        ? 'pending requests'
+        : 'rejected users'}
     </div>
   </div>
 );
 
+// Main Component
 const UserManagement = () => {
-  // State management
-  const [users, setUsers] = useState(mockUsers);
-  const [pendingRequests, setPendingRequests] = useState(mockPendingRequests);
-  const [rejectedUsers, setRejectedUsers] = useState(mockRejectedUsers);
+  const [users, setUsers] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [rejectedUsers, setRejectedUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [filteredRejectedUsers, setFilteredRejectedUsers] = useState([]);
@@ -258,76 +204,44 @@ const UserManagement = () => {
   const [selectedRole, setSelectedRole] = useState('');
   const [activeTab, setActiveTab] = useState('approved');
 
-  // Initialize localStorage with approved users including existing mock users
+
+  // Fetch from backend
   useEffect(() => {
-    const existingApprovedUsers = localStorage.getItem('approvedUsers');
-    if (!existingApprovedUsers) {
-      // Include existing mock users (like John Doe) as already approved
-      const initialApprovedUsers = mockUsers.map(user => ({
-        ...user,
-        status: 'Active' // Ensure they have Active status
-      }));
-      localStorage.setItem('approvedUsers', JSON.stringify(initialApprovedUsers));
-    } else {
-      // Clean up any duplicates that might exist
-      const currentUsers = JSON.parse(existingApprovedUsers);
-      const uniqueUsers = currentUsers.filter((user, index, self) =>
-        index === self.findIndex(u => u.email === user.email)
-      );
-      
-      // Only update if we found duplicates
-      if (uniqueUsers.length !== currentUsers.length) {
-        localStorage.setItem('approvedUsers', JSON.stringify(uniqueUsers));
+    const fetchData = async () => {
+      try {
+        const approved = await getApprovedUsers();
+        const pending = await getPendingUsers();
+        const rejected = await getRejectedUsers();
+
+        setUsers(approved.data);
+        setPendingRequests(pending.data);
+        setRejectedUsers(rejected.data);
+      } catch (err) {
+        console.error("Error fetching users:", err);
       }
-    }
+    };
+
+
+    fetchData();
   }, []);
 
-  // Get all unique roles
-  const allRoles = [...new Set([
-    ...users.map(u => u.role),
-    ...pendingRequests.map(r => r.role),
-    ...rejectedUsers.map(r => r.role)
-  ])];
-
+  // Filter logic
   const filterData = useCallback(() => {
-    // Filter users
-    const filteredUsersData = users.filter(user => {
-      const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.department.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = selectedRole === '' || user.role === selectedRole;
-      return matchesSearch && matchesRole;
-    });
+    const matches = (item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.department.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filter pending requests
-    const filteredRequestsData = pendingRequests.filter(request => {
-      const matchesSearch = request.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           request.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           request.department.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = selectedRole === '' || request.role === selectedRole;
-      return matchesSearch && matchesRole;
-    });
-
-    // Filter rejected users
-    const filteredRejectedData = rejectedUsers.filter(user => {
-      const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           user.department.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = selectedRole === '' || user.role === selectedRole;
-      return matchesSearch && matchesRole;
-    });
-
-    setFilteredUsers(filteredUsersData);
-    setFilteredRequests(filteredRequestsData);
-    setFilteredRejectedUsers(filteredRejectedData);
+    setFilteredUsers(users.filter(u => matches(u) && (!selectedRole || u.role === selectedRole)));
+    setFilteredRequests(pendingRequests.filter(r => matches(r) && (!selectedRole || r.role === selectedRole)));
+    setFilteredRejectedUsers(rejectedUsers.filter(r => matches(r) && (!selectedRole || r.role === selectedRole)));
   }, [users, pendingRequests, rejectedUsers, searchTerm, selectedRole]);
 
-  // Update filtered data when search/filter changes
   useEffect(() => {
     filterData();
   }, [filterData]);
 
-  // Utility function for role colors
+  // Utility function for role badge colors
   const getRoleColor = (role) => {
     const roleColors = {
       'Land Officer': 'bg-blue-100 text-blue-800',
@@ -337,75 +251,46 @@ const UserManagement = () => {
     return roleColors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  // Event handlers
-  const handleApproveUser = (requestId) => {
-    const request = pendingRequests.find(req => req.id === requestId);
-    if (!request) return;
 
-    // Move request to users list with Active status
-    const newUser = {
-      ...request,
-      id: Date.now(), // Generate new ID for the user
-      status: 'Active',
-      joinDate: new Date().toISOString().split('T')[0],
-      phone: '+94 77 XXX XXXX' // Default phone
-    };
-
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    setPendingRequests(pendingRequests.filter(req => req.id !== requestId));
-    
-    // Get existing approved users from localStorage and add the new one (avoiding duplicates)
-    const existingApprovedUsers = JSON.parse(localStorage.getItem('approvedUsers') || '[]');
-    
-    // Check if user already exists (by email or name)
-    const userExists = existingApprovedUsers.some(user => 
-      user.email === newUser.email || user.name === newUser.name
-    );
-    
-    if (!userExists) {
-      const updatedApprovedUsers = [...existingApprovedUsers, newUser];
-      localStorage.setItem('approvedUsers', JSON.stringify(updatedApprovedUsers));
+  // Approve / Reject / Delete
+  const handleApproveUser = async (requestId) => {
+    try {
+      await approveUser(requestId);
+      const approvedUser = pendingRequests.find(r => r.id === requestId);
+      setUsers([...users, { ...approvedUser, joinDate: new Date().toISOString().split("T")[0] }]);
+      setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
+      alert("User approved ✅");
+    } catch (err) {
+      alert("Failed to approve user");
     }
-    
-    setActiveTab('approved');
-    alert(`User ${request.name} has been approved and activated. You can now see them in the Approved Users tab.`);
+
+ 
   };
 
-  const handleRejectUser = (requestId) => {
-    const request = pendingRequests.find(req => req.id === requestId);
-    if (!request) return;
-
-    const confirmed = window.confirm(`Are you sure you want to reject the registration request for ${request.name}?`);
-    if (!confirmed) return;
-
-    // Move request to rejected users list
-    const rejectedUser = {
-      ...request,
-      rejectionDate: new Date().toISOString().split('T')[0]
-    };
-
-    setRejectedUsers([...rejectedUsers, rejectedUser]);
-    setPendingRequests(pendingRequests.filter(req => req.id !== requestId));
-    alert(`Registration request for ${request.name} has been rejected and moved to rejected users.`);
+  const handleRejectUser = async (requestId) => {
+    try {
+      await rejectUser(requestId);
+      const rejectedUser = pendingRequests.find(r => r.id === requestId);
+      setRejectedUsers([...rejectedUsers, { ...rejectedUser, rejectionDate: new Date().toISOString().split("T")[0] }]);
+      setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
+      alert("User rejected ❌");
+    } catch (err) {
+      alert("Failed to reject user");
+    }
   };
 
-  const handleEditUser = (userId) => {
-    alert(`Edit user with ID: ${userId}`);
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    try {
+      await deleteUser(userId);
+      setUsers(users.filter(u => u.id !== userId));
+      alert("User deleted 🗑️");
+    } catch (err) {
+      alert("Failed to delete user");
+    }
   };
 
-  const handleDeleteUser = (userId) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-
-    const confirmed = window.confirm(`Are you sure you want to delete user ${user.name}?`);
-    if (!confirmed) return;
-
-    setUsers(users.filter(u => u.id !== userId));
-    alert(`User ${user.name} has been deleted.`);
-  };
-
-  // Table configurations
+  // Table configs
   const userTableColumns = [
     { key: 'user', label: 'User' },
     { key: 'role', label: 'Role' },
@@ -413,7 +298,6 @@ const UserManagement = () => {
     { key: 'joinDate', label: 'Join Date' },
     { key: 'actions', label: 'Actions' }
   ];
-
   const requestTableColumns = [
     { key: 'user', label: 'User' },
     { key: 'role', label: 'Requested Role' },
@@ -421,7 +305,6 @@ const UserManagement = () => {
     { key: 'requestDate', label: 'Request Date' },
     { key: 'actions', label: 'Actions' }
   ];
-
   const rejectedTableColumns = [
     { key: 'user', label: 'User' },
     { key: 'role', label: 'Requested Role' },
@@ -429,6 +312,13 @@ const UserManagement = () => {
     { key: 'requestDate', label: 'Request Date' },
     { key: 'rejectionDate', label: 'Rejection Date' }
   ];
+
+  // All roles for filter dropdown
+  const allRoles = [...new Set([
+    ...users.map(u => u.role),
+    ...pendingRequests.map(r => r.role),
+    ...rejectedUsers.map(r => r.role)
+  ])];
 
   return (
     <div className="space-y-6">
@@ -451,7 +341,7 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
@@ -496,7 +386,7 @@ const UserManagement = () => {
         </nav>
       </div>
 
-      {/* Search and Filter */}
+      {/* Search + Filter */}
       <SearchAndFilter
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
@@ -504,14 +394,16 @@ const UserManagement = () => {
         onRoleChange={setSelectedRole}
         roles={allRoles}
         resultCount={
-          activeTab === 'approved' ? filteredUsers.length : 
-          activeTab === 'pending' ? filteredRequests.length : 
-          filteredRejectedUsers.length
+          activeTab === 'approved'
+            ? filteredUsers.length
+            : activeTab === 'pending'
+            ? filteredRequests.length
+            : filteredRejectedUsers.length
         }
         activeTab={activeTab}
       />
 
-      {/* Content based on active tab */}
+      {/* Table per tab */}
       {activeTab === 'approved' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -522,7 +414,7 @@ const UserManagement = () => {
                   <UserTableRow
                     key={user.id}
                     user={user}
-                    onEdit={handleEditUser}
+                    onEdit={(id) => alert(`Edit user ${id}`)}
                     onDelete={handleDeleteUser}
                     getRoleColor={getRoleColor}
                   />
@@ -572,22 +464,6 @@ const UserManagement = () => {
           </div>
         </div>
       )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-        <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">Total Users</h3>
-          <p className="text-2xl lg:text-3xl font-bold text-blue-600">{users.length}</p>
-        </div>
-        <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">Pending Requests</h3>
-          <p className="text-2xl lg:text-3xl font-bold text-yellow-600">{pendingRequests.length}</p>
-        </div>
-        <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">Rejected Users</h3>
-          <p className="text-2xl lg:text-3xl font-bold text-red-600">{rejectedUsers.length}</p>
-        </div>
-      </div>
     </div>
   );
 };

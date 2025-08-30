@@ -1,24 +1,27 @@
 // src/pages/Login.jsx
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { loginUser } from "../api";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Simulate login logic
-    if (email === 'admin@example.com' && password === 'admin123') {
-      // Save auth state (e.g., localStorage or context) if needed
-      // localStorage.setItem("isLoggedIn", true);
+    try {
+      const res = await loginUser({ email, password });
 
-      navigate('/dashboard'); // Redirect to dashboard
-    } else {
-      alert('Invalid credentials');
+      // Save token & role in localStorage for later use
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role); // optional, if backend sends role
+
+      alert("Login successful ✅");
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.response?.data?.error || "Login failed");
     }
   };
 
@@ -27,10 +30,8 @@ const Login = () => {
       className="relative min-h-screen bg-cover bg-center"
       style={{ backgroundImage: 'url("/image5.png")' }}
     >
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
 
-      {/* Back arrow button */}
       <button
         onClick={() => navigate(-1)}
         className="absolute top-6 left-6 z-20 text-white text-3xl font-bold hover:text-orange-400"
@@ -39,7 +40,6 @@ const Login = () => {
         ←Back
       </button>
 
-      {/* Centered form */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="bg-white/90 backdrop-blur-md p-8 rounded-xl shadow-xl w-full max-w-md">
           <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">Login</h2>
@@ -65,7 +65,6 @@ const Login = () => {
               />
             </div>
 
-            {/* Forget password link */}
             <p className="text-left text-sm">
               <Link to="/forget-password" className="text-orange-500 hover:underline">
                 Forgot Password?
@@ -81,7 +80,7 @@ const Login = () => {
           </form>
 
           <p className="mt-4 text-center text-sm">
-            Don't have an account?{' '}
+            Don't have an account?{" "}
             <Link to="/register" className="text-orange-500 hover:underline">
               Register
             </Link>

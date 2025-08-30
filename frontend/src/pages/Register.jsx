@@ -1,19 +1,41 @@
-// src/pages/Register.jsx
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { registerUser } from "../api"; // we’ll use the API helper I showed earlier
 
 const Register = () => {
   const navigate = useNavigate();
+
+  // form state
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    role: "",
+    password: ""
+  });
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await registerUser(form);
+      alert(res.data.message); // "Registration request sent. Wait for approval."
+      navigate("/login"); // redirect to login after register
+    } catch (err) {
+      alert(err.response?.data?.error || "Registration failed");
+    }
+  };
 
   return (
     <div
       className="relative min-h-screen bg-cover bg-center"
       style={{ backgroundImage: 'url("/image5.png")' }}
     >
-      {/* Overlay with blur */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
 
-      {/* Back arrow button */}
       <button
         onClick={() => navigate(-1)}
         className="absolute top-6 left-6 z-20 text-white text-3xl font-bold hover:text-orange-400"
@@ -22,15 +44,17 @@ const Register = () => {
         ←Back
       </button>
 
-      {/* Centered form */}
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="bg-white/90 backdrop-blur-md p-8 rounded-xl shadow-xl w-full max-w-md">
           <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">Register</h2>
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-gray-700 mb-1">First Name</label>
               <input
                 type="text"
+                name="firstName"
+                value={form.firstName}
+                onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
@@ -38,6 +62,9 @@ const Register = () => {
               <label className="block text-gray-700 mb-1">Last Name</label>
               <input
                 type="text"
+                name="lastName"
+                value={form.lastName}
+                onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
@@ -45,23 +72,34 @@ const Register = () => {
               <label className="block text-gray-700 mb-1">Email</label>
               <input
                 type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
             <div>
               <label className="block text-gray-700 mb-1">Role</label>
-              <select className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
                 <option value="">Select a role</option>
-                <option value="chiefengineer">Chief Engineer</option>
-                <option value="projectengineer">Project Engineer</option>
-                <option value="landofficer">Land Officer</option>
-                <option value="fofficer">Financial Officer</option>
+                <option value="chief_engineer">Chief Engineer</option>
+                <option value="project_engineer">Project Engineer</option>
+                <option value="land_officer">Land Officer</option>
+                <option value="financial_officer">Financial Officer</option>
               </select>
             </div>
             <div>
               <label className="block text-gray-700 mb-1">Password</label>
               <input
                 type="password"
+                name="password"
+                value={form.password}
+                onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
@@ -73,7 +111,7 @@ const Register = () => {
             </button>
           </form>
           <p className="mt-4 text-center text-sm">
-            Already have an account?{' '}
+            Already have an account?{" "}
             <Link to="/login" className="text-orange-500 hover:underline">
               Login
             </Link>
