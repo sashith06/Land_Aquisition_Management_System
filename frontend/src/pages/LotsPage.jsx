@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { lotsData as initialLots } from "../data/mockData";
 import Breadcrumb from "../components/Breadcrumb";
+import ValuationDetails from "../components/ValuationDetails";
+import CompensationDetailsTab from "../components/CompensationDetailsTab";
 
 const tabs = [
   "Owner Details",
@@ -30,6 +32,17 @@ const LotsPage = () => {
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const mouseStart = useRef({ x: 0, y: 0 });
+
+  // Determine user role based on current route
+  const getCurrentUserRole = () => {
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/fo-dashboard')) return 'Financial Officer';
+    if (currentPath.includes('/pe-dashboard')) return 'Project Engineer';
+    if (currentPath.includes('/ce-dashboard')) return 'Chief Engineer';
+    return 'Land Officer'; // Default role
+  };
+
+  const userRole = getCurrentUserRole();
 
   // Filter lots by search
   const filteredLots = lotsData.filter((lot) =>
@@ -226,12 +239,14 @@ const LotsPage = () => {
             ))}
           </div>
 
-          <button
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-auto"
-            onClick={() => { handleClearForm(); setShowCreateModal(true); }}
-          >
-            Create Lot
-          </button>
+          {userRole !== 'Financial Officer' && (
+            <button
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-auto"
+              onClick={() => { handleClearForm(); setShowCreateModal(true); }}
+            >
+              Create Lot
+            </button>
+          )}
         </div>
 
         {/* Right Panel */}
@@ -267,20 +282,22 @@ const LotsPage = () => {
                     ) : (
                       <div className="text-gray-500 mb-4">Select an owner to view details.</div>
                     )}
-                    <div className="flex gap-2 mt-4">
-                      <button
-                        onClick={handleEditLot}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                      >
-                        Edit Lot
-                      </button>
-                      <button
-                        onClick={handleDeleteLot}
-                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-                      >
-                        Delete Lot
-                      </button>
-                    </div>
+                    {userRole !== 'Financial Officer' && (
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={handleEditLot}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                        >
+                          Edit Lot
+                        </button>
+                        <button
+                          onClick={handleDeleteLot}
+                          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                        >
+                          Delete Lot
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -291,7 +308,23 @@ const LotsPage = () => {
             </div>
           )}
 
-          {activeTab !== "Owner Details" && (
+          {activeTab === "Valuation Details" && (
+            <ValuationDetails 
+              selectedLot={selectedLot} 
+              planId={planId} 
+              userRole={userRole} 
+            />
+          )}
+
+          {activeTab === "Compensation Details" && (
+            <CompensationDetailsTab 
+              selectedLot={selectedLot} 
+              planId={planId} 
+              userRole={userRole} 
+            />
+          )}
+
+          {(activeTab === "Land Details" || activeTab === "Inquiries") && (
             <div className="text-center text-gray-500 py-8">
               <p>{activeTab} will be shown here</p>
               {selectedLot && <p className="mt-2">for Lot: {selectedLot.id}</p>}
