@@ -60,6 +60,12 @@ const Sidebar = () => {
 
   return (
     <div className="bg-slate-900 text-white w-64 h-full flex flex-col">
+      {/* Sidebar Header */}
+      <div className="px-4 py-6 border-b border-slate-700">
+        <h1 className="text-xl font-semibold">Land Officer</h1>
+        <p className="text-sm text-gray-400">Control Panel</p>
+      </div>
+
       {/* Main Navigation */}
       <div className="flex-1 px-4 py-6 space-y-2 mt-4">
         {navigationItems.map((item) => (
