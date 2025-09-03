@@ -1,7 +1,3 @@
-// src/data/mockData.js
-
-// src/data/mockData.js
-
 export const projectsData = [
   {
     id: 'p1',
@@ -191,10 +187,7 @@ export const navigationItems = [
   { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' }
 ];
 
-export const bottomItems = [
-  { path: '/dashboard/settings', label: 'Settings', icon: 'Settings' },
-  { path: '/dashboard/info', label: 'Info', icon: 'Info' }
-];
+
 
 // src/data/mockData.js
 

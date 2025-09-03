@@ -111,11 +111,7 @@ const CreateProject = () => {
           <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-slate-900">Project Information</h2>
-              <div className="text-center text-sm text-slate-600">
-                Ministry of Highways<br />
-                Road Development Authority<br />
-                Land Acquisition
-              </div>
+              
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
