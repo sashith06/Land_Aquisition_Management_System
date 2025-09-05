@@ -3,9 +3,9 @@ import { Routes, Route } from "react-router-dom";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
-import DashboardSelector from "../pages/DashboardSelector";
 import ForgetPassword from "../pages/Forgetpassword";
 import ResetPassword from "../pages/ResetPassword";
+import Unauthorized from "../pages/Unauthorized";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import CEDashboardLayout from "../layouts/CEDashboardLayout";
@@ -38,6 +38,14 @@ import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
 import LotsPage from "../pages/LotsPage";
 import LotDetail from "../pages/LotDetail";
 
+import { 
+  ChiefEngineerRoute, 
+  ProjectEngineerRoute, 
+  FinancialOfficerRoute, 
+  LandOfficerRoute, 
+  AnyOfficerRoute 
+} from "../components/ProtectedRoute";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -45,19 +53,22 @@ export default function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/landowner" element={<LandownerLogin />} /> 
-        
       </Route>
 
       {/* Full Page Routes (No Layout) */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/dashboards" element={<DashboardSelector />} />
       <Route path="/forget-password" element={<ForgetPassword />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/lodashboard" element={<LODashboard />} />
 
       {/* Chief Engineer Dashboard Routes With CE Layout */}
-      <Route path="/ce-dashboard" element={<CEDashboardLayout />}>
+      <Route path="/ce-dashboard" element={
+        <ChiefEngineerRoute>
+          <CEDashboardLayout />
+        </ChiefEngineerRoute>
+      }>
         <Route index element={<Dashboard />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
@@ -70,7 +81,11 @@ export default function AppRoutes() {
       </Route>
 
       {/* Project Engineer Dashboard Routes With PE Layout */}
-      <Route path="/pe-dashboard" element={<PEDashboardLayout />}>
+      <Route path="/pe-dashboard" element={
+        <ProjectEngineerRoute>
+          <PEDashboardLayout />
+        </ProjectEngineerRoute>
+      }>
         <Route index element={<PEDashboardMain />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
@@ -84,7 +99,11 @@ export default function AppRoutes() {
       </Route>
 
       {/* Financial Officer Dashboard Routes With FO Layout */}
-      <Route path="/fo-dashboard" element={<FODashboardLayout />}>
+      <Route path="/fo-dashboard" element={
+        <FinancialOfficerRoute>
+          <FODashboardLayout />
+        </FinancialOfficerRoute>
+      }>
         <Route index element={<FODashboardMain />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
@@ -95,8 +114,12 @@ export default function AppRoutes() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
-      {/* Regular Dashboard Routes With Shared Layout */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
+      {/* Land Officer Dashboard Routes With Shared Layout */}
+      <Route path="/dashboard" element={
+        <LandOfficerRoute>
+          <DashboardLayout />
+        </LandOfficerRoute>
+      }>
         <Route index element={<Dashboard />} />
         <Route path="plan/:id" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />

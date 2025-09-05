@@ -87,7 +87,6 @@ const Register = () => {
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">Select a role</option>
-                <option value="chief_engineer">Chief Engineer</option>
                 <option value="project_engineer">Project Engineer</option>
                 <option value="land_officer">Land Officer</option>
                 <option value="financial_officer">Financial Officer</option>

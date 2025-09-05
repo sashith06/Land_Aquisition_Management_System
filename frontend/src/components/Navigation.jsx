@@ -1,7 +1,8 @@
-import { Bell, ChevronDown } from 'lucide-react';
+import { Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { userData } from '../data/mockData';
+import { logout } from '../utils/auth';
 import Logo from './Logo';
 
 const Navigation = () => {
@@ -17,8 +18,17 @@ const Navigation = () => {
       return '/ce-dashboard/profile';
     } else if (location.pathname.startsWith('/pe-dashboard')) {
       return '/pe-dashboard/profile';
+    } else if (location.pathname.startsWith('/fo-dashboard')) {
+      return '/fo-dashboard/profile';
     }
     return '/dashboard/profile';
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      setOpen(false); // Close dropdown
+      logout(); // Call logout function
+    }
   };
 
   return (
@@ -83,18 +93,21 @@ const Navigation = () => {
             </button>
 
             {open && (
-              <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                 <Link
                   to={getProfilePath()}
-                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  onClick={() => setOpen(false)}
                 >
-                  Profile
+                  <span>View Profile</span>
                 </Link>
+                <hr className="border-gray-100" />
                 <button
-                  onClick={() => alert('Logging out...')}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={handleLogout}
+                  className="flex items-center w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
-                  Logout
+                  <LogOut size={16} className="mr-2" />
+                  <span>Logout</span>
                 </button>
               </div>
             )}

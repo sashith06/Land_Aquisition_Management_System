@@ -14,12 +14,36 @@ const Login = () => {
     try {
       const res = await loginUser({ email, password });
 
-      // Save token & role in localStorage for later use
+      // Save token & user data in localStorage
       localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.role); // optional, if backend sends role
+      localStorage.setItem("role", res.data.role);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
       alert("Login successful ✅");
-      navigate("/dashboard");
+
+      // Redirect based on role
+      const role = res.data.role;
+      switch (role) {
+        case 'chief_engineer':
+          navigate("/ce-dashboard");
+          break;
+        case 'project_engineer':
+          navigate("/pe-dashboard");
+          break;
+        case 'financial_officer':
+          navigate("/fo-dashboard");
+          break;
+        case 'land_officer':
+          navigate("/dashboard");
+          break;
+        default:
+          // If unknown role, logout and show error
+          alert("Unknown user role. Please contact administrator.");
+          localStorage.removeItem("token");
+          localStorage.removeItem("role");
+          localStorage.removeItem("user");
+          navigate("/login");
+      }
     } catch (err) {
       alert(err.response?.data?.error || "Login failed");
     }

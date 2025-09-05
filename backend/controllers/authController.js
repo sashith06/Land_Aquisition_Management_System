@@ -75,6 +75,23 @@ exports.login = (req, res) => {
   if (!email || !password)
     return res.status(400).json({ error: "Email and password required" });
 
+  // Fixed Chief Engineer login
+  if (email === "admin@lams.gov.lk" && password === "Admin@123") {
+    const token = jwt.sign({ id: "admin", role: "chief_engineer" }, "secretkey", { expiresIn: "1h" });
+    return res.json({ 
+      message: "Login successful", 
+      token, 
+      role: "chief_engineer",
+      user: {
+        id: "admin",
+        email: "admin@lams.gov.lk",
+        role: "chief_engineer",
+        firstName: "Chief",
+        lastName: "Engineer"
+      }
+    });
+  }
+
   User.findByEmail(email, async (err, rows) => {
     if (err) return res.status(500).json({ error: err });
     if (rows.length === 0) return res.status(400).json({ error: "User not found" });
@@ -87,7 +104,18 @@ exports.login = (req, res) => {
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
     const token = jwt.sign({ id: user.id, role: user.role }, "secretkey", { expiresIn: "1h" });
-    res.json({ message: "Login successful", token });
+    res.json({ 
+      message: "Login successful", 
+      token, 
+      role: user.role,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name
+      }
+    });
   });
 };
 

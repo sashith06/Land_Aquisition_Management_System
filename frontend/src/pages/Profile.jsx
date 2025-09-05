@@ -1,7 +1,14 @@
-import { User, Mail, Phone, MapPin, Calendar } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, LogOut } from 'lucide-react';
 import { userData } from '../data/mockData';
+import { logout } from '../utils/auth';
 
 const Profile = () => {
+  const handleLogout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      logout();
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
@@ -18,6 +25,15 @@ const Profile = () => {
               <h2 className="text-2xl font-bold text-gray-800">{userData.name}</h2>
               <p className="text-lg text-orange-600 font-medium">{userData.role}</p>
               <p className="text-gray-500">Road Development Authority</p>
+            </div>
+            <div className="ml-auto">
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
 

@@ -203,14 +203,17 @@ const UserManagement = () => {
         const pending = await getPendingUsers();
         const rejected = await getRejectedUsers();
 
-        setUsers(approved.data);
-        setPendingRequests(pending.data);
-        setRejectedUsers(rejected.data);
+        // Filter out Chief Engineers from all lists since Chief Engineer is the admin
+        const filterOutChiefEngineer = (users) => 
+          users.filter(user => user.role !== 'chief_engineer');
+
+        setUsers(filterOutChiefEngineer(approved.data));
+        setPendingRequests(filterOutChiefEngineer(pending.data));
+        setRejectedUsers(filterOutChiefEngineer(rejected.data));
       } catch (err) {
         console.error("Error fetching users:", err);
       }
     };
-
 
     fetchData();
   }, []);
@@ -234,9 +237,9 @@ const UserManagement = () => {
   // Utility function for role badge colors
   const getRoleColor = (role) => {
     const roleColors = {
-      'Land Officer': 'bg-blue-100 text-blue-800',
-      'Project Manager': 'bg-green-100 text-green-800',
-      'Financial Officer': 'bg-yellow-100 text-yellow-800',
+      'land_officer': 'bg-blue-100 text-blue-800',
+      'project_engineer': 'bg-green-100 text-green-800',
+      'financial_officer': 'bg-yellow-100 text-yellow-800',
     };
     return roleColors[role] || 'bg-gray-100 text-gray-800';
   };
@@ -300,12 +303,12 @@ const UserManagement = () => {
     { key: 'rejectionDate', label: 'Rejection Date' }
   ];
 
-  // All roles for filter dropdown
+  // All roles for filter dropdown (excluding Chief Engineer since it's admin-only)
   const allRoles = [...new Set([
     ...users.map(u => u.role),
     ...pendingRequests.map(r => r.role),
     ...rejectedUsers.map(r => r.role)
-  ])];
+  ])].filter(role => role !== 'chief_engineer');
 
   return (
     <div className="space-y-6">

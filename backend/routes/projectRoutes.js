@@ -1,15 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const projectController = require("../controllers/projectController");
+const { verifyToken, requireChiefEngineer, requireProjectEngineer, requireAll } = require("../middleware/authMiddleware");
 
-// Project Engineer
-router.post("/create", projectController.createProject);
-router.put("/update/:id", projectController.updateProject);
+// Project Engineer routes
+router.post("/create", verifyToken, requireProjectEngineer, projectController.createProject);
+router.put("/update/:id", verifyToken, requireProjectEngineer, projectController.updateProject);
 
-// Chief Engineer
-router.get("/pending", projectController.getPendingProjects);
-router.get("/:id", projectController.getProjectById);
-router.put("/approve/:id", projectController.approveProject);
-router.put("/reject/:id", projectController.rejectProject);
+// Chief Engineer routes
+router.get("/pending", verifyToken, requireChiefEngineer, projectController.getPendingProjects);
+router.put("/approve/:id", verifyToken, requireChiefEngineer, projectController.approveProject);
+router.put("/reject/:id", verifyToken, requireChiefEngineer, projectController.rejectProject);
+
+// All authenticated users can view project details
+router.get("/:id", verifyToken, requireAll, projectController.getProjectById);
 
 module.exports = router;

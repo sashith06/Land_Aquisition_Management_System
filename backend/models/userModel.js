@@ -54,9 +54,9 @@ User.update = (id, userData, callback) => {
   db.query(sql, values, callback);
 };
 
-// Get pending users
+// Get pending users (excluding Chief Engineers)
 User.getPending = (callback) => {
-  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='pending'", (err, rows) => {
+  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='pending' AND role != 'chief_engineer'", (err, rows) => {
     if (err) return callback(err);
     // Add default fields for frontend compatibility
     rows = rows.map(u => ({
@@ -70,9 +70,9 @@ User.getPending = (callback) => {
   });
 };
 
-// Get approved users
+// Get approved users (excluding Chief Engineers)
 User.getApproved = (callback) => {
-  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='approved'", (err, rows) => {
+  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='approved' AND role != 'chief_engineer'", (err, rows) => {
     if (err) return callback(err);
     rows = rows.map(u => ({
       ...u,
@@ -85,9 +85,9 @@ User.getApproved = (callback) => {
   });
 };
 
-// Get rejected users
+// Get rejected users (excluding Chief Engineers)
 User.getRejected = (callback) => {
-  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='rejected'", (err, rows) => {
+  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='rejected' AND role != 'chief_engineer'", (err, rows) => {
     if (err) return callback(err);
     rows = rows.map(u => ({
       ...u,
