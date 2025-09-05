@@ -68,17 +68,9 @@ const UserTableRow = ({ user, onEdit, onDelete, getRoleColor }) => (
         {user.role}
       </span>
     </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department}</td>
   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.approved_at, user.joinDate || '-')}</td>
     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
       <div className="flex space-x-2">
-        <button
-          onClick={() => onEdit(user.id)}
-          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-          title="Edit User"
-        >
-          <Edit size={16} />
-        </button>
         <button
           onClick={() => onDelete(user.id)}
           className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
@@ -108,7 +100,6 @@ const PendingRequestRow = ({ request, onApprove, onReject, getRoleColor }) => (
         {request.role}
       </span>
     </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.department}</td>
     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.requestDate}</td>
     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
       <div className="flex space-x-2">
@@ -148,7 +139,6 @@ const RejectedUserRow = ({ user, getRoleColor }) => (
         {user.role}
       </span>
     </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.department}</td>
   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.requestDate}</td>
   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.rejected_at, user.rejectionDate || '-')}</td>
   </tr>
@@ -294,21 +284,18 @@ const UserManagement = () => {
   const userTableColumns = [
     { key: 'user', label: 'User' },
     { key: 'role', label: 'Role' },
-    { key: 'department', label: 'Department' },
     { key: 'joinDate', label: 'Join Date' },
     { key: 'actions', label: 'Actions' }
   ];
   const requestTableColumns = [
     { key: 'user', label: 'User' },
     { key: 'role', label: 'Requested Role' },
-    { key: 'department', label: 'Department' },
     { key: 'requestDate', label: 'Request Date' },
     { key: 'actions', label: 'Actions' }
   ];
   const rejectedTableColumns = [
     { key: 'user', label: 'User' },
     { key: 'role', label: 'Requested Role' },
-    { key: 'department', label: 'Department' },
     { key: 'requestDate', label: 'Request Date' },
     { key: 'rejectionDate', label: 'Rejection Date' }
   ];
