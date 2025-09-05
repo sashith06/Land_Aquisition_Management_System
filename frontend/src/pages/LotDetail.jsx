@@ -147,7 +147,7 @@ const LotDetail = () => {
             <div>
               <label className="text-sm font-medium text-gray-600">Status</label>
               <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                lotDetails.status === 'active' ? 'bg-green-200 text-green-800' :
+                lotDetails.status === 'active' ? 'bg-slate-200 text-slate-800' :
                 lotDetails.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
                 'bg-blue-200 text-blue-800'
               }`}>
@@ -190,7 +190,7 @@ const LotDetail = () => {
             <div>
               <label className="text-sm font-medium text-gray-600">Current Status</label>
               <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ml-2 ${
-                lotDetails.compensationStatus === 'approved' ? 'bg-green-200 text-green-800' :
+                lotDetails.compensationStatus === 'approved' ? 'bg-slate-200 text-slate-800' :
                 lotDetails.compensationStatus === 'submitted' ? 'bg-blue-200 text-blue-800' :
                 lotDetails.compensationStatus === 'rejected' ? 'bg-red-200 text-red-800' :
                 'bg-yellow-200 text-yellow-800'
@@ -209,7 +209,7 @@ const LotDetail = () => {
             <div>
               <label className="text-sm font-medium text-gray-600">Payment Status</label>
               <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                lotDetails.paymentStatus === 'paid' ? 'bg-green-200 text-green-800' :
+                lotDetails.paymentStatus === 'paid' ? 'bg-slate-200 text-slate-800' :
                 lotDetails.paymentStatus === 'approved' ? 'bg-blue-200 text-blue-800' :
                 lotDetails.paymentStatus === 'partial' ? 'bg-orange-200 text-orange-800' :
                 'bg-yellow-200 text-yellow-800'
@@ -237,7 +237,7 @@ const LotDetail = () => {
         <div className="bg-white p-6 rounded-xl border shadow-sm">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
           <div className="space-y-3">
-            <button className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors">
+            <button className="w-full bg-slate-600 text-white py-2 rounded-lg hover:bg-slate-700 transition-colors">
               Generate Report
             </button>
             <button className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors">

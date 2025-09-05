@@ -5,41 +5,30 @@ const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const User = require("../models/userModel");
 
-// Setup email transporter
-// Normalize email password (remove accidental spaces) and create SMTP transporter
+// ===================== EMAIL SETUP =====================
 const normalizedEmailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : undefined;
+
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
+  host: "smtp.gmail.com",
   port: 587,
-  secure: false, // use STARTTLS
+  secure: false, // STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: normalizedEmailPass,
   },
-  tls: {
-    rejectUnauthorized: false,
-  },
+  tls: { rejectUnauthorized: false },
   connectionTimeout: 20000,
 });
 
-// Verify transporter configuration at startup
 transporter.verify((error, success) => {
-  if (error) {
-    console.error('Email transporter verification failed:', error);
-  } else {
-    console.log('Email transporter is ready');
-  }
+  if (error) console.error("Email transporter verification failed:", error);
+  else console.log("Email transporter is ready");
 });
 
 // ===================== HELPER =====================
 function generatePassword(length = 8) {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
-  let password = "";
-  for (let i = 0; i < length; i++) {
-    password += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return password;
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
 // ===================== REGISTER =====================
@@ -48,39 +37,36 @@ exports.register = async (req, res) => {
   if (!firstName || !lastName || !email || !role)
     return res.status(400).json({ error: "All fields are required" });
 
-  const plainPassword = password || generatePassword();
-  const hashedPassword = await bcrypt.hash(plainPassword, 10);
+  try {
+    const plainPassword = password || generatePassword();
+    const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-  User.create(
-    { firstName, lastName, email, role, password: hashedPassword },
-    (err, result) => {
+    User.create({ firstName, lastName, email, role, password: hashedPassword }, (err) => {
       if (err) return res.status(500).json({ error: err });
 
+      // Notify Chief Engineer
       transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: "chiefengineer@gmail.com",
         subject: "New User Registration Request",
         text: `New user (${email}) requested registration.`,
-      }, (err, info) => {
-        if (err) console.error('Failed to send registration notification to chief:', err);
-        else console.log('Registration notification sent to chief:', info.response);
       });
 
+      // Send temp password if auto-generated
       if (!password) {
         transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: email,
           subject: "Your Temporary Password",
           text: `Your temporary password is: ${plainPassword}`,
-        }, (err, info) => {
-          if (err) console.error('Failed to send temporary password email:', err);
-          else console.log('Temporary password email sent:', info.response);
         });
       }
 
       res.json({ message: "Registration request sent. Wait for approval." });
-    }
-  );
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 // ===================== LOGIN =====================
@@ -105,55 +91,59 @@ exports.login = (req, res) => {
   });
 };
 
-// ===================== APPROVE / REJECT / DELETE / UPDATE =====================
+// ===================== APPROVE USER =====================
 exports.approveUser = (req, res) => {
   const { id } = req.params;
+
   User.approve(id, (err) => {
     if (err) return res.status(500).json({ error: err });
 
     User.findById(id, (err, rows) => {
-      if (err) return console.log(err);
-      if (rows.length > 0) {
-        transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: rows[0].email,
-          subject: "Registration Approved",
-          text: "You are successfully registered. You can now login.",
-        }, (err, info) => {
-          if (err) console.error('Failed to send approval email:', err);
-          else console.log('Approval email sent:', info.response);
-        });
-      }
-    });
+      if (err) return res.status(500).json({ error: err });
+      if (rows.length === 0) return res.status(404).json({ error: "User not found" });
 
-    res.json({ message: "User approved and email sent." });
+      const user = rows[0];
+      user.joinDate = user.approved_at ? user.approved_at.toISOString().split("T")[0] : null;
+
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Registration Approved",
+        text: "You are successfully registered. You can now login.",
+      });
+
+      res.json({ message: "User approved", user });
+    });
   });
 };
 
+// ===================== REJECT USER =====================
 exports.rejectUser = (req, res) => {
   const { id } = req.params;
+
   User.reject(id, (err) => {
     if (err) return res.status(500).json({ error: err });
 
     User.findById(id, (err, rows) => {
-      if (err) return console.log(err);
-      if (rows.length > 0) {
-        transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: rows[0].email,
-          subject: "Registration Rejected",
-          text: "Sorry, your registration request has been rejected.",
-        }, (err, info) => {
-          if (err) console.error('Failed to send rejection email:', err);
-          else console.log('Rejection email sent:', info.response);
-        });
-      }
-    });
+      if (err) return res.status(500).json({ error: err });
+      if (rows.length === 0) return res.status(404).json({ error: "User not found" });
 
-    res.json({ message: "User rejected and email sent." });
+      const user = rows[0];
+      user.rejectionDate = user.rejected_at ? user.rejected_at.toISOString().split("T")[0] : null;
+
+      transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Registration Rejected",
+        text: "Sorry, your registration request has been rejected.",
+      });
+
+      res.json({ message: "User rejected", user });
+    });
   });
 };
 
+// ===================== DELETE USER =====================
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
   User.delete(id, (err) => {
@@ -162,6 +152,7 @@ exports.deleteUser = (req, res) => {
   });
 };
 
+// ===================== UPDATE USER =====================
 exports.updateUser = (req, res) => {
   const { id } = req.params;
   const userData = req.body;
@@ -218,23 +209,18 @@ exports.forgotPassword = (req, res) => {
     if (err) return res.status(500).json({ error: err });
     if (result.affectedRows === 0) return res.status(400).json({ error: "No user with this email" });
 
-    // ✅ Send link pointing to frontend
     const resetUrl = `http://localhost:3000/reset-password/${token}`;
-    
+
     transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
       subject: "Password Reset Request",
       text: `Click the link to reset your password: ${resetUrl}`,
-    }, (err, info) => {
-      if (err) console.error('Failed to send password reset email:', err);
-      else console.log('Password reset email sent:', info.response);
     });
 
     res.json({ message: "Password reset email sent" });
   });
 };
-
 
 exports.resetPassword = (req, res) => {
   const { token } = req.params;
@@ -249,70 +235,6 @@ exports.resetPassword = (req, res) => {
     User.updatePassword(rows[0].id, hashedPassword, (err) => {
       if (err) return res.status(500).json({ error: err });
       res.json({ message: "Password reset successful" });
-    });
-  });
-};
-
-exports.approveUser = (req, res) => {
-  const { id } = req.params;
-
-  User.approve(id, (err) => {
-    if (err) return res.status(500).json({ error: err });
-
-    User.findById(id, (err, rows) => {
-      if (err) return res.status(500).json({ error: err });
-
-      if (rows.length > 0) {
-        const user = rows[0];
-        // Format joinDate
-        user.joinDate = user.approved_at ? user.approved_at.toISOString().split('T')[0] : null;
-
-        transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: user.email,
-          subject: "Registration Approved",
-          text: "You are successfully registered. You can now login.",
-        }, (err, info) => {
-          if (err) console.error('Failed to send approval email:', err);
-          else console.log('Approval email sent:', info.response);
-        });
-
-        res.json({ message: "User approved", user });
-      } else {
-        res.status(404).json({ error: "User not found" });
-      }
-    });
-  });
-};
-
-exports.rejectUser = (req, res) => {
-  const { id } = req.params;
-
-  User.reject(id, (err) => {
-    if (err) return res.status(500).json({ error: err });
-
-    User.findById(id, (err, rows) => {
-      if (err) return res.status(500).json({ error: err });
-
-      if (rows.length > 0) {
-        const user = rows[0];
-        // Format rejectionDate
-        user.rejectionDate = user.rejected_at ? user.rejected_at.toISOString().split('T')[0] : null;
-
-        transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: user.email,
-          subject: "Registration Rejected",
-          text: "Sorry, your registration request has been rejected.",
-        }, (err, info) => {
-          if (err) console.error('Failed to send rejection email:', err);
-          else console.log('Rejection email sent:', info.response);
-        });
-
-        res.json({ message: "User rejected", user });
-      } else {
-        res.status(404).json({ error: "User not found" });
-      }
     });
   });
 };

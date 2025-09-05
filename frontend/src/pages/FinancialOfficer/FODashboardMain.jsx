@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { DollarSign, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
@@ -58,21 +58,6 @@ const FODashboardMain = () => {
     setSearchTerm("");
   };
 
-  const handleProjectAction = (action) => {
-    switch (action) {
-      case "financial":
-        if (selectedProject) {
-          navigate(`/fo-dashboard/financial-details/${selectedProject.id}`);
-        }
-        break;
-      case "view":
-        if (selectedProject) alert(`View project: ${selectedProject.name}`);
-        break;
-      default:
-        break;
-    }
-  };
-
   return (
     <div className="p-6">
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -116,10 +101,6 @@ const FODashboardMain = () => {
                 onPlanSelect={setSelectedPlan}
                 selectedPlan={selectedPlan}
               />
-              <FOProjectActionButtons
-                onAction={handleProjectAction}
-                selectedProject={selectedProject}
-              />
             </>
           )}
         </div>
@@ -137,39 +118,6 @@ const FODashboardMain = () => {
           {selectedProject && <ProjectDetails project={selectedProject} />}
         </div>
       </div>
-    </div>
-  );
-};
-
-// Financial Officer specific action buttons
-const FOProjectActionButtons = ({ onAction, selectedProject }) => {
-  return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">
-        Financial Actions
-      </h3>
-      <div className="flex flex-wrap gap-3">
-        <button
-          onClick={() => onAction("financial")}
-          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          <DollarSign size={16} />
-          <span>Add Financial Details</span>
-        </button>
-        <button
-          onClick={() => onAction("view")}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <span>View Details</span>
-        </button>
-      </div>
-      {selectedProject && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Selected Project:</strong> {selectedProject.name}
-          </p>
-        </div>
-      )}
     </div>
   );
 };
