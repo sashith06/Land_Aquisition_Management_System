@@ -194,7 +194,7 @@ const LotsPage = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
         {/* Left Panel */}
-        <div className="bg-green-100 p-4 rounded-xl space-y-4 flex flex-col h-full">
+        <div className="bg-slate-100 p-4 rounded-xl space-y-4 flex flex-col h-full">
           <div className="space-y-2">
             {tabs.map((tab) => (
               <button
@@ -202,8 +202,8 @@ const LotsPage = () => {
                 onClick={() => setActiveTab(tab)}
                 className={`w-full py-2 px-4 rounded-lg font-semibold text-left ${
                   activeTab === tab
-                    ? "bg-green-600 text-white"
-                    : "bg-white text-gray-700 hover:bg-green-200"
+                    ? "bg-slate-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-slate-200"
                 }`}
               >
                 {tab}
@@ -227,11 +227,7 @@ const LotsPage = () => {
                 className={`p-3 text-white font-bold rounded-lg transition-all hover:scale-105 ${
                   selectedLot?.id === lot.id
                     ? "bg-purple-600 ring-2 ring-purple-300"
-                    : i % 3 === 0
-                    ? "bg-red-500 hover:bg-red-600"
-                    : i % 3 === 1
-                    ? "bg-gray-800 hover:bg-gray-900"
-                    : "bg-yellow-400 hover:bg-yellow-500"
+                    : "bg-blue-500 hover:bg-blue-600"
                 }`}
               >
                 {lot.id.replace("L", "")}
@@ -241,7 +237,7 @@ const LotsPage = () => {
 
           {userRole !== 'Financial Officer' && (
             <button
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 mt-auto"
+              className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 mt-auto"
               onClick={() => { handleClearForm(); setShowCreateModal(true); }}
             >
               Create Lot
@@ -265,7 +261,7 @@ const LotsPage = () => {
                       {selectedLot.owners.map((owner, idx) => (
                         <button
                           key={idx}
-                          className={`px-3 py-1 rounded-lg font-semibold border border-green-600 text-green-700 bg-white hover:bg-green-100 ${selectedLot.selectedOwnerIdx === idx ? 'bg-green-200' : ''}`}
+                          className={`px-3 py-1 rounded-lg font-semibold border border-slate-600 text-slate-700 bg-white hover:bg-slate-100 ${selectedLot.selectedOwnerIdx === idx ? 'bg-slate-200' : ''}`}
                           onClick={() => setSelectedLot({ ...selectedLot, selectedOwnerIdx: idx })}
                         >
                           Owner {idx + 1}
@@ -435,7 +431,7 @@ const LotsPage = () => {
               <div className="flex gap-2 mt-4">
                 <button
                   type="button"
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                  className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700"
                   onClick={handleSubmitLot}
                 >
                   {selectedLot ? "Save Changes" : "Create Lot"}

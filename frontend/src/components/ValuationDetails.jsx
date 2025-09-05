@@ -3,10 +3,12 @@ import { Calculator, Save, Edit, Lock } from 'lucide-react';
 
 const ValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' }) => {
   const [valuationData, setValuationData] = useState({
-    landValue: '',
-    buildingValue: '',
-    treeValue: '',
-    cropsValue: '',
+    statutorilyAmount: '',
+    additionAmount: '',
+    developmentAmount: '',
+    courtAmount: '',
+    thirtyThreeAmount: '',
+    boardOfReviewAmount: '',
     totalValue: '',
     assessmentDate: '',
     assessorName: 'Financial Officer',
@@ -42,10 +44,12 @@ const ValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' 
   useEffect(() => {
     if (isEditing) {
       const values = [
-        valuationData.landValue,
-        valuationData.buildingValue,
-        valuationData.treeValue,
-        valuationData.cropsValue
+        valuationData.statutorilyAmount,
+        valuationData.additionAmount,
+        valuationData.developmentAmount,
+        valuationData.courtAmount,
+        valuationData.thirtyThreeAmount,
+        valuationData.boardOfReviewAmount
       ];
       
       const total = values.reduce((sum, value) => {
@@ -183,7 +187,7 @@ const ValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' 
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
               >
                 <Save size={16} />
                 <span>{isSaving ? 'Saving...' : 'Save'}</span>
@@ -228,72 +232,100 @@ const ValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' 
           </div>
 
           {/* Valuation Breakdown */}
-          <div className="border border-green-300 rounded-lg p-4">
-            <h4 className="text-md font-medium text-green-700 mb-4">Valuation Breakdown</h4>
+          <div className="border border-slate-300 rounded-lg p-4">
+            <h4 className="text-md font-medium text-slate-700 mb-4">Valuation Breakdown</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Land Value (Rs.)
+                  Statutorily Amount (Rs.)
                 </label>
                 <input
                   type="number"
-                  name="landValue"
-                  value={valuationData.landValue}
+                  name="statutorilyAmount"
+                  value={valuationData.statutorilyAmount}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 2000000"
                   step="0.01"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Building Value (Rs.)
+                  Addition Amount (Rs.)
                 </label>
                 <input
                   type="number"
-                  name="buildingValue"
-                  value={valuationData.buildingValue}
+                  name="additionAmount"
+                  value={valuationData.additionAmount}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 300000"
                   step="0.01"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tree Value (Rs.)
+                  Development Amount (Rs.)
                 </label>
                 <input
                   type="number"
-                  name="treeValue"
-                  value={valuationData.treeValue}
+                  name="developmentAmount"
+                  value={valuationData.developmentAmount}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 50000"
                   step="0.01"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Crops Value (Rs.)
+                  Court Amount (Rs.)
                 </label>
                 <input
                   type="number"
-                  name="cropsValue"
-                  value={valuationData.cropsValue}
+                  name="courtAmount"
+                  value={valuationData.courtAmount}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 25000"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  33% Amount (Rs.)
+                </label>
+                <input
+                  type="number"
+                  name="thirtyThreeAmount"
+                  value={valuationData.thirtyThreeAmount}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                  placeholder="e.g., 100000"
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Board of Review Amount (Rs.)
+                </label>
+                <input
+                  type="number"
+                  name="boardOfReviewAmount"
+                  value={valuationData.boardOfReviewAmount}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
+                  placeholder="e.g., 75000"
                   step="0.01"
                 />
               </div>
             </div>
 
             {/* Total Calculation */}
-            <div className="mt-4 bg-green-50 p-3 rounded-md">
+            <div className="mt-4 bg-slate-50 p-3 rounded-md">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-green-700">Total Valuation:</span>
-                <span className="text-lg font-semibold text-green-800">
+                <span className="text-sm font-medium text-slate-700">Total Valuation:</span>
+                <span className="text-lg font-semibold text-slate-800">
                   {formatCurrency(valuationData.totalValue)}
                 </span>
               </div>
@@ -316,7 +348,7 @@ const ValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' 
       ) : (
         <div className="space-y-6">
           {/* Display Mode */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-600">Assessment Date</label>
@@ -331,36 +363,51 @@ const ValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' 
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Land Value</label>
+                <label className="text-sm font-medium text-gray-600">Statutorily Amount</label>
                 <p className="text-gray-800 font-medium">
-                  {formatCurrency(valuationData.landValue)}
+                  {formatCurrency(valuationData.statutorilyAmount)}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Building Value</label>
+                <label className="text-sm font-medium text-gray-600">Addition Amount</label>
                 <p className="text-gray-800 font-medium">
-                  {formatCurrency(valuationData.buildingValue)}
+                  {formatCurrency(valuationData.additionAmount)}
                 </p>
               </div>
             </div>
             
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-gray-600">Tree Value</label>
+                <label className="text-sm font-medium text-gray-600">Development Amount</label>
                 <p className="text-gray-800 font-medium">
-                  {formatCurrency(valuationData.treeValue)}
+                  {formatCurrency(valuationData.developmentAmount)}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600">Crops Value</label>
+                <label className="text-sm font-medium text-gray-600">Court Amount</label>
                 <p className="text-gray-800 font-medium">
-                  {formatCurrency(valuationData.cropsValue)}
+                  {formatCurrency(valuationData.courtAmount)}
                 </p>
               </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">33% Amount</label>
+                <p className="text-gray-800 font-medium">
+                  {formatCurrency(valuationData.thirtyThreeAmount)}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Board of Review Amount</label>
+                <p className="text-gray-800 font-medium">
+                  {formatCurrency(valuationData.boardOfReviewAmount)}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-600">Status</label>
                 <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                  valuationData.status === 'completed' ? 'bg-green-200 text-green-800' :
+                  valuationData.status === 'completed' ? 'bg-slate-200 text-slate-800' :
                   'bg-yellow-200 text-yellow-800'
                 }`}>
                   {valuationData.status === 'completed' ? 'Completed' : 'Draft'}

@@ -50,10 +50,12 @@ const LotValuationManagement = () => {
   const handleEditValuation = (lot) => {
     const key = `${selectedPlan.id}_${lot.id}`;
     const existing = valuationData[key] || {
-      landValue: '',
-      buildingValue: '',
-      treeValue: '',
-      cropsValue: '',
+      statutorilyAmount: '',
+      additionAmount: '',
+      developmentAmount: '',
+      courtAmount: '',
+      thirtyThreeAmount: '',
+      boardOfReviewAmount: '',
       totalValue: '',
       assessmentDate: new Date().toISOString().split('T')[0],
       assessorName: 'Financial Officer',
@@ -71,10 +73,12 @@ const LotValuationManagement = () => {
     const valuation = editingLot.valuation;
     
     // Calculate total value
-    const total = parseFloat(valuation.landValue || 0) +
-                  parseFloat(valuation.buildingValue || 0) +
-                  parseFloat(valuation.treeValue || 0) +
-                  parseFloat(valuation.cropsValue || 0);
+    const total = parseFloat(valuation.statutorilyAmount || 0) +
+                  parseFloat(valuation.additionAmount || 0) +
+                  parseFloat(valuation.developmentAmount || 0) +
+                  parseFloat(valuation.courtAmount || 0) +
+                  parseFloat(valuation.thirtyThreeAmount || 0) +
+                  parseFloat(valuation.boardOfReviewAmount || 0);
     
     const updatedValuation = {
       ...valuation,
@@ -345,12 +349,12 @@ const LotValuationManagement = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Land Value (Rs.)
+                        Statutorily Amount (Rs.)
                       </label>
                       <input
                         type="number"
-                        value={editingLot.valuation.landValue}
-                        onChange={(e) => handleInputChange('landValue', e.target.value)}
+                        value={editingLot.valuation.statutorilyAmount}
+                        onChange={(e) => handleInputChange('statutorilyAmount', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         placeholder="e.g., 2000000"
                         step="0.01"
@@ -358,12 +362,12 @@ const LotValuationManagement = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Building Value (Rs.)
+                        Addition Amount (Rs.)
                       </label>
                       <input
                         type="number"
-                        value={editingLot.valuation.buildingValue}
-                        onChange={(e) => handleInputChange('buildingValue', e.target.value)}
+                        value={editingLot.valuation.additionAmount}
+                        onChange={(e) => handleInputChange('additionAmount', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         placeholder="e.g., 300000"
                         step="0.01"
@@ -371,12 +375,12 @@ const LotValuationManagement = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tree Value (Rs.)
+                        Development Amount (Rs.)
                       </label>
                       <input
                         type="number"
-                        value={editingLot.valuation.treeValue}
-                        onChange={(e) => handleInputChange('treeValue', e.target.value)}
+                        value={editingLot.valuation.developmentAmount}
+                        onChange={(e) => handleInputChange('developmentAmount', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         placeholder="e.g., 50000"
                         step="0.01"
@@ -384,14 +388,40 @@ const LotValuationManagement = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Crops Value (Rs.)
+                        Court Amount (Rs.)
                       </label>
                       <input
                         type="number"
-                        value={editingLot.valuation.cropsValue}
-                        onChange={(e) => handleInputChange('cropsValue', e.target.value)}
+                        value={editingLot.valuation.courtAmount}
+                        onChange={(e) => handleInputChange('courtAmount', e.target.value)}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         placeholder="e.g., 25000"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        33% Amount (Rs.)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingLot.valuation.thirtyThreeAmount}
+                        onChange={(e) => handleInputChange('thirtyThreeAmount', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="e.g., 100000"
+                        step="0.01"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Board of Review Amount (Rs.)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingLot.valuation.boardOfReviewAmount}
+                        onChange={(e) => handleInputChange('boardOfReviewAmount', e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        placeholder="e.g., 75000"
                         step="0.01"
                       />
                     </div>
@@ -403,10 +433,12 @@ const LotValuationManagement = () => {
                       <span className="text-sm font-medium text-green-700">Total Valuation:</span>
                       <span className="text-lg font-semibold text-green-800">
                         {formatCurrency(
-                          (parseFloat(editingLot.valuation.landValue) || 0) +
-                          (parseFloat(editingLot.valuation.buildingValue) || 0) +
-                          (parseFloat(editingLot.valuation.treeValue) || 0) +
-                          (parseFloat(editingLot.valuation.cropsValue) || 0)
+                          (parseFloat(editingLot.valuation.statutorilyAmount) || 0) +
+                          (parseFloat(editingLot.valuation.additionAmount) || 0) +
+                          (parseFloat(editingLot.valuation.developmentAmount) || 0) +
+                          (parseFloat(editingLot.valuation.courtAmount) || 0) +
+                          (parseFloat(editingLot.valuation.thirtyThreeAmount) || 0) +
+                          (parseFloat(editingLot.valuation.boardOfReviewAmount) || 0)
                         )}
                       </span>
                     </div>

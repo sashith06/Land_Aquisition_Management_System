@@ -121,8 +121,8 @@ const FinancialDetails = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Budget Overview Section */}
-          <div className="border border-green-300 rounded-lg p-4">
-            <h3 className="text-lg font-medium text-green-700 mb-4">Budget Overview</h3>
+          <div className="border border-slate-300 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-slate-700 mb-4">Budget Overview</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -134,7 +134,7 @@ const FinancialDetails = () => {
                   name="budgetAllocated"
                   value={financialData.budgetAllocated}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 1000000"
                   step="0.01"
                 />
@@ -149,7 +149,7 @@ const FinancialDetails = () => {
                   name="budgetUsed"
                   value={financialData.budgetUsed}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 750000"
                   step="0.01"
                 />
@@ -164,17 +164,17 @@ const FinancialDetails = () => {
                   name="pendingPayments"
                   value={financialData.pendingPayments}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                   placeholder="e.g., 50000"
                   step="0.01"
                 />
               </div>
 
-              <div className="bg-green-50 p-3 rounded-md">
-                <label className="block text-sm font-medium text-green-700 mb-1">
+              <div className="bg-slate-50 p-3 rounded-md">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
                   Remaining Budget
                 </label>
-                <div className="text-lg font-semibold text-green-800">
+                <div className="text-lg font-semibold text-slate-800">
                   ${calculateRemainingBudget().toLocaleString()}
                 </div>
               </div>
@@ -310,7 +310,7 @@ const FinancialDetails = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:ring-2 focus:ring-green-500 flex items-center space-x-2"
+              className="px-6 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 focus:ring-2 focus:ring-slate-500 flex items-center space-x-2"
             >
               <Save size={16} />
               <span>Save Financial Details</span>

@@ -40,7 +40,7 @@ const FOSidebar = () => {
         aria-current={active ? "page" : undefined}
         className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
           active
-            ? "bg-green-500 text-white shadow-lg"
+            ? "bg-orange-500 text-white shadow-lg"
             : "text-gray-100 hover:bg-slate-800 hover:text-white"
         }`}
       >
