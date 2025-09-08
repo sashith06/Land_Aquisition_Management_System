@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Calendar, Eye } from 'lucide-react';
+import { FileText, Calendar, Eye } from 'lucide-react';
 import PlanProgressList from '../../components/PlanProgressList';
+import Breadcrumb from '../../components/Breadcrumb';
 import api from '../../api';
 
 export default function CEProjectPlans() {
@@ -51,18 +52,18 @@ export default function CEProjectPlans() {
     return (
       <div className="p-6">
         <div className="mb-6">
-          <Link 
-            to="/ce-dashboard" 
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to Dashboard
-          </Link>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", to: "/ce-dashboard" },
+              { label: projectName || "Project", to: `/ce-dashboard/project/${projectId}/plans` },
+              { label: "Plans" },
+            ]}
+          />
           <h1 className="text-2xl font-bold text-gray-900">
             {projectName ? `${projectName} - Plans` : 'Project Plans'}
           </h1>
         </div>
-        
+
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -76,13 +77,13 @@ export default function CEProjectPlans() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <Link 
-          to="/ce-dashboard" 
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Dashboard
-        </Link>
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", to: "/ce-dashboard" },
+            { label: projectName || "Project", to: `/ce-dashboard/project/${projectId}/plans` },
+            { label: "Plans" },
+          ]}
+        />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">

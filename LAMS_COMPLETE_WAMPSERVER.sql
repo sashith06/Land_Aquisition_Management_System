@@ -35,28 +35,62 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
--- TABLE: projects
+-- TABLE: projects (Enhanced with complete form fields)
 -- ================================================
 DROP TABLE IF EXISTS `projects`;
 CREATE TABLE `projects` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `description` text,
-  `status` enum('pending','approved','in_progress','completed','on_hold') DEFAULT 'pending',
+  `status` enum('pending','approved','in_progress','completed','on_hold','rejected') DEFAULT 'pending',
   `created_by` int NOT NULL,
   `approved_by` int DEFAULT NULL,
+  `rejected_by` int DEFAULT NULL,
+  `rejection_reason` text DEFAULT NULL,
+  
+  -- Cost and Extent Information
   `initial_estimated_cost` decimal(15,2) DEFAULT NULL,
   `final_cost` decimal(15,2) DEFAULT NULL,
+  `initial_extent_ha` decimal(10,4) DEFAULT NULL,
+  `initial_extent_perch` decimal(10,4) DEFAULT NULL,
+  
+  -- Section 02 Information
+  `section_2_order` date DEFAULT NULL,
+  `section_2_com` date DEFAULT NULL,
+  
+  -- Advance Tracing Information
+  `advance_tracing_no` varchar(100) DEFAULT NULL,
+  `advance_tracing_date` date DEFAULT NULL,
+  
+  -- Section 05 Gazette Information
+  `section_5_no` varchar(100) DEFAULT NULL,
+  `section_5_no_date` date DEFAULT NULL,
+  
+  -- Type of Acquisition
+  `compensation_type` enum('regulation','larc','special') DEFAULT 'regulation',
+  
+  -- Additional Notes
+  `notes` text DEFAULT NULL,
+  
+  -- Project Timeline
   `start_date` date DEFAULT NULL,
   `expected_completion_date` date DEFAULT NULL,
   `actual_completion_date` date DEFAULT NULL,
+  
+  -- Timestamps
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `rejected_at` timestamp NULL DEFAULT NULL,
+  
   PRIMARY KEY (`id`),
   KEY `created_by` (`created_by`),
   KEY `approved_by` (`approved_by`),
+  KEY `rejected_by` (`rejected_by`),
+  KEY `status` (`status`),
   CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
-  CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+  CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `projects_ibfk_3` FOREIGN KEY (`rejected_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
@@ -72,7 +106,7 @@ CREATE TABLE `plans` (
   `total_extent` decimal(10,4) DEFAULT NULL,
   `estimated_cost` decimal(15,2) DEFAULT NULL,
   `estimated_extent` varchar(100) DEFAULT NULL,
-  `advance_trading_no` varchar(100) DEFAULT NULL,
+  `advance_tracing_no` varchar(100) DEFAULT NULL,
   `divisional_secretary` varchar(255) DEFAULT NULL,
   `current_extent_value` decimal(15,2) DEFAULT NULL,
   `section_07_gazette_no` varchar(100) DEFAULT NULL,
@@ -173,12 +207,72 @@ CREATE TABLE `messages` (
   `subject` varchar(255) NOT NULL,
   `message` text NOT NULL,
   `is_read` tinyint(1) DEFAULT '0',
+  `has_attachments` tinyint(1) DEFAULT '0',
+  `priority` enum('low','normal','high','urgent') DEFAULT 'normal',
+  `message_type` enum('general','project_related','official') DEFAULT 'general',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `sender_id` (`sender_id`),
   KEY `receiver_id` (`receiver_id`),
+  KEY `is_read` (`is_read`),
+  KEY `created_at` (`created_at`),
   CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`),
   CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: message_attachments (For documents/images in messages)
+-- ================================================
+DROP TABLE IF EXISTS `message_attachments`;
+CREATE TABLE `message_attachments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `message_id` int NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `original_filename` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `file_type` enum('image','document','pdf','other') DEFAULT 'other',
+  `upload_status` enum('uploading','completed','failed') DEFAULT 'completed',
+  `uploaded_by` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `message_id` (`message_id`),
+  KEY `uploaded_by` (`uploaded_by`),
+  KEY `file_type` (`file_type`),
+  CONSTRAINT `message_attachments_ibfk_1` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `message_attachments_ibfk_2` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: project_documents (For project-related document storage)
+-- ================================================
+DROP TABLE IF EXISTS `project_documents`;
+CREATE TABLE `project_documents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `document_type` enum('proposal','approval','gazette','plan','survey','legal','other') DEFAULT 'other',
+  `filename` varchar(255) NOT NULL,
+  `original_filename` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `file_type` enum('image','document','pdf','dwg','other') DEFAULT 'other',
+  `description` text DEFAULT NULL,
+  `upload_status` enum('uploading','completed','failed') DEFAULT 'completed',
+  `uploaded_by` int NOT NULL,
+  `is_public` tinyint(1) DEFAULT '0',
+  `version` int DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `project_id` (`project_id`),
+  KEY `uploaded_by` (`uploaded_by`),
+  KEY `document_type` (`document_type`),
+  KEY `file_type` (`file_type`),
+  CONSTRAINT `project_documents_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `project_documents_ibfk_2` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================

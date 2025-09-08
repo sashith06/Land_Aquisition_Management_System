@@ -51,7 +51,7 @@ exports.createProject = (req, res) => {
 // ================= UPDATE PROJECT =================
 exports.updateProject = (req, res) => {
   const { id } = req.params;
-  const projectData = req.body;
+  const requestData = req.body;
   const userId = req.user.id;
 
   // First check if project exists and user has permission to update
@@ -66,9 +66,32 @@ exports.updateProject = (req, res) => {
       return res.status(403).json({ error: "You can only update your own projects" });
     }
 
+    // Only update fields that exist in the database
+    const validFields = {
+      name: requestData.name,
+      description: requestData.description || requestData.notes, // Map notes to description
+      initial_estimated_cost: requestData.initial_estimated_cost,
+      start_date: requestData.start_date,
+      expected_completion_date: requestData.expected_completion_date
+    };
+
+    // Remove undefined values
+    const updateData = Object.fromEntries(
+      Object.entries(validFields).filter(([_, value]) => value !== undefined)
+    );
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
     // Update the project
-    Project.update(id, projectData, (err, result) => {
-      if (err) return res.status(500).json({ error: err });
+    Project.update(id, updateData, (err, result) => {
+      if (err) {
+        console.error('Error updating project:', err);
+        return res.status(500).json({ 
+          error: "Failed to update project. Please try again." 
+        });
+      }
       res.json({ message: "Project updated successfully" });
     });
   });
@@ -257,22 +280,55 @@ exports.deleteProject = (req, res) => {
   const projectId = req.params.id;
   const userId = req.user.id;
 
+  console.log(`Delete request for project ${projectId} by user ${userId}`);
+
   // First check if project exists and user has permission to delete
   Project.findById(projectId, (findErr, projectRows) => {
-    if (findErr) return res.status(500).json({ error: findErr });
-    if (projectRows.length === 0) return res.status(404).json({ error: "Project not found" });
+    if (findErr) {
+      console.error('Error finding project:', findErr);
+      return res.status(500).json({ error: "Database error while finding project" });
+    }
+    
+    if (projectRows.length === 0) {
+      console.log(`Project ${projectId} not found`);
+      return res.status(404).json({ error: "Project not found" });
+    }
     
     const project = projectRows[0];
+    console.log(`Found project: ${project.name}, created by: ${project.created_by}`);
     
     // Only allow project creator to delete their own projects
     if (project.created_by !== userId) {
+      console.log(`Permission denied: User ${userId} trying to delete project created by ${project.created_by}`);
       return res.status(403).json({ error: "You can only delete your own projects" });
     }
 
-    // Delete the project (any status allowed)
-    Project.delete(projectId, (err) => {
-      if (err) return res.status(500).json({ error: err });
-      res.json({ message: "Project deleted successfully" });
+    console.log(`Attempting to delete project ${projectId}...`);
+
+    // Delete the project and all related records
+    Project.delete(projectId, (err, result) => {
+      if (err) {
+        console.error('Error deleting project:', err);
+        
+        // Provide more specific error messages
+        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+          return res.status(400).json({ 
+            error: "Cannot delete project because it has related records. Please contact system administrator." 
+          });
+        }
+        
+        if (err.message === 'Project not found') {
+          return res.status(404).json({ error: "Project not found" });
+        }
+        
+        return res.status(500).json({ 
+          error: "Failed to delete project. Please try again or contact support.",
+          details: err.message 
+        });
+      }
+      
+      console.log(`Project ${projectId} deleted successfully`);
+      res.json({ message: "Project and all related data deleted successfully" });
     });
   });
 };

@@ -20,7 +20,7 @@ const CreatePlan = () => {
     description: '',
     estimated_cost: '',
     estimated_extent: '',
-    advance_trading_no: '',
+    advance_tracing_no: '',
     divisional_secretary: '',
     current_extent_value: '',
     section_07_gazette_no: '',
@@ -33,6 +33,7 @@ const CreatePlan = () => {
 
   const [assignedProjects, setAssignedProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
   const [originalPlan, setOriginalPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -50,6 +51,8 @@ const CreatePlan = () => {
       if (project) {
         setSelectedProject(project);
         setFormData(prev => ({ ...prev, project_id: initialProjectId }));
+        // Load project details for advance tracing numbers
+        loadProjectDetails(initialProjectId);
       }
     }
   }, [initialProjectId, assignedProjects]);
@@ -60,6 +63,15 @@ const CreatePlan = () => {
       setAssignedProjects(response.data);
     } catch (error) {
       console.error('Error loading assigned projects:', error);
+    }
+  };
+
+  const loadProjectDetails = async (projectId) => {
+    try {
+      const response = await api.get(`/api/projects/${projectId}`);
+      setSelectedProjectDetails(response.data);
+    } catch (error) {
+      console.error('Error loading project details:', error);
     }
   };
 
@@ -76,7 +88,7 @@ const CreatePlan = () => {
         description: plan.description || '',
         estimated_cost: plan.estimated_cost || '',
         estimated_extent: plan.estimated_extent || '',
-        advance_trading_no: plan.advance_trading_no || '',
+        advance_tracing_no: plan.advance_tracing_no || '',
         divisional_secretary: plan.divisional_secretary || '',
         current_extent_value: plan.current_extent_value || '',
         section_07_gazette_no: plan.section_07_gazette_no || '',
@@ -121,6 +133,14 @@ const CreatePlan = () => {
     if (name === 'project_id') {
       const project = assignedProjects.find(p => p.id.toString() === value);
       setSelectedProject(project);
+      // Load project details for advance tracing numbers
+      if (value) {
+        loadProjectDetails(value);
+        // Clear advance_tracing_no when project changes
+        setFormData(prev => ({ ...prev, advance_tracing_no: '' }));
+      } else {
+        setSelectedProjectDetails(null);
+      }
     }
   };
 
@@ -199,7 +219,7 @@ const CreatePlan = () => {
       description: '',
       estimated_cost: '',
       estimated_extent: '',
-      advance_trading_no: '',
+      advance_tracing_no: '',
       divisional_secretary: '',
       current_extent_value: '',
       section_07_gazette_no: '',
@@ -243,13 +263,6 @@ const CreatePlan = () => {
               {isEditMode ? 'Update the plan details' : 'Create a new plan for your assigned project'}
             </p>
           </div>
-          <button
-            onClick={handleCancel}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Dashboard</span>
-          </button>
         </div>
       </div>
 
@@ -394,16 +407,35 @@ const CreatePlan = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Advance Trading No
+                  Advance Tracing No
                 </label>
-                <input
-                  type="text"
-                  name="advance_trading_no"
-                  value={formData.advance_trading_no}
-                  onChange={handleInputChange}
-                  placeholder="Enter advance trading number"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                />
+                {selectedProjectDetails?.advance_tracing_no ? (
+                  <select
+                    name="advance_tracing_no"
+                    value={formData.advance_tracing_no}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  >
+                    <option value="">Select Advance Tracing No</option>
+                    <option value={selectedProjectDetails.advance_tracing_no}>
+                      {selectedProjectDetails.advance_tracing_no}
+                    </option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    name="advance_tracing_no"
+                    value={formData.advance_tracing_no}
+                    onChange={handleInputChange}
+                    placeholder="Enter advance tracing number"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                  />
+                )}
+                {!selectedProjectDetails?.advance_tracing_no && formData.project_id && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    No advance tracing number found in selected project
+                  </p>
+                )}
               </div>
 
               <div>

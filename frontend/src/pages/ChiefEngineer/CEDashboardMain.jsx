@@ -24,35 +24,6 @@ const MainContent = ({ filteredProjects, onProjectSelect }) => (
       projects={filteredProjects}
       onSelect={onProjectSelect}
     />
-    
-    {/* Project Summary Stats */}
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">Project Overview</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">{filteredProjects.length}</div>
-          <div className="text-sm text-slate-600">Total Projects</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {filteredProjects.filter(p => p.progress >= 75).length}
-          </div>
-          <div className="text-sm text-slate-600">Near Completion</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-yellow-600">
-            {filteredProjects.filter(p => p.progress >= 25 && p.progress < 75).length}
-          </div>
-          <div className="text-sm text-slate-600">In Progress</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {filteredProjects.filter(p => p.progress < 25).length}
-          </div>
-          <div className="text-sm text-slate-600">Early Stage</div>
-        </div>
-      </div>
-    </div>
   </div>
 );
 

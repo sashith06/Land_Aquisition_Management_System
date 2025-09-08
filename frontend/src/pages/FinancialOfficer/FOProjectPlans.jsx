@@ -5,7 +5,7 @@ import PlanProgressList from '../../components/PlanProgressList';
 import Breadcrumb from '../../components/Breadcrumb';
 import api from '../../api';
 
-export default function PEProjectPlans() {
+export default function FOProjectPlans() {
   const { projectId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,8 +38,8 @@ export default function PEProjectPlans() {
   const handlePlanSelect = (plan) => {
     console.log('Plan selected for viewing:', plan);
     // Navigate to lots page for this plan
-    navigate(`/pe-dashboard/plan/${plan.id}/lots`, {
-      state: { 
+    navigate(`/fo-dashboard/plan/${plan.id}/lots`, {
+      state: {
         planId: plan.id,
         planNumber: plan.plan_number || plan.id,
         projectName: projectName,
@@ -54,8 +54,8 @@ export default function PEProjectPlans() {
         <div className="mb-6">
           <Breadcrumb
             items={[
-              { label: "Dashboard", to: "/pe-dashboard" },
-              { label: projectName || "Project", to: `/pe-dashboard/project/${projectId}/plans` },
+              { label: "Dashboard", to: "/fo-dashboard" },
+              { label: projectName || "Project", to: `/fo-dashboard/project/${projectId}/plans` },
               { label: "Plans" },
             ]}
           />
@@ -66,7 +66,7 @@ export default function PEProjectPlans() {
 
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading plans...</p>
           </div>
         </div>
@@ -79,8 +79,8 @@ export default function PEProjectPlans() {
       <div className="mb-6">
         <Breadcrumb
           items={[
-            { label: "Dashboard", to: "/pe-dashboard" },
-            { label: projectName || "Project", to: `/pe-dashboard/project/${projectId}/plans` },
+            { label: "Dashboard", to: "/fo-dashboard" },
+            { label: projectName || "Project", to: `/fo-dashboard/project/${projectId}/plans` },
             { label: "Plans" },
           ]}
         />
@@ -89,7 +89,7 @@ export default function PEProjectPlans() {
             <h1 className="text-2xl font-bold text-gray-900">
               {projectName ? `${projectName} - Plans` : 'Project Plans'}
             </h1>
-            <p className="text-gray-600 mt-1">View plans for this project</p>
+            <p className="text-gray-600 mt-1">View plans and financial details for this project</p>
           </div>
         </div>
       </div>
@@ -97,7 +97,7 @@ export default function PEProjectPlans() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-700">{error}</p>
-          <button 
+          <button
             onClick={loadPlans}
             className="mt-2 text-red-600 hover:text-red-800 font-medium"
           >
@@ -119,7 +119,7 @@ export default function PEProjectPlans() {
           plans={plans}
           onPlanSelect={handlePlanSelect}
           selectedPlan={selectedPlan}
-          showActions={false} // PE can view but not edit plans directly
+          showActions={false} // FO can view but not edit
         />
       )}
     </div>

@@ -217,15 +217,52 @@ Project.getStats = (callback) => {
 
 // ============ DELETE PROJECT ============
 Project.delete = (projectId, callback) => {
-  // First delete related notifications
-  const deleteNotificationsSql = `DELETE FROM notifications WHERE related_id = ? AND related_type = 'project'`;
+  // Simple approach: try to delete related records first, then the project
+  // If foreign key constraints fail, provide a clear error message
   
-  db.query(deleteNotificationsSql, [projectId], (notifErr) => {
-    if (notifErr) return callback(notifErr);
-    
-    // Then delete the project (plans will be deleted automatically due to CASCADE)
-    const deleteProjectSql = `DELETE FROM projects WHERE id = ?`;
-    db.query(deleteProjectSql, [projectId], callback);
+  const deleteProjectOnly = () => {
+    db.query('DELETE FROM projects WHERE id = ?', [projectId], (err, result) => {
+      if (err) {
+        console.error('Error deleting project:', err);
+        return callback(err);
+      }
+      
+      if (result.affectedRows === 0) {
+        return callback(new Error('Project not found'));
+      }
+      
+      callback(null, { message: 'Project deleted successfully' });
+    });
+  };
+  
+  // Try to delete related records first
+  const cleanupRelatedRecords = (finalCallback) => {
+    // Delete notifications
+    db.query('DELETE FROM notifications WHERE related_id = ? AND related_type = "project"', [projectId], (notifErr) => {
+      if (notifErr && notifErr.code !== 'ER_NO_SUCH_TABLE') {
+        console.error('Error deleting notifications:', notifErr);
+      }
+      
+      // Delete project assignments if table exists
+      db.query('DELETE FROM project_assignments WHERE project_id = ?', [projectId], (assignErr) => {
+        if (assignErr && assignErr.code !== 'ER_NO_SUCH_TABLE') {
+          console.error('Error deleting project assignments:', assignErr);
+        }
+        
+        // Delete plans (CASCADE should handle lots and lot_owners)
+        db.query('DELETE FROM plans WHERE project_id = ?', [projectId], (planErr) => {
+          if (planErr && planErr.code !== 'ER_NO_SUCH_TABLE') {
+            console.error('Error deleting plans:', planErr);
+          }
+          
+          finalCallback();
+        });
+      });
+    });
+  };
+  
+  cleanupRelatedRecords(() => {
+    deleteProjectOnly();
   });
 };
 

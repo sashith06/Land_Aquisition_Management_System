@@ -35,6 +35,7 @@ import PEProjectPlans from "../pages/ProjectEngineer/PEProjectPlans";
 
 import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
 import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
+import FOProjectPlans from "../pages/FinancialOfficer/FOProjectPlans";
 
 import LODashboardLayout from "../layouts/LODashboardLayout";
 import LODashboardMain from "../pages/LandOfficer/LODashboardMain";
@@ -114,6 +115,7 @@ export default function AppRoutes() {
         </FinancialOfficerRoute>
       }>
         <Route index element={<FODashboardMain />} />
+        <Route path="project/:projectId/plans" element={<FOProjectPlans />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="financial-details/:projectId" element={<FinancialDetails />} />

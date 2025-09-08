@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 import api from '../../api';
 
 const CreateProject = () => {
@@ -108,6 +109,14 @@ const CreateProject = () => {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", to: "/pe-dashboard" },
+          { label: "Create Project" },
+        ]}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -118,13 +127,6 @@ const CreateProject = () => {
             Fill in the project details and proposal information
           </p>
         </div>
-        <button
-          onClick={() => navigate('/pe-dashboard')}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Dashboard</span>
-        </button>
       </div>
 
       {error && (
@@ -238,29 +240,27 @@ const CreateProject = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Section 2 Order
+                  Section 2 Order Date
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   name="section_2_order"
                   value={formData.section_2_order}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Section 2 order details"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Section 2 Completion
+                  Section 2 Completion Date
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   name="section_2_com"
                   value={formData.section_2_com}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Section 2 completion details"
                 />
               </div>
 

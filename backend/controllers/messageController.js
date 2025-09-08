@@ -71,12 +71,19 @@ class MessageController {
   static createMessage = [
     upload.array('attachments', 5),
     async (req, res) => {
+      console.log('=== CREATE MESSAGE DEBUG ===');
+      console.log('Request body:', req.body);
+      console.log('Files:', req.files);
+      
       try {
         const { recipient_id, subject, content, priority, message_type, parent_message_id } = req.body;
         const sender_id = req.user.id;
 
+        console.log('Extracted data:', { sender_id, recipient_id, subject, content, priority });
+
         // Validate required fields
         if (!recipient_id || !subject || !content) {
+          console.log('Validation failed - missing fields');
           return res.status(400).json({
             success: false,
             message: 'Recipient, subject, and content are required'
@@ -93,8 +100,13 @@ class MessageController {
           parent_message_id: parent_message_id ? parseInt(parent_message_id) : null
         };
 
+        console.log('Message data prepared:', messageData);
+
         const attachments = req.files || [];
+        console.log('Attachments count:', attachments.length);
+
         const result = await MessageModel.create(messageData, attachments);
+        console.log('Message created successfully:', result);
 
         // Create notification for message recipient
         try {
@@ -130,6 +142,7 @@ class MessageController {
           console.error('Error creating notification:', notificationError);
         }
 
+        console.log('Response sent successfully');
         res.json({
           success: true,
           message: 'Message sent successfully',
@@ -138,7 +151,9 @@ class MessageController {
         });
 
       } catch (error) {
+        console.error('=== CREATE MESSAGE ERROR ===');
         console.error('Error creating message:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
           success: false,
           message: 'Error sending message',
@@ -350,6 +365,9 @@ class MessageController {
       const { messageId } = req.params;
       const userId = req.user.id;
 
+      console.log(`=== DELETE MESSAGE REQUEST ===`);
+      console.log(`Message ID: ${messageId}, User ID: ${userId}`);
+
       MessageModel.deleteMessage(parseInt(messageId), userId, (err, result) => {
         if (err) {
           console.error('Error deleting message:', err);
@@ -360,6 +378,7 @@ class MessageController {
           });
         }
 
+        console.log('Delete result:', result);
         res.json({
           success: true,
           message: 'Message deleted successfully'

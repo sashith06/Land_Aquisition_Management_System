@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calculator, Save, Edit, Plus, Search } from 'lucide-react';
+import { Calculator, Save, Edit, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 import { projectsData, plansData, lotsData } from '../../data/mockData';
 
 const LotValuationManagement = () => {
@@ -127,18 +128,18 @@ const LotValuationManagement = () => {
   if (!selectedProject) {
     return (
       <div className="p-6">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", to: "/fo-dashboard" },
+            { label: "Lot Valuation Management" },
+          ]}
+        />
+
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Lot Valuation Management</h1>
             <p className="text-gray-600 mt-1">Select a project to manage lot valuations</p>
           </div>
-          <button
-            onClick={() => navigate('/fo-dashboard')}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Dashboard</span>
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

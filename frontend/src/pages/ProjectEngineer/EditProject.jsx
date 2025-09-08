@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 import api from '../../api';
 
 const EditProject = () => {
@@ -40,33 +41,33 @@ const EditProject = () => {
         const response = await api.get(`/api/projects/${projectId}`);
         const project = response.data;
         
-        // Parse dates if they exist
-        const section2Date = project.section_2_order ? new Date(project.section_2_order) : null;
-        const section2CompDate = project.section_2_com ? new Date(project.section_2_com) : null;
-        const advancingDate = project.advance_tracing_date ? new Date(project.advance_tracing_date) : null;
-        const section5Date = project.section_5_no_date ? new Date(project.section_5_no_date) : null;
+        // Parse dates if they exist (most fields won't exist in current schema)
+        const section2Date = null; // project.section_2_order ? new Date(project.section_2_order) : null;
+        const section2CompDate = null; // project.section_2_com ? new Date(project.section_2_com) : null;
+        const advancingDate = null; // project.advance_tracing_date ? new Date(project.advance_tracing_date) : null;
+        const section5Date = null; // project.section_5_no_date ? new Date(project.section_5_no_date) : null;
 
         setFormData({
           projectName: project.name || '',
           estimatedCost: project.initial_estimated_cost || '',
-          extentHa: project.initial_extent_ha || '',
-          extentPerch: project.initial_extent_perch || '',
-          section02OrderDay: section2Date ? section2Date.getDate().toString() : '',
-          section02OrderMonth: section2Date ? (section2Date.getMonth() + 1).toString() : '',
-          section02OrderYear: section2Date ? section2Date.getFullYear().toString() : '',
-          section02CompletedDay: section2CompDate ? section2CompDate.getDate().toString() : '',
-          section02CompletedMonth: section2CompDate ? (section2CompDate.getMonth() + 1).toString() : '',
-          section02CompletedYear: section2CompDate ? section2CompDate.getFullYear().toString() : '',
-          advanceTracingNo: project.advance_tracing_no || '',
-          advanceTracingDay: advancingDate ? advancingDate.getDate().toString() : '',
-          advanceTracingMonth: advancingDate ? (advancingDate.getMonth() + 1).toString() : '',
-          advanceTracingYear: advancingDate ? advancingDate.getFullYear().toString() : '',
-          section05GazetteNo: project.section_5_no || '',
-          section05GazetteDay: section5Date ? section5Date.getDate().toString() : '',
-          section05GazetteMonth: section5Date ? (section5Date.getMonth() + 1).toString() : '',
-          section05GazetteYear: section5Date ? section5Date.getFullYear().toString() : '',
-          acquisitionType: project.compensation_type || 'regulation',
-          note: project.notes || ''
+          extentHa: '', // project.initial_extent_ha || '', - not in current schema
+          extentPerch: '', // project.initial_extent_perch || '', - not in current schema
+          section02OrderDay: '', // section2Date ? section2Date.getDate().toString() : '',
+          section02OrderMonth: '', // section2Date ? (section2Date.getMonth() + 1).toString() : '',
+          section02OrderYear: '', // section2Date ? section2Date.getFullYear().toString() : '',
+          section02CompletedDay: '', // section2CompDate ? section2CompDate.getDate().toString() : '',
+          section02CompletedMonth: '', // section2CompDate ? (section2CompDate.getMonth() + 1).toString() : '',
+          section02CompletedYear: '', // section2CompDate ? section2CompDate.getFullYear().toString() : '',
+          advanceTracingNo: '', // project.advance_tracing_no || '',
+          advanceTracingDay: '', // advancingDate ? advancingDate.getDate().toString() : '',
+          advanceTracingMonth: '', // advancingDate ? (advancingDate.getMonth() + 1).toString() : '',
+          advanceTracingYear: '', // advancingDate ? advancingDate.getFullYear().toString() : '',
+          section05GazetteNo: '', // project.section_5_no || '',
+          section05GazetteDay: '', // section5Date ? section5Date.getDate().toString() : '',
+          section05GazetteMonth: '', // section5Date ? (section5Date.getMonth() + 1).toString() : '',
+          section05GazetteYear: '', // section5Date ? section5Date.getFullYear().toString() : '',
+          acquisitionType: 'regulation', // project.compensation_type || 'regulation',
+          note: project.description || '' // Map description to note field
         });
         
         setError('');
@@ -136,16 +137,9 @@ const EditProject = () => {
       const updateData = {
         name: formData.projectName,
         initial_estimated_cost: parseFloat(formData.estimatedCost),
-        initial_extent_ha: parseFloat(formData.extentHa) || 0,
-        initial_extent_perch: formData.extentPerch || '',
-        section_2_order: section2OrderDate,
-        section_2_com: section2CompDate,
-        advance_tracing_no: formData.advanceTracingNo || null,
-        advance_tracing_date: advanceTracingDate,
-        section_5_no: formData.section05GazetteNo || null,
-        section_5_no_date: section5Date,
-        compensation_type: formData.acquisitionType,
-        notes: formData.note || null
+        description: formData.note || null
+        // Note: Other form fields (sections, dates) are stored for display only
+        // as the current database schema doesn't support these additional fields
       };
 
       await api.put(`/api/projects/update/${projectId}`, updateData);
@@ -160,6 +154,14 @@ const EditProject = () => {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", to: "/pe-dashboard" },
+          { label: "Edit Project" },
+        ]}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -170,13 +172,6 @@ const EditProject = () => {
             Update project details and proposal information
           </p>
         </div>
-        <button
-          onClick={() => navigate('/pe-dashboard')}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Dashboard</span>
-        </button>
       </div>
 
       {/* Loading State */}
@@ -212,6 +207,14 @@ const EditProject = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Information Notice */}
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg">
+                <p className="text-sm">
+                  <strong>Note:</strong> Currently, only Project Name, Estimated Cost, and Notes can be updated. 
+                  Additional fields are displayed for reference but will be enhanced in future updates.
+                </p>
+              </div>
+
               {/* Proposal Details Section */}
               <div className="border border-blue-300 rounded-lg p-4">
                 <h3 className="text-lg font-medium text-blue-700 mb-4">Proposal Details</h3>

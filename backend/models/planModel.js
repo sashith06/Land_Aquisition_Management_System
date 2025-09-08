@@ -15,7 +15,7 @@ Plan.create = (plan, userId, callback) => {
   const sql = `
     INSERT INTO plans 
     (project_id, plan_number, description, location, total_extent, status, created_by, 
-     estimated_cost, estimated_extent, advance_trading_no, divisional_secretary, 
+     estimated_cost, estimated_extent, advance_tracing_no, divisional_secretary, 
      current_extent_value, section_07_gazette_no, section_07_gazette_date, 
      section_38_gazette_no, section_38_gazette_date, section_5_gazette_no, pending_cost_estimate)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -31,7 +31,7 @@ Plan.create = (plan, userId, callback) => {
     userId,
     plan.estimated_cost || null,
     plan.estimated_extent || null,
-    plan.advance_trading_no || null,
+    plan.advance_tracing_no || null,
     plan.divisional_secretary || null,
     plan.current_extent_value || null,
     plan.section_07_gazette_no || null,
@@ -106,7 +106,7 @@ Plan.update = (id, plan, userId, callback) => {
   // Only allow updates from the plan creator - using actual database columns
   const allowedFields = [
     'plan_number', 'description', 'location', 'total_extent', 'status',
-    'estimated_cost', 'estimated_extent', 'advance_trading_no', 
+    'estimated_cost', 'estimated_extent', 'advance_tracing_no', 
     'divisional_secretary', 'current_extent_value', 'section_07_gazette_no',
     'section_07_gazette_date', 'section_38_gazette_no', 'section_38_gazette_date',
     'section_5_gazette_no', 'pending_cost_estimate'

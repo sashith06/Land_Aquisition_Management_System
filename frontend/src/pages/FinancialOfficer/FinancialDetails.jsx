@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, ArrowLeft, Save } from 'lucide-react';
+import { DollarSign, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 import { projectsData } from '../../data/mockData';
 
 const FinancialDetails = () => {
@@ -89,6 +90,14 @@ const FinancialDetails = () => {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb
+        items={[
+          { label: "Dashboard", to: "/fo-dashboard" },
+          { label: "Financial Details" },
+        ]}
+      />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -99,13 +108,6 @@ const FinancialDetails = () => {
             Manage financial information for {project.name}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/fo-dashboard')}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Dashboard</span>
-        </button>
       </div>
 
       {/* Financial Form */}

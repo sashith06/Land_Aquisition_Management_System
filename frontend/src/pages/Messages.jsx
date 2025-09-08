@@ -55,6 +55,12 @@ const Messages = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`http://localhost:5000/api/messages?type=${currentView}&limit=50`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -64,12 +70,18 @@ const Messages = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages);
+        if (data && data.messages) {
+          setMessages(data.messages || []);
+        } else {
+          setMessages([]);
+        }
       } else {
         console.error('Error loading messages:', response.statusText);
+        setMessages([]);
       }
     } catch (error) {
       console.error('Error loading messages:', error);
+      setMessages([]);
     }
     setLoading(false);
   };
@@ -77,6 +89,11 @@ const Messages = () => {
   const loadUsers = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
       const response = await fetch('http://localhost:5000/api/messages/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -86,16 +103,29 @@ const Messages = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.users);
+        if (data && data.users) {
+          setUsers(data.users || []);
+        } else {
+          setUsers([]);
+        }
+      } else {
+        console.error('Error loading users:', response.statusText);
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]);
     }
   };
 
   const loadUnreadCount = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
       const response = await fetch('http://localhost:5000/api/messages/unread-count', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -105,10 +135,18 @@ const Messages = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setUnreadCount(data.unreadCount);
+        if (data && typeof data.unreadCount === 'number') {
+          setUnreadCount(data.unreadCount);
+        } else {
+          setUnreadCount(0);
+        }
+      } else {
+        console.error('Error loading unread count:', response.statusText);
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Error loading unread count:', error);
+      setUnreadCount(0);
     }
   };
 
@@ -224,8 +262,29 @@ const Messages = () => {
         }
         
         setCurrentView('view');
-        loadUnreadCount();
-        loadMessages();
+        
+        // Explicitly mark as read if it's an unread message
+        if (!message.is_read && currentView === 'inbox') {
+          try {
+            const markReadResponse = await fetch(`http://localhost:5000/api/messages/${message.id}/read`, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (markReadResponse.ok) {
+              console.log('Message marked as read successfully');
+            }
+          } catch (markError) {
+            console.error('Error marking message as read:', markError);
+          }
+        }
+        
+        // Update unread count and message list
+        await loadUnreadCount();
+        await loadMessages();
       }
     } catch (error) {
       console.error('Error loading message:', error);
@@ -246,15 +305,62 @@ const Messages = () => {
         }
       });
 
+      const result = await response.json();
+
       if (response.ok) {
         alert('Message deleted successfully');
         loadMessages();
+        loadUnreadCount(); // Update unread count
         if (selectedMessage && selectedMessage.id === messageId) {
+          setSelectedMessage(null);
           setCurrentView('inbox');
         }
+      } else {
+        alert(`Error deleting message: ${result.message || 'Unknown error'}`);
+        console.error('Delete error:', result);
       }
     } catch (error) {
       console.error('Error deleting message:', error);
+      alert('Error deleting message. Please try again.');
+    }
+  };
+
+  const downloadAttachment = async (messageId, attachmentId, filename) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/messages/${messageId}/attachments/${attachmentId}/download`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Download failed');
+      }
+
+      // Create blob from response
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename;
+      
+      // Trigger download
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error('Download error:', error);
+      alert(`Download failed: ${error.message}`);
     }
   };
 
@@ -435,7 +541,7 @@ const Messages = () => {
                     </h4>
                     
                     <p className="text-gray-600 text-sm truncate mt-1">
-                      {message.content.substring(0, 100)}...
+                      {(message.content || message.message || '').substring(0, 100)}{(message.content || message.message || '').length > 100 ? '...' : ''}
                     </p>
                     
                     <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
@@ -688,14 +794,12 @@ const Messages = () => {
                               {formatFileSize(attachment.file_size)} • {attachment.file_type}
                             </p>
                           </div>
-                          <a
-                            href={`http://localhost:5000/api/messages/${selectedMessage.id}/attachments/${attachment.id}/download`}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => downloadAttachment(selectedMessage.id, attachment.id, attachment.original_filename)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
                           >
                             Download
-                          </a>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -704,7 +808,7 @@ const Messages = () => {
               </div>
 
               <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
-                {selectedMessage.content}
+                {selectedMessage.content || selectedMessage.message || 'No content available'}
               </div>
             </div>
 
@@ -729,7 +833,7 @@ const Messages = () => {
                         </span>
                       </div>
                       <div className="whitespace-pre-wrap text-gray-700">
-                        {message.content}
+                        {message.content || message.message || 'No content available'}
                       </div>
                     </div>
                   ))}

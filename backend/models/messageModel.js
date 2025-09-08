@@ -17,35 +17,68 @@ class MessageModel {
 
   // Create a new message
   static async create(messageData, attachments = []) {
-    const { sender_id, receiver_id, subject, message, priority, message_type, parent_message_id } = messageData;
+    console.log('=== MESSAGE MODEL CREATE DEBUG ===');
+    console.log('Message data received:', messageData);
+    
+    const { sender_id, recipient_id, subject, content, priority, message_type, parent_message_id } = messageData;
     
     const insertMessage = `
-      INSERT INTO messages (sender_id, receiver_id, subject, message, is_read)
-      VALUES (?, ?, ?, ?, 0)
+      INSERT INTO messages (sender_id, receiver_id, subject, message, is_read, priority, message_type)
+      VALUES (?, ?, ?, ?, 0, ?, ?)
     `;
 
     try {
       return new Promise((resolve, reject) => {
-        db.query(insertMessage, [
-          sender_id, receiver_id, subject, message
-        ], (err, result) => {
-          if (err) return reject(err);
+        const queryParams = [
+          sender_id, 
+          recipient_id,  // Maps to receiver_id in database
+          subject, 
+          content,       // Maps to message in database
+          priority || 'normal',
+          message_type || 'general'
+        ];
+        
+        console.log('SQL Query:', insertMessage);
+        console.log('Query params:', queryParams);
+        
+        db.query(insertMessage, queryParams, async (err, result) => {
+          if (err) {
+            console.error('Database error:', err);
+            return reject(err);
+          }
           
+          console.log('Message inserted, ID:', result.insertId);
           const messageId = result.insertId;
+          
+          // Save attachments if any
+          if (attachments && attachments.length > 0) {
+            console.log('Saving attachments:', attachments.length);
+            try {
+              await MessageModel.saveAttachments(messageId, attachments, sender_id);
+              console.log('Attachments saved successfully');
+            } catch (attachErr) {
+              console.error('Error saving attachments:', attachErr);
+              return reject(attachErr);
+            }
+          }
+          
+          console.log('Message creation completed successfully');
           resolve({ messageId, insertId: messageId });
         });
       });
     } catch (error) {
-      console.error('Error creating message:', error);
+      console.error('Error in message creation:', error);
       throw error;
     }
   }
 
   // Save attachments for a message
-  static async saveAttachments(messageId, attachments) {
+  static async saveAttachments(messageId, attachments, uploadedBy) {
+    if (!attachments || attachments.length === 0) return;
+    
     const insertAttachment = `
-      INSERT INTO message_attachments (message_id, filename, original_filename, file_path, file_size, mime_type, file_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO message_attachments (message_id, filename, original_filename, file_path, file_size, mime_type, file_type, uploaded_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     for (const attachment of attachments) {
@@ -59,7 +92,8 @@ class MessageModel {
           attachment.path,
           attachment.size,
           attachment.mimetype,
-          fileType
+          fileType,
+          uploadedBy
         ], (err) => err ? reject(err) : resolve());
       });
     }
@@ -100,6 +134,23 @@ class MessageModel {
         FROM messages m
         JOIN users r ON m.receiver_id = r.id
         WHERE m.sender_id = ?
+        ORDER BY m.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      params = [userId, limit, offset];
+    } else if (type === 'compose') {
+      // For compose type, return empty array since it's just for the compose interface
+      return callback(null, []);
+    } else {
+      // Default to inbox if unknown type
+      query = `
+        SELECT m.*, 
+               s.first_name as sender_first_name, 
+               s.last_name as sender_last_name,
+               s.email as sender_email
+        FROM messages m
+        JOIN users s ON m.sender_id = s.id
+        WHERE m.receiver_id = ?
         ORDER BY m.created_at DESC
         LIMIT ? OFFSET ?
       `;
@@ -147,24 +198,50 @@ class MessageModel {
 
   // Mark message as read
   static markAsRead(messageId, userId, callback) {
+    console.log(`=== MARK AS READ ===`);
+    console.log(`Message ID: ${messageId}, User ID: ${userId}`);
+    
     const query = `
       UPDATE messages 
       SET is_read = 1 
       WHERE id = ? AND receiver_id = ?
     `;
 
-    db.query(query, [messageId, userId], callback);
+    db.query(query, [messageId, userId], (err, result) => {
+      if (err) {
+        console.error('Error marking message as read:', err);
+        return callback(err);
+      }
+      
+      console.log('Mark as read result:', result);
+      console.log('Affected rows:', result.affectedRows);
+      
+      callback(err, result);
+    });
   }
 
   // Get unread message count
   static getUnreadCount(userId, callback) {
+    console.log(`=== GET UNREAD COUNT ===`);
+    console.log(`User ID: ${userId}`);
+    
     const query = `
       SELECT COUNT(*) as count 
       FROM messages 
       WHERE receiver_id = ? AND is_read = 0
     `;
 
-    db.query(query, [userId], callback);
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error('Error getting unread count:', err);
+        return callback(err);
+      }
+      
+      const count = results[0].count;
+      console.log('Unread count result:', count);
+      
+      callback(err, results);
+    });
   }
 
   // Get message thread (simplified - no threading in current schema)
@@ -173,24 +250,94 @@ class MessageModel {
     this.getMessageById(parentMessageId, userId, callback);
   }
 
-  // Delete message (soft delete) - simplified since we don't have delete flags in schema
+  // Delete message - hard delete with cascading attachment deletion
   static deleteMessage(messageId, userId, callback) {
-    // For now, just verify the user has permission to delete
+    console.log(`=== DELETE MESSAGE MODEL ===`);
+    console.log(`Message ID: ${messageId}, User ID: ${userId}`);
+    
+    // First, verify the user has permission to delete
     const checkQuery = `SELECT sender_id, receiver_id FROM messages WHERE id = ?`;
     
     db.query(checkQuery, [messageId], (err, messages) => {
-      if (err) return callback(err);
-      if (messages.length === 0) return callback(new Error('Message not found'));
+      if (err) {
+        console.error('Error checking message permissions:', err);
+        return callback(err);
+      }
+      if (messages.length === 0) {
+        console.log('Message not found');
+        return callback(new Error('Message not found'));
+      }
 
       const message = messages[0];
+      console.log('Message found:', message);
       
       if (message.sender_id !== userId && message.receiver_id !== userId) {
+        console.log('Unauthorized delete attempt');
         return callback(new Error('Unauthorized to delete this message'));
       }
 
-      // For now, we'll just return success without actually deleting
-      // In a full implementation, you might want to add delete flags to the schema
-      callback(null, { message: 'Message marked for deletion' });
+      // Start transaction to delete message and its attachments
+      console.log('Starting delete transaction...');
+      db.beginTransaction((err) => {
+        if (err) {
+          console.error('Error starting transaction:', err);
+          return callback(err);
+        }
+
+        // First delete attachments
+        const deleteAttachmentsQuery = `DELETE FROM message_attachments WHERE message_id = ?`;
+        console.log('Deleting attachments...');
+        
+        db.query(deleteAttachmentsQuery, [messageId], (err, attachmentResult) => {
+          if (err) {
+            console.error('Error deleting attachments:', err);
+            return db.rollback(() => {
+              callback(err);
+            });
+          }
+
+          console.log('Attachments deleted:', attachmentResult.affectedRows);
+
+          // Then delete the message
+          const deleteMessageQuery = `DELETE FROM messages WHERE id = ?`;
+          console.log('Deleting message...');
+          
+          db.query(deleteMessageQuery, [messageId], (err, result) => {
+            if (err) {
+              console.error('Error deleting message:', err);
+              return db.rollback(() => {
+                callback(err);
+              });
+            }
+
+            console.log('Message delete result:', result);
+
+            if (result.affectedRows === 0) {
+              console.log('No message was deleted (affectedRows = 0)');
+              return db.rollback(() => {
+                callback(new Error('Message not found or already deleted'));
+              });
+            }
+
+            // Commit transaction
+            db.commit((err) => {
+              if (err) {
+                console.error('Error committing transaction:', err);
+                return db.rollback(() => {
+                  callback(err);
+                });
+              }
+              
+              console.log('Transaction committed successfully');
+              callback(null, { 
+                success: true, 
+                message: 'Message and attachments deleted successfully',
+                affectedRows: result.affectedRows 
+              });
+            });
+          });
+        });
+      });
     });
   }
 
