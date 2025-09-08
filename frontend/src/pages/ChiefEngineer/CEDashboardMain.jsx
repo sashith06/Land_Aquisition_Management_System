@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { plansData, projectsData } from '../../data/mockData';
+import api from '../../api';
+import { plansData } from '../../data/mockData';
 import PlanList from '../../components/PlanList';
 import ProjectList from '../../components/ProjectList';
 import ProjectDetails from '../../components/ProjectDetails';
@@ -105,12 +106,26 @@ const CEDashboardMain = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [allProjects, setAllProjects] = useState(projectsData);
+  const [allProjects, setAllProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load approved projects from localStorage
+  // Load approved projects from API
   useEffect(() => {
-    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-    setAllProjects([...projectsData, ...savedProjects]);
+    const loadApprovedProjects = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/api/projects/approved');
+        setAllProjects(response.data);
+      } catch (error) {
+        console.error('Error loading approved projects:', error);
+        // Fallback to empty array on error
+        setAllProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadApprovedProjects();
   }, []);
 
   // Handle navigation state when returning from lots page
@@ -171,30 +186,41 @@ const CEDashboardMain = () => {
   return (
     <div className="space-y-6">
       <CEDashboardHeader />
-      {/* Dashboard Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 sm:gap-8">
-        {/* Main Content Area */}
-        <div className="xl:col-span-3 order-2 xl:order-1">
-          <MainContent
-            filteredProjects={filteredProjects}
-            filteredPlans={filteredPlans}
-            selectedProject={selectedProject}
-            selectedPlan={selectedPlan}
-            onProjectSelect={handleProjectSelect}
-            onPlanSelect={handlePlanSelect}
-            onBackToProjects={handleBackToProjects}
-          />
+      
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading projects...</p>
+          </div>
         </div>
-        {/* Right Sidebar */}
-        <div className="xl:col-span-1 order-1 xl:order-2">
-          <CEDashboardSidebar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            selectedProject={selectedProject}
-            selectedPlan={selectedPlan}
-          />
+      ) : (
+        /* Dashboard Content Grid */
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 sm:gap-8">
+          {/* Main Content Area */}
+          <div className="xl:col-span-3 order-2 xl:order-1">
+            <MainContent
+              filteredProjects={filteredProjects}
+              filteredPlans={filteredPlans}
+              selectedProject={selectedProject}
+              selectedPlan={selectedPlan}
+              onProjectSelect={handleProjectSelect}
+              onPlanSelect={handlePlanSelect}
+              onBackToProjects={handleBackToProjects}
+            />
+          </div>
+          {/* Right Sidebar */}
+          <div className="xl:col-span-1 order-1 xl:order-2">
+            <CEDashboardSidebar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              selectedProject={selectedProject}
+              selectedPlan={selectedPlan}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

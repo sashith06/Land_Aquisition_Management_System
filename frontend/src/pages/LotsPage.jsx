@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { lotsData as initialLots } from "../data/mockData";
+import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
-import ValuationDetails from "../components/ValuationDetails";
+import ValuationDetails from "../components/LotValuationDetails";
 import CompensationDetailsTab from "../components/CompensationDetailsTab";
+import LandDetailsForm from "../components/LandDetailsForm";
 
 const tabs = [
   "Owner Details",
@@ -20,13 +21,17 @@ const LotsPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("Owner Details");
   const [search, setSearch] = useState("");
-  const [lotsData, setLotsData] = useState(initialLots);
+  const [lotsData, setLotsData] = useState([]);
   const [selectedLot, setSelectedLot] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [ownerFields, setOwnerFields] = useState([{ name: '', nic: '', mobile: '', address: '' }]);
   const [lotNumber, setLotNumber] = useState("");
   const [lotStatus, setLotStatus] = useState("active");
   const [deletedLot, setDeletedLot] = useState(null);
+  const [planData, setPlanData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [landDetails, setLandDetails] = useState(null);
+  const [landDetailsLoading, setLandDetailsLoading] = useState(false);
 
   const [modalPosition, setModalPosition] = useState({ x: 100, y: 100 });
   const [dragging, setDragging] = useState(false);
@@ -44,12 +49,108 @@ const LotsPage = () => {
 
   const userRole = getCurrentUserRole();
 
+  // Fetch plan data
+  useEffect(() => {
+    const fetchPlanData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/api/plans/${planId}`);
+        setPlanData(response.data);
+      } catch (error) {
+        console.error('Error fetching plan data:', error);
+        // If plan not found, we'll still show the planId as fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (planId) {
+      fetchPlanData();
+    }
+  }, [planId]);
+
+  // Fetch lots data for the plan
+  useEffect(() => {
+    const fetchLotsData = async () => {
+      try {
+        const response = await api.get(`/api/lots/plan/${planId}`);
+        console.log('Raw API response:', response.data); // Debug log
+        
+        // Transform backend data to match frontend format
+        const transformedLots = response.data.map(lot => ({
+          id: `L${String(lot.lot_no).padStart(3, '0')}`,
+          backend_id: lot.id, // Store backend ID for API calls
+          lot_no: lot.lot_no,
+          extent_ha: lot.extent_ha,
+          extent_perch: lot.extent_perch,
+          land_type: lot.land_type || 'Private',
+          status: 'active', // Default status
+          owners: lot.owners || [], // Use actual owner data from backend
+          created_by_name: lot.created_by_name || 'Unknown'
+        }));
+        
+        console.log('Transformed lots:', transformedLots); // Debug log
+        setLotsData(transformedLots);
+      } catch (error) {
+        console.error('Error fetching lots data:', error);
+        // Keep empty array as fallback
+        setLotsData([]);
+      }
+    };
+
+    if (planId) {
+      fetchLotsData();
+    }
+  }, [planId]);
+
   // Filter lots by search
   const filteredLots = lotsData.filter((lot) =>
     lot.id.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleLotClick = (lot) => setSelectedLot(lot);
+  const handleLotClick = (lot) => {
+    // Automatically select first owner if lot has owners
+    const lotWithSelectedOwner = lot.owners && lot.owners.length > 0 
+      ? { ...lot, selectedOwnerIdx: 0 } 
+      : lot;
+    setSelectedLot(lotWithSelectedOwner);
+    
+    // Load land details when lot is selected and Land Details tab is active
+    if (activeTab === "Land Details") {
+      loadLandDetails(lot.backend_id || lot.id);
+    }
+  };
+
+  // Load land details for selected lot
+  const loadLandDetails = async (lotId) => {
+    if (!lotId) return;
+    
+    try {
+      setLandDetailsLoading(true);
+      const response = await api.get(`/api/lots/${lotId}/land-details`);
+      setLandDetails(response.data);
+    } catch (error) {
+      if (error.response?.status !== 404) {
+        console.error('Error loading land details:', error);
+      }
+      // If no land details exist (404), that's fine - we'll show empty form
+      setLandDetails(null);
+    } finally {
+      setLandDetailsLoading(false);
+    }
+  };
+
+  // Load land details when Land Details tab is selected
+  useEffect(() => {
+    if (activeTab === "Land Details" && selectedLot) {
+      loadLandDetails(selectedLot.backend_id || selectedLot.id);
+    }
+  }, [activeTab, selectedLot]);
+
+  // Handle saving land details
+  const handleSaveLandDetails = (updatedLandDetails) => {
+    setLandDetails(updatedLandDetails);
+  };
 
   const handleBackToPlansProgress = () => {
     const currentPath = window.location.pathname;
@@ -125,26 +226,92 @@ const LotsPage = () => {
   }, [deletedLot]);
 
   // Create or Edit Lot
-  const handleSubmitLot = () => {
-    if (!lotNumber) return;
-
-    if (!selectedLot) {
-      // Create new
-      const newLot = { id: lotNumber, status: lotStatus, owners: ownerFields };
-      setLotsData([...lotsData, newLot]);
-      setSelectedLot(newLot);
-    } else {
-      // Edit existing
-      const updatedLots = lotsData.map((lot) =>
-        lot.id === selectedLot.id
-          ? { ...lot, id: lotNumber, status: lotStatus, owners: ownerFields }
-          : lot
-      );
-      setLotsData(updatedLots);
-      setSelectedLot({ id: lotNumber, status: lotStatus, owners: ownerFields });
+  const handleSubmitLot = async () => {
+    if (!lotNumber || lotNumber.trim() === '') {
+      alert('Please enter a lot number');
+      return;
     }
-    setShowCreateModal(false);
-    handleClearForm();
+
+    try {
+      console.log('Submitting lot with data:', { lotNumber, planId }); // Debug log
+      
+      if (!selectedLot) {
+        // Create new lot
+        // Create lot data including owners
+        const lotData = {
+          plan_id: planId,
+          lot_no: lotNumber, // This should be the lot number entered by user
+          extent_ha: 0, // Default value, can be updated later
+          extent_perch: 0, // Default value, can be updated later
+          land_type: 'Private',
+          status: 'active',
+          owners: ownerFields.filter(owner => owner.name.trim() && owner.nic.trim()) // Only include owners with at least name and NIC
+        };
+
+        console.log('Sending lot data to backend:', lotData); // Debug log
+
+        const response = await api.post('/api/lots/create', lotData);
+        
+        // Add the new lot to the local state
+        const newLot = {
+          id: `L${String(lotNumber).padStart(3, '0')}`,
+          backend_id: response.data.id, // Store the backend ID
+          lot_no: lotNumber,
+          extent_ha: 0,
+          extent_perch: 0,
+          land_type: 'Private',
+          status: 'active',
+          owners: ownerFields,
+          created_by_name: response.data.created_by_name || 'You'
+        };
+        
+        setLotsData([...lotsData, newLot]);
+        setSelectedLot(newLot);
+        alert('Lot created successfully!');
+      } else {
+        // Edit existing lot
+        const lotData = {
+          lot_no: parseInt(lotNumber) || lotNumber.replace(/^L/i, ''), // Remove 'L' prefix if present
+          extent_ha: selectedLot.extent_ha || 0,
+          extent_perch: selectedLot.extent_perch || 0,
+          land_type: selectedLot.land_type || 'Private',
+          status: lotStatus
+        };
+
+        await api.put(`/api/lots/${selectedLot.backend_id}`, lotData);
+        
+        // Update the local state
+        const updatedLots = lotsData.map((lot) =>
+          lot.id === selectedLot.id
+            ? { 
+                ...lot, 
+                id: `L${String(lotNumber).padStart(3, '0')}`,
+                lot_no: lotNumber,
+                status: lotStatus, 
+                owners: ownerFields 
+              }
+            : lot
+        );
+        setLotsData(updatedLots);
+        setSelectedLot({ 
+          ...selectedLot,
+          id: `L${String(lotNumber).padStart(3, '0')}`,
+          lot_no: lotNumber,
+          status: lotStatus, 
+          owners: ownerFields 
+        });
+        alert('Lot updated successfully!');
+      }
+      
+      setShowCreateModal(false);
+      handleClearForm();
+    } catch (error) {
+      console.error('Error saving lot:', error);
+      console.error('Error response:', error.response?.data); // Debug log
+      
+      const errorMessage = error.response?.data?.error || 'Error saving lot. Please try again.';
+      alert(errorMessage);
+    }
   };
 
   const handleEditLot = () => {
@@ -155,12 +322,29 @@ const LotsPage = () => {
     setShowCreateModal(true);
   };
 
-  const handleDeleteLot = () => {
+  const handleDeleteLot = async () => {
     if (!selectedLot) return;
-    setDeletedLot(selectedLot);
-    const updatedLots = lotsData.filter((lot) => lot.id !== selectedLot.id);
-    setLotsData(updatedLots);
-    setSelectedLot(null);
+    
+    if (!confirm('Are you sure you want to delete this lot? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Only call API if this lot has a backend_id (meaning it exists in database)
+      if (selectedLot.backend_id) {
+        await api.delete(`/api/lots/${selectedLot.backend_id}`);
+      }
+      
+      setDeletedLot(selectedLot);
+      const updatedLots = lotsData.filter((lot) => lot.id !== selectedLot.id);
+      setLotsData(updatedLots);
+      setSelectedLot(null);
+      
+      alert('Lot deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting lot:', error);
+      alert('Error deleting lot. Please try again.');
+    }
   };
 
   return (
@@ -169,11 +353,18 @@ const LotsPage = () => {
       <Breadcrumb
         items={[
           { label: "Plans & Progress", to: "#", onClick: handleBackToPlansProgress },
-          { label: `Lots for Plan ${planId}` }
+          { label: `Lots for Plan ${planData?.plan_number || planId}` }
         ]}
       />
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Lots for Plan {planId}
+        {loading ? (
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+            <span>Loading lots...</span>
+          </div>
+        ) : (
+          `Lots for Plan ${planData?.plan_number || planId}`
+        )}
       </h1>
 
       {/* Undo Deleted Lot */}
@@ -257,26 +448,36 @@ const LotsPage = () => {
                   <p className="mb-2"><span className="font-semibold">Status:</span> {selectedLot.status}</p>
                   <div className="flex flex-col items-start">
                     <span className="font-semibold mb-2">Owners:</span>
-                    <div className="flex gap-2 mb-4">
-                      {selectedLot.owners.map((owner, idx) => (
-                        <button
-                          key={idx}
-                          className={`px-3 py-1 rounded-lg font-semibold border border-slate-600 text-slate-700 bg-white hover:bg-slate-100 ${selectedLot.selectedOwnerIdx === idx ? 'bg-slate-200' : ''}`}
-                          onClick={() => setSelectedLot({ ...selectedLot, selectedOwnerIdx: idx })}
-                        >
-                          Owner {idx + 1}
-                        </button>
-                      ))}
-                    </div>
-                    {selectedLot.selectedOwnerIdx !== undefined && selectedLot.owners[selectedLot.selectedOwnerIdx] ? (
-                      <div className="bg-white p-4 rounded-lg border w-full mb-4">
-                        <p><span className="font-semibold">Name:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].name}</p>
-                        <p><span className="font-semibold">NIC:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].nic}</p>
-                        <p><span className="font-semibold">Mobile:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].mobile}</p>
-                        <p><span className="font-semibold">Address:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].address}</p>
-                      </div>
+                    
+                    {selectedLot.owners && selectedLot.owners.length > 0 ? (
+                      <>
+                        <div className="flex gap-2 mb-4">
+                          {selectedLot.owners.map((owner, idx) => (
+                            <button
+                              key={idx}
+                              className={`px-3 py-1 rounded-lg font-semibold border border-slate-600 text-slate-700 bg-white hover:bg-slate-100 ${selectedLot.selectedOwnerIdx === idx ? 'bg-slate-200' : ''}`}
+                              onClick={() => setSelectedLot({ ...selectedLot, selectedOwnerIdx: idx })}
+                            >
+                              Owner {idx + 1}
+                            </button>
+                          ))}
+                        </div>
+                        {selectedLot.selectedOwnerIdx !== undefined && selectedLot.owners[selectedLot.selectedOwnerIdx] ? (
+                          <div className="bg-white p-4 rounded-lg border w-full mb-4">
+                            <p><span className="font-semibold">Name:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].name}</p>
+                            <p><span className="font-semibold">NIC:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].nic}</p>
+                            <p><span className="font-semibold">Mobile:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].phone || selectedLot.owners[selectedLot.selectedOwnerIdx].mobile}</p>
+                            <p><span className="font-semibold">Address:</span> {selectedLot.owners[selectedLot.selectedOwnerIdx].address}</p>
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 mb-4">Select an owner to view details.</div>
+                        )}
+                      </>
                     ) : (
-                      <div className="text-gray-500 mb-4">Select an owner to view details.</div>
+                      <div className="text-gray-500 mb-4 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <p>No owners found for this lot.</p>
+                        <p className="text-sm mt-1">Owners may not have been added when the lot was created.</p>
+                      </div>
                     )}
                     {userRole !== 'Financial Officer' && (
                       <div className="flex gap-2 mt-4">
@@ -320,9 +521,34 @@ const LotsPage = () => {
             />
           )}
 
-          {(activeTab === "Land Details" || activeTab === "Inquiries") && (
+          {activeTab === "Land Details" && (
+            <div>
+              {selectedLot ? (
+                landDetailsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                      <span className="text-gray-600">Loading land details...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <LandDetailsForm
+                    lotId={selectedLot.backend_id || selectedLot.id}
+                    initialData={landDetails}
+                    onSave={handleSaveLandDetails}
+                  />
+                )
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <p>Please select a lot to view land details</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "Inquiries" && (
             <div className="text-center text-gray-500 py-8">
-              <p>{activeTab} will be shown here</p>
+              <p>Inquiries will be shown here</p>
               {selectedLot && <p className="mt-2">for Lot: {selectedLot.id}</p>}
             </div>
           )}

@@ -183,7 +183,7 @@ export const navigationItems = [
   { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   
   { path: '/dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
-  { path: '/dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
+  { path: '/dashboard/messages', label: 'Messages', icon: 'MessageSquare' },
   { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' }
 ];
 

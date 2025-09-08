@@ -2,13 +2,33 @@ const db = require("../config/db");
 
 const User = {};
 
-// Create new user
+// Create new user (only PE, LO, FO roles allowed - CE is reserved for admin@lams.gov.lk only)
 User.create = (user, callback) => {
+  // Restrict role creation to only PE, LO, FO (CE is reserved for the system administrator admin@lams.gov.lk)
+  if (!['PE', 'LO', 'FO'].includes(user.role)) {
+    return callback(new Error('Invalid role. Only PE, LO, and FO roles are allowed for registration. CE is reserved for the system administrator (admin@lams.gov.lk).'));
+  }
+  
   const sql = `
-    INSERT INTO users (first_name, last_name, email, role, password, status) 
-    VALUES (?, ?, ?, ?, ?, 'pending')
+    INSERT INTO users (username, first_name, last_name, email, role, password, status) 
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')
   `;
-  db.query(sql, [user.firstName, user.lastName, user.email, user.role, user.password], callback);
+  // Generate username from email (part before @) with fallback
+  let username = '';
+  if (user.email && user.email.includes('@')) {
+    username = user.email.split('@')[0];
+  }
+  
+  // If username is still empty, generate a random one
+  if (!username || username.trim() === '') {
+    username = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+  }
+  
+  // Ensure username is unique by adding timestamp if needed
+  username = username.toLowerCase().replace(/[^a-zA-Z0-9_]/g, '_');
+  
+  console.log('Creating user with username:', username, 'email:', user.email, 'role:', user.role);
+  db.query(sql, [username, user.firstName, user.lastName, user.email, user.role, user.password], callback);
 };
 
 // Find user by email
@@ -24,12 +44,12 @@ User.findById = (id, callback) => {
 
 // Approve user
 User.approve = (id, callback) => {
-  db.query("UPDATE users SET status='approved', approved_at=NOW() WHERE id = ?", [id], callback);
+  db.query("UPDATE users SET status='approved' WHERE id = ?", [id], callback);
 };
 
 // Reject user
 User.reject = (id, callback) => {
-  db.query("UPDATE users SET status='rejected', rejected_at=NOW() WHERE id = ?", [id], callback);
+  db.query("UPDATE users SET status='rejected' WHERE id = ?", [id], callback);
 };
 
 // Delete user
@@ -54,9 +74,9 @@ User.update = (id, userData, callback) => {
   db.query(sql, values, callback);
 };
 
-// Get pending users (excluding Chief Engineers)
+// Get pending users (only PE, LO, FO roles - exclude admin and CE)
 User.getPending = (callback) => {
-  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='pending' AND role != 'chief_engineer'", (err, rows) => {
+  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='pending' AND role IN ('PE', 'LO', 'FO')", (err, rows) => {
     if (err) return callback(err);
     // Add default fields for frontend compatibility
     rows = rows.map(u => ({
@@ -70,32 +90,39 @@ User.getPending = (callback) => {
   });
 };
 
-// Get approved users (excluding Chief Engineers)
+// Get pending users count (only PE, LO, FO roles)
+User.getPendingCount = (callback) => {
+  db.query("SELECT COUNT(*) as count FROM users WHERE status='pending' AND role IN ('PE', 'LO', 'FO')", (err, rows) => {
+    if (err) return callback(err);
+    callback(null, rows[0].count);
+  });
+};
+
+// Get approved users (only PE, LO, FO roles)
 User.getApproved = (callback) => {
-  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='approved' AND role != 'chief_engineer'", (err, rows) => {
+  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='approved' AND role IN ('PE', 'LO', 'FO')", (err, rows) => {
     if (err) return callback(err);
     rows = rows.map(u => ({
       ...u,
       name: u.name || (u.first_name + ' ' + u.last_name),
       avatar: u.avatar || '',
       department: u.department || '',
-      joinDate: u.approved_at ? u.approved_at.toISOString().split('T')[0] : '',
+      joinDate: u.updated_at ? u.updated_at.toISOString().split('T')[0] : '',
     }));
     callback(null, rows);
   });
 };
 
-// Get rejected users (excluding Chief Engineers)
+// Get rejected users (only PE, LO, FO roles)
 User.getRejected = (callback) => {
-  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='rejected' AND role != 'chief_engineer'", (err, rows) => {
+  db.query("SELECT *, CONCAT(first_name, ' ', last_name) AS name FROM users WHERE status='rejected' AND role IN ('PE', 'LO', 'FO')", (err, rows) => {
     if (err) return callback(err);
     rows = rows.map(u => ({
       ...u,
       name: u.name || (u.first_name + ' ' + u.last_name),
       avatar: u.avatar || '',
       department: u.department || '',
-      requestDate: u.created_at ? u.created_at.toISOString().split('T')[0] : '',
-      rejectionDate: u.rejected_at ? u.rejected_at.toISOString().split('T')[0] : '',
+      rejectedDate: u.updated_at ? u.updated_at.toISOString().split('T')[0] : '',
     }));
     callback(null, rows);
   });

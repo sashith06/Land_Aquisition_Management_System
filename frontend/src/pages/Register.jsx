@@ -22,10 +22,21 @@ const Register = () => {
     e.preventDefault();
     try {
       const res = await registerUser(form);
-      alert(res.data.message); // "Registration request sent. Wait for approval."
+      alert(res.data.message || "Registration request sent. Wait for approval.");
       navigate("/login"); // redirect to login after register
     } catch (err) {
-      alert(err.response?.data?.error || "Registration failed");
+      console.error('Registration error:', err);
+      let errorMessage = "Registration failed";
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -87,9 +98,9 @@ const Register = () => {
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">Select a role</option>
-                <option value="project_engineer">Project Engineer</option>
-                <option value="land_officer">Land Officer</option>
-                <option value="financial_officer">Financial Officer</option>
+                <option value="PE">Project Engineer</option>
+                <option value="LO">Land Officer</option>
+                <option value="FO">Financial Officer</option>
               </select>
             </div>
             <div>

@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, Building2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import api from "../../api";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
-import { plansData, projectsData } from "../../data/mockData";
+import { plansData } from "../../data/mockData";
 
 const PEDashboardMain = () => {
   const navigate = useNavigate();
@@ -13,19 +14,42 @@ const PEDashboardMain = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [allProjects, setAllProjects] = useState(projectsData);
+  const [allProjects, setAllProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load approved projects from localStorage
+  // Load only approved projects
   useEffect(() => {
-    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-    setAllProjects([...projectsData, ...savedProjects]);
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+        // Load only approved projects (not pending ones)
+        const response = await api.get('/api/projects/approved');
+        setAllProjects(response.data);
+      } catch (error) {
+        console.error('Error loading approved projects:', error);
+        setAllProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjects();
   }, []);
 
   // Refresh projects when coming back from edit (detect route change)
   useEffect(() => {
     const handleStorageChange = () => {
-      const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-      setAllProjects([...projectsData, ...savedProjects]);
+      // Reload only approved projects when needed
+      const loadProjects = async () => {
+        try {
+          const response = await api.get('/api/projects/approved');
+          setAllProjects(response.data);
+        } catch (error) {
+          console.error('Error refreshing projects:', error);
+        }
+      };
+      
+      loadProjects();
     };
 
     // Listen for storage changes and location changes
@@ -78,29 +102,39 @@ const PEDashboardMain = () => {
     navigate(`/pe-dashboard/edit-project/${project.id}`);
   };
 
-  const handleDeleteProject = (projectId) => {
-    // Remove project from localStorage
-    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-    const updatedProjects = savedProjects.filter(p => p.id !== projectId);
-    localStorage.setItem('projectsData', JSON.stringify(updatedProjects));
-    
-    // Update local state
-    setAllProjects(prev => prev.filter(p => p.id !== projectId));
-    
-    // If the deleted project was selected, clear selection
-    if (selectedProject?.id === projectId) {
-      setSelectedProject(null);
-      setSelectedPlan(null);
+  const handleDeleteProject = async (projectId) => {
+    try {
+      await api.delete(`/api/projects/delete/${projectId}`);
+      
+      // Update local state by removing the deleted project
+      setAllProjects(prev => prev.filter(p => p.id !== projectId));
+      
+      // If the deleted project was selected, clear selection
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
+        setSelectedPlan(null);
+      }
+      
+      alert('Project deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert(error.response?.data?.error || 'Failed to delete project. Please try again.');
     }
-    
-    alert('Project deleted successfully!');
   };
 
   return (
     <div className="p-6">
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-        {/* Left Column */}
-        <div className="xl:col-span-3 space-y-8">
+      {loading ? (
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading projects...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Left Column */}
+          <div className="xl:col-span-3 space-y-8">
           {!selectedProject ? (
             <>
               {/* Section Title and Create Button */}
@@ -118,14 +152,31 @@ const PEDashboardMain = () => {
               </div>
 
               {/* Project Cards */}
-              <ProjectList
-                projects={filteredProjects}
-                onSelect={setSelectedProject}
-                selectedProject={selectedProject}
-                showActions={true}
-                onEdit={handleEditProject}
-                onDelete={handleDeleteProject}
-              />
+              {filteredProjects.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                  <div className="mb-4">
+                    <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No approved projects yet</h3>
+                  <p className="text-gray-500 mb-6">Projects will appear here after being approved by the Chief Engineer.</p>
+                  <button
+                    onClick={() => navigate("/pe-dashboard/create-project")}
+                    className="inline-flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    <Plus size={20} />
+                    <span>Create Your First Project</span>
+                  </button>
+                </div>
+              ) : (
+                <ProjectList
+                  projects={filteredProjects}
+                  onSelect={setSelectedProject}
+                  selectedProject={selectedProject}
+                  showActions={true}
+                  onEdit={handleEditProject}
+                  onDelete={handleDeleteProject}
+                />
+              )}
             </>
           ) : (
             <>
@@ -166,6 +217,7 @@ const PEDashboardMain = () => {
           {selectedProject && <ProjectDetails project={selectedProject} />}
         </div>
       </div>
+      )}
     </div>
   );
 };

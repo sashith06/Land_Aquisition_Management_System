@@ -1,22 +1,41 @@
 import { Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useState } from 'react';
-import { userData } from '../data/mockData';
 import { logout } from '../utils/auth';
+import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin } from '../utils/userUtils';
 import Logo from './Logo';
+import NotificationDropdown from './NotificationDropdown';
+import useNotifications from '../hooks/useNotifications';
 
 const Navigation = () => {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  
+  // Get current user data from localStorage
+  const currentUser = getCurrentUser();
+  const userName = getCurrentUserFullName();
+  const userAvatar = getUserAvatar();
+  const isUserAdmin = isAdmin();
+  
+  // Use notifications hook for real-time updates
+  const { 
+    unreadCount, 
+    notifications, 
+    refreshCount, 
+    refreshNotifications 
+  } = useNotifications();
 
   // Dynamic breadcrumbs
   const pathnames = location.pathname.split('/').filter(Boolean);
 
   // Determine the correct profile path based on current location
+  // Remove profile option for Chief Engineer (admin)
   const getProfilePath = () => {
-    if (location.pathname.startsWith('/ce-dashboard')) {
-      return '/ce-dashboard/profile';
-    } else if (location.pathname.startsWith('/pe-dashboard')) {
+    if (isUserAdmin) {
+      return null; // No profile for Chief Engineer/Admin
+    }
+    
+    if (location.pathname.startsWith('/pe-dashboard')) {
       return '/pe-dashboard/profile';
     } else if (location.pathname.startsWith('/fo-dashboard')) {
       return '/fo-dashboard/profile';
@@ -29,6 +48,11 @@ const Navigation = () => {
       setOpen(false); // Close dropdown
       logout(); // Call logout function
     }
+  };
+
+  const handleNotificationsRefresh = () => {
+    refreshCount();
+    refreshNotifications();
   };
 
   return (
@@ -68,15 +92,12 @@ const Navigation = () => {
 
         {/* Right Side */}
         <div className="flex items-center space-x-4 relative">
-          {/* Notification Bell */}
-          <button className="relative p-2 text-gray-600 hover:text-gray-800">
-            <Bell size={20} />
-            {userData.notifications > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {userData.notifications}
-              </span>
-            )}
-          </button>
+          {/* Real-time Notification Bell */}
+          <NotificationDropdown
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onRefresh={handleNotificationsRefresh}
+          />
 
           {/* User Avatar + Dropdown */}
           <div className="relative">
@@ -85,8 +106,8 @@ const Navigation = () => {
               className="flex items-center space-x-2 focus:outline-none"
             >
               <img
-                src={userData.avatar}
-                alt={userData.name}
+                src={userAvatar}
+                alt={userName}
                 className="w-10 h-10 rounded-full border border-gray-300 object-cover"
               />
               <ChevronDown className="text-gray-500" size={16} />
@@ -94,14 +115,19 @@ const Navigation = () => {
 
             {open && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                <Link
-                  to={getProfilePath()}
-                  className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                  onClick={() => setOpen(false)}
-                >
-                  <span>View Profile</span>
-                </Link>
-                <hr className="border-gray-100" />
+                {/* Only show profile option if not admin */}
+                {!isUserAdmin && getProfilePath() && (
+                  <>
+                    <Link
+                      to={getProfilePath()}
+                      className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      onClick={() => setOpen(false)}
+                    >
+                      <span>View Profile</span>
+                    </Link>
+                    <hr className="border-gray-100" />
+                  </>
+                )}
                 <button
                   onClick={handleLogout}
                   className="flex items-center w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"

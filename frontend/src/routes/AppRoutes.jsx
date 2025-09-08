@@ -17,8 +17,6 @@ import Profile from "../pages/Profile";
 import Analysis from "../pages/Analysis";
 import Messages from "../pages/Messages";
 import Reports from "../pages/Reports";
-import Settings from "../pages/Settings";
-import Info from "../pages/Info";
 
 import MainLayout from "../layouts/MainLayout";
 import LandownerLogin from "../pages/Landowner/Landownerlogin"; 
@@ -34,6 +32,12 @@ import ProjectAssignment from "../pages/ProjectEngineer/ProjectAssignment";
 
 import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
 import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
+
+import LODashboardLayout from "../layouts/LODashboardLayout";
+import LODashboardMain from "../pages/LandOfficer/LODashboardMain";
+import CreatePlan from "../pages/LandOfficer/CreatePlan";
+import ProjectPlans from "../pages/LandOfficer/ProjectPlans";
+import AssignedProjects from "../pages/LandOfficer/AssignedProjects";
 
 import LotsPage from "../pages/LotsPage";
 import LotDetail from "../pages/LotDetail";
@@ -77,7 +81,7 @@ export default function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="user-management" element={<UserManagement />} />
         <Route path="project-requests" element={<ProjectRequests />} />
-        <Route path="profile" element={<Profile />} />
+        {/* No profile route for Chief Engineer (admin) */}
       </Route>
 
       {/* Project Engineer Dashboard Routes With PE Layout */}
@@ -114,6 +118,25 @@ export default function AppRoutes() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
+      {/* Land Officer Dashboard Routes With LO Layout */}
+      <Route path="/lo-dashboard" element={
+        <LandOfficerRoute>
+          <LODashboardLayout />
+        </LandOfficerRoute>
+      }>
+        <Route index element={<LODashboardMain />} />
+        <Route path="create-plan/:projectId" element={<CreatePlan />} />
+        <Route path="edit-plan/:id" element={<CreatePlan />} />
+        <Route path="project/:projectId/plans" element={<ProjectPlans />} />
+        <Route path="assigned-projects" element={<AssignedProjects />} />
+        <Route path="plan/:planId/lots" element={<LotsPage />} />
+        <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
+        <Route path="analysis" element={<Analysis />} />
+        <Route path="messages" element={<Messages />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
+
       {/* Land Officer Dashboard Routes With Shared Layout */}
       <Route path="/dashboard" element={
         <LandOfficerRoute>
@@ -121,6 +144,8 @@ export default function AppRoutes() {
         </LandOfficerRoute>
       }>
         <Route index element={<Dashboard />} />
+        <Route path="create-plan" element={<CreatePlan />} />
+        <Route path="edit-plan/:id" element={<CreatePlan />} />
         <Route path="plan/:id" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
@@ -128,8 +153,6 @@ export default function AppRoutes() {
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="info" element={<Info />} />
       </Route>
     </Routes>
   );

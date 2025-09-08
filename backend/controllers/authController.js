@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const User = require("../models/userModel");
+const Notification = require("../models/notificationModel");
 
 // ===================== EMAIL SETUP =====================
 const normalizedEmailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : undefined;
@@ -34,15 +35,41 @@ function generatePassword(length = 8) {
 // ===================== REGISTER =====================
 exports.register = async (req, res) => {
   const { firstName, lastName, email, role, password } = req.body;
+  console.log('Registration attempt:', { firstName, lastName, email, role });
+  
   if (!firstName || !lastName || !email || !role)
     return res.status(400).json({ error: "All fields are required" });
+
+  // Restrict registration to only PE, LO, FO roles (CE is reserved for admin@lams.gov.lk only)
+  if (!['PE', 'LO', 'FO'].includes(role)) {
+    return res.status(400).json({ 
+      error: "Invalid role. Only Project Engineer (PE), Land Officer (LO), and Financial Officer (FO) roles are allowed for registration. Chief Engineer (CE) is reserved for the system administrator (admin@lams.gov.lk)." 
+    });
+  }
 
   try {
     const plainPassword = password || generatePassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-    User.create({ firstName, lastName, email, role, password: hashedPassword }, (err) => {
-      if (err) return res.status(500).json({ error: err });
+    User.create({ firstName, lastName, email, role, password: hashedPassword }, (err, result) => {
+      if (err) {
+        console.error('User creation error:', err);
+        const errorMessage = err.message || err.sqlMessage || err.toString();
+        return res.status(500).json({ error: `Registration failed: ${errorMessage}` });
+      }
+
+      console.log('User created successfully with ID:', result.insertId);
+
+      // Create notification for Chief Engineer
+      Notification.createForChiefEngineer(
+        Notification.TYPES.USER_REGISTRATION,
+        'New User Registration',
+        `New user ${firstName} ${lastName} (${email}) has requested ${role} access.`,
+        result.insertId,
+        (notifErr) => {
+          if (notifErr) console.error("Error creating notification:", notifErr);
+        }
+      );
 
       // Notify Chief Engineer
       transporter.sendMail({
@@ -65,7 +92,8 @@ exports.register = async (req, res) => {
       res.json({ message: "Registration request sent. Wait for approval." });
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Registration controller error:', err);
+    res.status(500).json({ error: `Registration failed: ${err.message}` });
   }
 };
 
@@ -75,15 +103,15 @@ exports.login = (req, res) => {
   if (!email || !password)
     return res.status(400).json({ error: "Email and password required" });
 
-  // Fixed Chief Engineer login
+  // Fixed Chief Engineer login (CE = admin - only admin@lams.gov.lk allowed)
   if (email === "admin@lams.gov.lk" && password === "Admin@123") {
-    const token = jwt.sign({ id: "admin", role: "chief_engineer" }, "secretkey", { expiresIn: "1h" });
+    const token = jwt.sign({ id: 1, role: "chief_engineer", email: "admin@lams.gov.lk" }, "secretkey", { expiresIn: "1h" });
     return res.json({ 
       message: "Login successful", 
       token, 
       role: "chief_engineer",
       user: {
-        id: "admin",
+        id: 1,
         email: "admin@lams.gov.lk",
         role: "chief_engineer",
         firstName: "Chief",
@@ -97,21 +125,47 @@ exports.login = (req, res) => {
     if (rows.length === 0) return res.status(400).json({ error: "User not found" });
 
     const user = rows[0];
-    if (user.status !== "approved")
+    if (user.status !== 'approved')
       return res.status(403).json({ error: "Account not approved yet." });
+
+    // Special restriction: Only admin@lams.gov.lk can have CE (admin) privileges
+    if (user.role === 'CE' && user.email !== 'admin@lams.gov.lk') {
+      return res.status(403).json({ 
+        error: "Access denied. Only the system administrator (admin@lams.gov.lk) can access Chief Engineer privileges." 
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign({ id: user.id, role: user.role }, "secretkey", { expiresIn: "1h" });
+    // Map database roles to application roles
+    // Note: CE is the system admin role - only admin@lams.gov.lk is allowed
+    const roleMap = {
+      'CE': 'chief_engineer', // CE is the system admin role (only admin@lams.gov.lk)
+      'PE': 'project_engineer', 
+      'FO': 'financial_officer',
+      'LO': 'land_officer',
+      'admin': 'chief_engineer' // Legacy admin role also maps to chief_engineer
+    };
+
+    const appRole = roleMap[user.role] || user.role;
+
+    // Include email in JWT token for admin verification
+    const tokenPayload = { 
+      id: user.id, 
+      role: appRole, 
+      email: user.email 
+    };
+
+    const token = jwt.sign(tokenPayload, "secretkey", { expiresIn: "1h" });
     res.json({ 
       message: "Login successful", 
       token, 
-      role: user.role,
+      role: appRole,
       user: {
         id: user.id,
         email: user.email,
-        role: user.role,
+        role: appRole,
         firstName: user.first_name,
         lastName: user.last_name
       }
@@ -122,24 +176,53 @@ exports.login = (req, res) => {
 // ===================== APPROVE USER =====================
 exports.approveUser = (req, res) => {
   const { id } = req.params;
+  console.log("Attempting to approve user with ID:", id);
 
   User.approve(id, (err) => {
-    if (err) return res.status(500).json({ error: err });
+    if (err) {
+      console.error("Error approving user:", err);
+      return res.status(500).json({ error: err.message || err });
+    }
+    console.log("User approved successfully, fetching user details...");
 
     User.findById(id, (err, rows) => {
-      if (err) return res.status(500).json({ error: err });
-      if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+      if (err) {
+        console.error("Error finding user by ID:", err);
+        return res.status(500).json({ error: err.message || err });
+      }
+      if (rows.length === 0) {
+        console.log("User not found after approval");
+        return res.status(404).json({ error: "User not found" });
+      }
 
       const user = rows[0];
-      user.joinDate = user.approved_at ? user.approved_at.toISOString().split("T")[0] : null;
+      console.log("Found user:", user.email, "Role:", user.role);
+      user.joinDate = user.updated_at ? user.updated_at.toISOString().split("T")[0] : null;
 
+      // Create notification for the approved user
+      console.log("Creating notification for approved user...");
+      Notification.create({
+        user_id: user.id,
+        type: Notification.TYPES.USER_APPROVED,
+        title: 'Registration Approved',
+        message: 'Your registration has been approved. You can now login to the system.'
+      }, (notifErr) => {
+        if (notifErr) console.error("Error creating notification:", notifErr);
+        else console.log("Notification created successfully");
+      });
+
+      console.log("Sending approval email...");
       transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: user.email,
         subject: "Registration Approved",
         text: "You are successfully registered. You can now login.",
+      }, (emailErr) => {
+        if (emailErr) console.error("Error sending email:", emailErr);
+        else console.log("Approval email sent successfully");
       });
 
+      console.log("Sending success response...");
       res.json({ message: "User approved", user });
     });
   });
@@ -157,7 +240,17 @@ exports.rejectUser = (req, res) => {
       if (rows.length === 0) return res.status(404).json({ error: "User not found" });
 
       const user = rows[0];
-      user.rejectionDate = user.rejected_at ? user.rejected_at.toISOString().split("T")[0] : null;
+      user.rejectionDate = user.updated_at ? user.updated_at.toISOString().split("T")[0] : null;
+
+      // Create notification for the rejected user
+      Notification.create({
+        user_id: user.id,
+        type: Notification.TYPES.USER_REJECTED,
+        title: 'Registration Rejected',
+        message: 'Sorry, your registration request has been rejected. Please contact support for more information.'
+      }, (notifErr) => {
+        if (notifErr) console.error("Error creating notification:", notifErr);
+      });
 
       transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -222,6 +315,14 @@ exports.getRejectedUsers = (req, res) => {
   User.getRejected((err, rows) => {
     if (err) return res.status(500).json({ error: err });
     res.json(rows);
+  });
+};
+
+// ===================== GET PENDING USERS COUNT =====================
+exports.getPendingUsersCount = (req, res) => {
+  User.getPendingCount((err, count) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json({ count });
   });
 };
 

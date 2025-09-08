@@ -1,8 +1,9 @@
 import React from 'react';
-import { ArrowRight, TrendingUp, Users, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { TrendingUp, Users, MapPin } from 'lucide-react';
+import useStatistics from '../../hooks/useStatistics';
 
 const Hero = () => {
+  const { activeProjects, ongoingProjects, activeUsers, loading } = useStatistics();
   return (
     <section className="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 md:py-20 lg:py-28 overflow-hidden">
       {/* Background Pattern */}
@@ -37,7 +38,9 @@ const Hero = () => {
                     <TrendingUp size={24} className="text-white" />
                   </div>
                 </div>
-                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">20+</div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
+                  {loading ? '...' : `${activeProjects}+`}
+                </div>
                 <div className="text-sm md:text-base text-gray-600 font-medium">Active Projects</div>
               </div>
               <div className="text-center lg:text-left group">
@@ -46,7 +49,9 @@ const Hero = () => {
                     <MapPin size={24} className="text-white" />
                   </div>
                 </div>
-                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">10+</div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
+                  {loading ? '...' : `${ongoingProjects}+`}
+                </div>
                 <div className="text-sm md:text-base text-gray-600 font-medium">Ongoing Projects</div>
               </div>
               <div className="text-center lg:text-left group">
@@ -55,7 +60,9 @@ const Hero = () => {
                     <Users size={24} className="text-white" />
                   </div>
                 </div>
-                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">300+</div>
+                <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-1">
+                  {loading ? '...' : `${activeUsers}+`}
+                </div>
                 <div className="text-sm md:text-base text-gray-600 font-medium">Active Users</div>
               </div>
             </div>

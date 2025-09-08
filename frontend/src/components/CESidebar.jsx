@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   BarChart3,
@@ -7,16 +8,9 @@ import {
   Users,
   FolderPlus,
 } from "lucide-react";
-
-// Chief Engineer specific navigation items
-const ceNavigationItems = [
-  { path: '/ce-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { path: '/ce-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
-  { path: '/ce-dashboard/messages', label: 'Messages', icon: 'MessageSquare', badge: 3 },
-  { path: '/ce-dashboard/reports', label: 'Reports', icon: 'FileText' },
-  { path: '/ce-dashboard/user-management', label: 'User Management', icon: 'Users' },
-  { path: '/ce-dashboard/project-requests', label: 'Project Requests', icon: 'FolderPlus', badge: 5 },
-];
+import usePendingUsersCount from "../hooks/usePendingUsersCount";
+import usePendingProjectsCount from "../hooks/usePendingProjectsCount";
+import useMessageCount from "../hooks/useMessageCount";
 
 const iconMap = {
   LayoutDashboard,
@@ -29,6 +23,34 @@ const iconMap = {
 
 const CESidebar = () => {
   const location = useLocation();
+  const { count: pendingUsersCount } = usePendingUsersCount();
+  const { count: pendingProjectsCount } = usePendingProjectsCount();
+  const { unreadCount } = useMessageCount();
+
+  // Chief Engineer specific navigation items with dynamic pending counts
+  const ceNavigationItems = [
+    { path: '/ce-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+    { path: '/ce-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+    { 
+      path: '/ce-dashboard/messages', 
+      label: 'Messages', 
+      icon: 'MessageSquare',
+      badge: unreadCount > 0 ? unreadCount : null
+    },
+    { path: '/ce-dashboard/reports', label: 'Reports', icon: 'FileText' },
+    { 
+      path: '/ce-dashboard/user-management', 
+      label: 'User Management', 
+      icon: 'Users',
+      badge: pendingUsersCount > 0 ? pendingUsersCount : null
+    },
+    { 
+      path: '/ce-dashboard/project-requests', 
+      label: 'Project Requests', 
+      icon: 'FolderPlus', 
+      badge: pendingProjectsCount > 0 ? pendingProjectsCount : null
+    },
+  ];
 
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
@@ -41,21 +63,23 @@ const CESidebar = () => {
       <Link
         to={item.path}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
+        className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 group ${
           active
             ? "bg-orange-500 text-white shadow-lg"
             : "text-gray-100 hover:bg-slate-800 hover:text-white"
         }`}
       >
-        <div className="relative">
-          <IconComponent size={20} />
-          {item.badge && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {item.badge}
-            </span>
-          )}
+        <div className="flex items-center space-x-3">
+          <div className="relative">
+            <IconComponent size={20} />
+            {item.badge && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {item.badge}
+              </span>
+            )}
+          </div>
+          <span className="font-medium">{item.label}</span>
         </div>
-        <span className="font-medium">{item.label}</span>
       </Link>
     );
   };
@@ -64,8 +88,12 @@ const CESidebar = () => {
     <div className="bg-slate-900 text-white w-64 h-full flex flex-col">
       {/* Header */}
       <div className="px-4 py-6 border-b border-slate-700">
-        <h2 className="text-lg font-semibold text-white">Chief Engineer</h2>
-        <p className="text-sm text-gray-300">Control Panel</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Chief Engineer</h2>
+            <p className="text-sm text-gray-300">Control Panel</p>
+          </div>
+        </div>
       </div>
 
       {/* Main Navigation */}

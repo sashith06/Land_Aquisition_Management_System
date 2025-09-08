@@ -1,32 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent } from 'lucide-react';
+import { saveCompensation, getCompensation } from '../api';
 
 const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Officer' }) => {
   const [compensationData, setCompensationData] = useState({});
   const [editingOwner, setEditingOwner] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Get planId from URL if not provided
   const currentPlanId = planId || window.location.pathname.split('/')[3];
 
   // Check if user has permission to edit
-  const canEdit = userRole === 'Financial Officer';
+  const canEdit = userRole === 'Financial Officer' || userRole === 'FO';
 
-  // Load saved compensation data from localStorage
+  // Load compensation data from API
   useEffect(() => {
-    const saved = localStorage.getItem('ownerCompensationData');
-    if (saved) {
-      setCompensationData(JSON.parse(saved));
+    if (selectedLot && currentPlanId) {
+      loadCompensationData();
     }
+  }, [selectedLot, currentPlanId]);
+
+  const loadCompensationData = async () => {
+    if (!selectedLot || !currentPlanId) return;
     
-    const savedPayments = localStorage.getItem('ownerPaymentDetails');
-    if (savedPayments) {
-      setPaymentDetails(JSON.parse(savedPayments));
+    setIsLoading(true);
+    try {
+      // Use backend_id which is the actual database ID
+      let lotId = selectedLot.backend_id || selectedLot.id;
+      
+      // Ensure we have a numeric ID, not a formatted display ID
+      if (typeof lotId === 'string' && lotId.startsWith('L')) {
+        // Extract numeric part from formatted ID like "L001" -> "1"
+        lotId = parseInt(lotId.substring(1));
+      }
+      
+      console.log('Loading compensation for lot:', lotId, 'plan:', currentPlanId);
+      console.log('selectedLot object:', selectedLot);
+      console.log('selectedLot.backend_id:', selectedLot.backend_id, 'selectedLot.id:', selectedLot.id);
+      console.log('Final URL will be: /api/plans/' + currentPlanId + '/lots/' + lotId + '/compensation');
+      
+      const response = await getCompensation(currentPlanId, lotId);
+      if (response.data.success && response.data.data) {
+        const data = response.data.data;
+        
+        // Convert API data back to component format
+        const ownerData = data.owner_data || [];
+        const newCompensationData = {};
+        
+        ownerData.forEach(owner => {
+          const key = `${currentPlanId}_${lotId}_${owner.nic}`;
+          newCompensationData[key] = owner;
+        });
+        
+        setCompensationData(newCompensationData);
+        setPaymentDetails(data.compensation_payment || {});
+      }
+    } catch (error) {
+      console.error('Error loading compensation data:', error);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  };
 
   const handleEditCompensation = (owner) => {
-    const key = `${currentPlanId}_${selectedLot.id}_${owner.nic}`;
+    // Use backend_id for consistent key generation
+    const editLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${editLotId}_${owner.nic}`;
     const existing = compensationData[key] || {
       propertyValue: '',
       buildingValue: '',
@@ -53,35 +94,78 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
     setEditingOwner({ ...owner, compensation: existing });
   };
 
-  const handleSaveCompensation = () => {
+  const handleSaveCompensation = async () => {
     if (!editingOwner || !canEdit) return;
 
-    const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
-    const compensationInfo = editingOwner.compensation;
+    setIsSaving(true);
     
-    // Calculate total compensation
-    const total = [
-      'propertyValue', 'buildingValue', 'treeValue', 'cropsValue',
-      'disturbanceAllowance', 'solatiumPayment', 'additionalCompensation'
-    ].reduce((sum, field) => {
-      return sum + (parseFloat(compensationInfo[field]) || 0);
-    }, 0);
+    try {
+      // Use backend_id for consistent key generation
+      const actualLotId = selectedLot.backend_id || selectedLot.id;
+      const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
+      const compensationInfo = editingOwner.compensation;
+      
+      // Calculate total compensation
+      const total = [
+        'propertyValue', 'buildingValue', 'treeValue', 'cropsValue',
+        'disturbanceAllowance', 'solatiumPayment', 'additionalCompensation'
+      ].reduce((sum, field) => {
+        return sum + (parseFloat(compensationInfo[field]) || 0);
+      }, 0);
 
-    const updatedCompensation = {
-      ...compensationInfo,
-      totalCompensation: total.toString(),
-      lastUpdated: new Date().toISOString()
-    };
+      const updatedCompensation = {
+        ...compensationInfo,
+        totalCompensation: total.toString(),
+        lastUpdated: new Date().toISOString(),
+        nic: editingOwner.nic,
+        name: editingOwner.name,
+        compensation_amount: total
+      };
 
-    const newData = {
-      ...compensationData,
-      [key]: updatedCompensation
-    };
+      const newData = {
+        ...compensationData,
+        [key]: updatedCompensation
+      };
 
-    setCompensationData(newData);
-    localStorage.setItem('ownerCompensationData', JSON.stringify(newData));
-    localStorage.setItem('ownerPaymentDetails', JSON.stringify(paymentDetails));
-    setEditingOwner(null);
+      // Prepare data for API
+      const ownerDataArray = Object.values(newData);
+      const compensationPayload = {
+        owner_data: ownerDataArray,
+        compensation_payment: paymentDetails,
+        interest_payment: {},
+        interest_voucher: {},
+        account_division: {},
+        total_compensation: ownerDataArray.reduce((sum, owner) => sum + (parseFloat(owner.totalCompensation) || 0), 0)
+      };
+
+      // Use backend_id which is the actual database ID
+      let saveLotId = selectedLot.backend_id || selectedLot.id;
+      
+      // Ensure we have a numeric ID, not a formatted display ID
+      if (typeof saveLotId === 'string' && saveLotId.startsWith('L')) {
+        // Extract numeric part from formatted ID like "L001" -> "1"
+        saveLotId = parseInt(saveLotId.substring(1));
+      }
+      
+      console.log('Saving compensation for lot:', saveLotId, 'plan:', currentPlanId);
+
+      const response = await saveCompensation(currentPlanId, saveLotId, compensationPayload);
+      
+      if (response.data.success) {
+        setCompensationData(newData);
+        setEditingOwner(null);
+        alert('Compensation details saved successfully!');
+        // Reload data to get latest from server
+        await loadCompensationData();
+      } else {
+        alert('Error saving compensation details. Please try again.');
+      }
+    } catch (error) {
+      alert('Error saving compensation details. Please try again.');
+      console.error('Save error:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleInputChange = (field, value) => {
@@ -182,6 +266,17 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
         <p className="text-gray-500">
           Please select a lot from the left panel to manage owner-wise compensation details.
         </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-2"></div>
+          <p className="text-gray-500">Loading compensation data...</p>
+        </div>
       </div>
     );
   }
@@ -376,10 +471,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
                 </button>
                 <button
                   onClick={handleSaveCompensation}
-                  className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium"
+                  disabled={isSaving}
+                  className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium disabled:opacity-50"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Save
+                  {isSaving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

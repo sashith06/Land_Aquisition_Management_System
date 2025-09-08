@@ -13,6 +13,7 @@ import {
   deleteUser,
   updateUser
 } from '../../api.js';
+import usePendingUsersCount from '../../hooks/usePendingUsersCount.js';
 
 // Helper to safely format a date value (string or Date). Returns fallback or '-' when absent.
 const formatDate = (value, fallback = '-') => {
@@ -52,97 +53,149 @@ const UserTableHeader = ({ columns }) => (
 );
 
 // Approved user row
-const UserTableRow = ({ user, onEdit, onDelete, getRoleColor }) => (
-  <tr className="hover:bg-gray-50">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center">
-        <img className="h-10 w-10 rounded-full mr-3" src={user.avatar} alt={user.name} />
-        <div>
-          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-          <div className="text-sm text-gray-500">{user.email}</div>
+const UserTableRow = ({ user, onEdit, onDelete, getRoleColor }) => {
+  const formatRoleName = (role) => {
+    return role?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Role';
+  };
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full mr-3 bg-gray-300 flex items-center justify-center">
+            {user.avatar ? (
+              <img className="h-10 w-10 rounded-full" src={user.avatar} alt={user.name || 'User'} />
+            ) : (
+              <span className="text-gray-600 font-medium text-sm">
+                {(user.name || user.first_name || 'U').charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'}
+            </div>
+            <div className="text-sm text-gray-500">{user.email || 'No email'}</div>
+          </div>
         </div>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
-        {user.role}
-      </span>
-    </td>
-  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.approved_at, user.joinDate || '-')}</td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-      <div className="flex space-x-2">
-        <button
-          onClick={() => onDelete(user.id)}
-          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-          title="Delete User"
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
-    </td>
-  </tr>
-);
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
+          {formatRoleName(user.role)}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {formatDate(user.approved_at, user.joinDate || '-')}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => onDelete(user.id)}
+            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+            title="Delete User"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
 
 // Pending request row
-const PendingRequestRow = ({ request, onApprove, onReject, getRoleColor }) => (
-  <tr className="hover:bg-yellow-50">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center">
-        <img className="h-10 w-10 rounded-full mr-3" src={request.avatar} alt={request.name} />
-        <div>
-          <div className="text-sm font-medium text-gray-900">{request.name}</div>
-          <div className="text-sm text-gray-500">{request.email}</div>
+const PendingRequestRow = ({ request, onApprove, onReject, getRoleColor }) => {
+  const formatRoleName = (role) => {
+    return role?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Role';
+  };
+
+  return (
+    <tr className="hover:bg-yellow-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full mr-3 bg-gray-300 flex items-center justify-center">
+            {request.avatar ? (
+              <img className="h-10 w-10 rounded-full" src={request.avatar} alt={request.name || 'User'} />
+            ) : (
+              <span className="text-gray-600 font-medium text-sm">
+                {(request.name || request.first_name || 'U').charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {request.name || `${request.first_name || ''} ${request.last_name || ''}`.trim() || 'Unknown User'}
+            </div>
+            <div className="text-sm text-gray-500">{request.email || 'No email'}</div>
+          </div>
         </div>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(request.role)}`}>
-        {request.role}
-      </span>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.requestDate}</td>
-    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-      <div className="flex space-x-2">
-        <button
-          onClick={() => onApprove(request.id)}
-          className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 flex items-center space-x-1"
-        >
-          <CheckCircle size={14} />
-          <span>Approve</span>
-        </button>
-        <button
-          onClick={() => onReject(request.id)}
-          className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 flex items-center space-x-1"
-        >
-          <XCircle size={14} />
-          <span>Reject</span>
-        </button>
-      </div>
-    </td>
-  </tr>
-);
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(request.role)}`}>
+          {formatRoleName(request.role)}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{request.requestDate}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => onApprove(request.id)}
+            className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 flex items-center space-x-1"
+          >
+            <CheckCircle size={14} />
+            <span>Approve</span>
+          </button>
+          <button
+            onClick={() => onReject(request.id)}
+            className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 flex items-center space-x-1"
+          >
+            <XCircle size={14} />
+            <span>Reject</span>
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
 
 // Rejected user row
-const RejectedUserRow = ({ user, getRoleColor }) => (
-  <tr className="hover:bg-red-50">
-    <td className="px-6 py-4 whitespace-nowrap">
-      <div className="flex items-center">
-        <img className="h-10 w-10 rounded-full mr-3" src={user.avatar} alt={user.name} />
-        <div>
-          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-          <div className="text-sm text-gray-500">{user.email}</div>
+const RejectedUserRow = ({ user, getRoleColor }) => {
+  const formatRoleName = (role) => {
+    return role?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown Role';
+  };
+
+  return (
+    <tr className="hover:bg-red-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center">
+          <div className="h-10 w-10 rounded-full mr-3 bg-gray-300 flex items-center justify-center">
+            {user.avatar ? (
+              <img className="h-10 w-10 rounded-full" src={user.avatar} alt={user.name || 'User'} />
+            ) : (
+              <span className="text-gray-600 font-medium text-sm">
+                {(user.name || user.first_name || 'U').charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {user.name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'}
+            </div>
+            <div className="text-sm text-gray-500">{user.email || 'No email'}</div>
+          </div>
         </div>
-      </div>
-    </td>
-    <td className="px-6 py-4 whitespace-nowrap">
-      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
-        {user.role}
-      </span>
-    </td>
-  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.requestDate}</td>
-  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.rejected_at, user.rejectionDate || '-')}</td>
-  </tr>
-);
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(user.role)}`}>
+          {formatRoleName(user.role)}
+        </span>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.requestDate}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {formatDate(user.rejected_at, user.rejectionDate || '-')}
+      </td>
+    </tr>
+  );
+};
 
 // Search + filter component
 const SearchAndFilter = ({ searchTerm, onSearchChange, selectedRole, onRoleChange, roles, resultCount, activeTab }) => (
@@ -193,6 +246,9 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [activeTab, setActiveTab] = useState('approved');
+  
+  // Use the real-time count hook and get refresh function
+  const { count: pendingUsersCount, refresh: refreshCount } = usePendingUsersCount();
 
 
   // Fetch from backend
@@ -203,13 +259,22 @@ const UserManagement = () => {
         const pending = await getPendingUsers();
         const rejected = await getRejectedUsers();
 
+        console.log('API Response - Approved:', approved);
+        console.log('API Response - Pending:', pending);
+        console.log('API Response - Rejected:', rejected);
+
         // Filter out Chief Engineers from all lists since Chief Engineer is the admin
         const filterOutChiefEngineer = (users) => 
           users.filter(user => user.role !== 'chief_engineer');
 
-        setUsers(filterOutChiefEngineer(approved.data));
-        setPendingRequests(filterOutChiefEngineer(pending.data));
-        setRejectedUsers(filterOutChiefEngineer(rejected.data));
+        // Handle response data properly - check if data is nested under .data property
+        const approvedData = approved.data || approved;
+        const pendingData = pending.data || pending;
+        const rejectedData = rejected.data || rejected;
+
+        setUsers(filterOutChiefEngineer(approvedData));
+        setPendingRequests(filterOutChiefEngineer(pendingData));
+        setRejectedUsers(filterOutChiefEngineer(rejectedData));
       } catch (err) {
         console.error("Error fetching users:", err);
       }
@@ -240,6 +305,7 @@ const UserManagement = () => {
       'land_officer': 'bg-blue-100 text-blue-800',
       'project_engineer': 'bg-green-100 text-green-800',
       'financial_officer': 'bg-yellow-100 text-yellow-800',
+      'chief_engineer': 'bg-purple-100 text-purple-800',
     };
     return roleColors[role] || 'bg-gray-100 text-gray-800';
   };
@@ -252,12 +318,15 @@ const UserManagement = () => {
       const approvedUser = pendingRequests.find(r => r.id === requestId);
       setUsers([...users, { ...approvedUser, joinDate: new Date().toISOString().split("T")[0] }]);
       setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
+      refreshCount(); // Refresh the real-time count in sidebar
+      
+      // Trigger a notification refresh for all users (the approved user will get a notification)
+      window.dispatchEvent(new CustomEvent('notificationsUpdate'));
+      
       alert("User approved ✅");
     } catch (err) {
       alert("Failed to approve user");
     }
-
- 
   };
 
   const handleRejectUser = async (requestId) => {
@@ -266,6 +335,11 @@ const UserManagement = () => {
       const rejectedUser = pendingRequests.find(r => r.id === requestId);
       setRejectedUsers([...rejectedUsers, { ...rejectedUser, rejectionDate: new Date().toISOString().split("T")[0] }]);
       setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
+      refreshCount(); // Refresh the real-time count in sidebar
+      
+      // Trigger a notification refresh for all users (the rejected user will get a notification)
+      window.dispatchEvent(new CustomEvent('notificationsUpdate'));
+      
       alert("User rejected ❌");
     } catch (err) {
       alert("Failed to reject user");
@@ -323,7 +397,7 @@ const UserManagement = () => {
         </div>
         <div className="flex items-center space-x-3">
           <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-            {pendingRequests.length} Pending Approvals
+            {pendingUsersCount} Pending Approvals
           </div>
           <div className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
             {rejectedUsers.length} Rejected Users

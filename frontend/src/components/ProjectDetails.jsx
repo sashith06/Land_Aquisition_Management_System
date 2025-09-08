@@ -10,9 +10,12 @@ const ProjectDetails = ({ project }) => {
 
   const details = [
     { label: "Project Name", value: project.name },
-    { label: "Estimated Cost", value: project.estimatedCost },
-    { label: "Estimated Extent", value: project.estimatedExtent },
-    { label: "Project Date", value: project.projectDate },
+    { label: "Status", value: project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'N/A' },
+    { label: "Estimated Cost", value: project.initial_estimated_cost ? `Rs. ${parseFloat(project.initial_estimated_cost).toLocaleString()}` : 'N/A' },
+    { label: "Extent (Hectares)", value: project.initial_extent_ha ? `${project.initial_extent_ha} ha` : 'N/A' },
+    { label: "Extent (Perches)", value: project.initial_extent_perch ? `${project.initial_extent_perch} perches` : 'N/A' },
+    { label: "Created by", value: project.creator_name || 'Project Engineer' },
+    { label: "Created Date", value: project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A' },
   ];
 
   return (

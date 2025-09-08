@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import api from '../../api';
 
 const EditProject = () => {
   const navigate = useNavigate();
@@ -28,81 +29,132 @@ const EditProject = () => {
     note: ''
   });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   // Load project data when component mounts
   useEffect(() => {
-    const loadProject = () => {
-      // Get projects from localStorage
-      const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-      const project = savedProjects.find(p => p.id === projectId);
-      
-      if (project) {
+    const loadProject = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/api/projects/${projectId}`);
+        const project = response.data;
+        
+        // Parse dates if they exist
+        const section2Date = project.section_2_order ? new Date(project.section_2_order) : null;
+        const section2CompDate = project.section_2_com ? new Date(project.section_2_com) : null;
+        const advancingDate = project.advance_tracing_date ? new Date(project.advance_tracing_date) : null;
+        const section5Date = project.section_5_no_date ? new Date(project.section_5_no_date) : null;
+
         setFormData({
-          projectName: project.projectName || project.name || '',
-          estimatedCost: project.estimatedCost || '',
-          extentHa: project.extentHa || '',
-          extentPerch: project.extentPerch || '',
-          section02OrderDay: project.section02OrderDay || '',
-          section02OrderMonth: project.section02OrderMonth || '',
-          section02OrderYear: project.section02OrderYear || '',
-          section02CompletedDay: project.section02CompletedDay || '',
-          section02CompletedMonth: project.section02CompletedMonth || '',
-          section02CompletedYear: project.section02CompletedYear || '',
-          advanceTracingNo: project.advanceTracingNo || '',
-          advanceTracingDay: project.advanceTracingDay || '',
-          advanceTracingMonth: project.advanceTracingMonth || '',
-          advanceTracingYear: project.advanceTracingYear || '',
-          section05GazetteNo: project.section05GazetteNo || '',
-          section05GazetteDay: project.section05GazetteDay || '',
-          section05GazetteMonth: project.section05GazetteMonth || '',
-          section05GazetteYear: project.section05GazetteYear || '',
-          acquisitionType: project.acquisitionType || 'regulation',
-          note: project.note || ''
+          projectName: project.name || '',
+          estimatedCost: project.initial_estimated_cost || '',
+          extentHa: project.initial_extent_ha || '',
+          extentPerch: project.initial_extent_perch || '',
+          section02OrderDay: section2Date ? section2Date.getDate().toString() : '',
+          section02OrderMonth: section2Date ? (section2Date.getMonth() + 1).toString() : '',
+          section02OrderYear: section2Date ? section2Date.getFullYear().toString() : '',
+          section02CompletedDay: section2CompDate ? section2CompDate.getDate().toString() : '',
+          section02CompletedMonth: section2CompDate ? (section2CompDate.getMonth() + 1).toString() : '',
+          section02CompletedYear: section2CompDate ? section2CompDate.getFullYear().toString() : '',
+          advanceTracingNo: project.advance_tracing_no || '',
+          advanceTracingDay: advancingDate ? advancingDate.getDate().toString() : '',
+          advanceTracingMonth: advancingDate ? (advancingDate.getMonth() + 1).toString() : '',
+          advanceTracingYear: advancingDate ? advancingDate.getFullYear().toString() : '',
+          section05GazetteNo: project.section_5_no || '',
+          section05GazetteDay: section5Date ? section5Date.getDate().toString() : '',
+          section05GazetteMonth: section5Date ? (section5Date.getMonth() + 1).toString() : '',
+          section05GazetteYear: section5Date ? section5Date.getFullYear().toString() : '',
+          acquisitionType: project.compensation_type || 'regulation',
+          note: project.notes || ''
         });
-      } else {
-        alert('Project not found!');
-        navigate('/pe-dashboard');
+        
+        setError('');
+      } catch (err) {
+        console.error('Error loading project:', err);
+        setError('Failed to load project data');
+      } finally {
+        setLoading(false);
       }
     };
 
     if (projectId) {
       loadProject();
     }
-  }, [projectId, navigate]);
+  }, [projectId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Area conversion: 1 hectare = 395.37 perches (Sri Lankan standard)
+    if (name === 'extentHa' && value !== '') {
+      const hectares = parseFloat(value);
+      if (!isNaN(hectares)) {
+        const perches = (hectares * 395.37).toFixed(2);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          extentPerch: perches
+        }));
+        return;
+      }
+    }
+    
+    // Regular input handling
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.projectName && formData.estimatedCost) {
-      // Update project in localStorage
-      const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-      const projectIndex = savedProjects.findIndex(p => p.id === projectId);
-      
-      if (projectIndex !== -1) {
-        // Update the project while preserving original structure
-        const updatedProject = {
-          ...savedProjects[projectIndex],
-          ...formData,
-          name: formData.projectName, // Ensure name is updated for display
-          lastModified: new Date().toISOString()
-        };
-        
-        savedProjects[projectIndex] = updatedProject;
-        localStorage.setItem('projectsData', JSON.stringify(savedProjects));
-        
-        alert('Project updated successfully!');
-        navigate('/pe-dashboard');
-      } else {
-        alert('Error updating project. Project not found.');
-      }
-    } else {
+    
+    if (!formData.projectName || !formData.estimatedCost) {
       alert('Please fill in required fields (Project Name and Estimated Cost)');
+      return;
+    }
+
+    try {
+      // Create date objects from form data
+      const section2OrderDate = formData.section02OrderDay && formData.section02OrderMonth && formData.section02OrderYear 
+        ? new Date(formData.section02OrderYear, formData.section02OrderMonth - 1, formData.section02OrderDay)
+        : null;
+        
+      const section2CompDate = formData.section02CompletedDay && formData.section02CompletedMonth && formData.section02CompletedYear
+        ? new Date(formData.section02CompletedYear, formData.section02CompletedMonth - 1, formData.section02CompletedDay)
+        : null;
+        
+      const advanceTracingDate = formData.advanceTracingDay && formData.advanceTracingMonth && formData.advanceTracingYear
+        ? new Date(formData.advanceTracingYear, formData.advanceTracingMonth - 1, formData.advanceTracingDay)
+        : null;
+        
+      const section5Date = formData.section05GazetteDay && formData.section05GazetteMonth && formData.section05GazetteYear
+        ? new Date(formData.section05GazetteYear, formData.section05GazetteMonth - 1, formData.section05GazetteDay)
+        : null;
+
+      const updateData = {
+        name: formData.projectName,
+        initial_estimated_cost: parseFloat(formData.estimatedCost),
+        initial_extent_ha: parseFloat(formData.extentHa) || 0,
+        initial_extent_perch: formData.extentPerch || '',
+        section_2_order: section2OrderDate,
+        section_2_com: section2CompDate,
+        advance_tracing_no: formData.advanceTracingNo || null,
+        advance_tracing_date: advanceTracingDate,
+        section_5_no: formData.section05GazetteNo || null,
+        section_5_no_date: section5Date,
+        compensation_type: formData.acquisitionType,
+        notes: formData.note || null
+      };
+
+      await api.put(`/api/projects/update/${projectId}`, updateData);
+      
+      alert('Project updated successfully!');
+      navigate('/pe-dashboard');
+    } catch (error) {
+      console.error('Error updating project:', error);
+      alert(error.response?.data?.error || 'Failed to update project. Please try again.');
     }
   };
 
@@ -127,10 +179,29 @@ const EditProject = () => {
         </button>
       </div>
 
-      {/* Form */}
-      <div className="grid grid-cols-1 gap-6">
-        <div>
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+      {/* Loading State */}
+      {loading ? (
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading project...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <p>{error}</p>
+          <button 
+            onClick={() => navigate('/pe-dashboard')}
+            className="mt-2 text-red-600 underline"
+          >
+            Return to Dashboard
+          </button>
+        </div>
+      ) : (
+        /* Form */
+        <div className="grid grid-cols-1 gap-6">
+          <div>
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-slate-900">Project Information</h2>
               <div className="text-center text-sm text-slate-600">
@@ -191,14 +262,19 @@ const EditProject = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Initial Estimated extent (Perch)
+                      Initial Estimated extent (Perch) 
+                      {formData.extentHa && (
+                        <span className="text-blue-600 text-xs font-normal ml-1">(Auto-calculated from hectares)</span>
+                      )}
                     </label>
                     <input
                       type="number"
                       name="extentPerch"
                       value={formData.extentPerch}
                       onChange={handleInputChange}
-                      className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        formData.extentHa ? 'bg-blue-50 border-blue-300' : ''
+                      }`}
                       step="0.1"
                     />
                   </div>
@@ -443,6 +519,7 @@ const EditProject = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

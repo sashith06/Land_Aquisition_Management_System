@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import api from "../../api";
 import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
-import { plansData, projectsData } from "../../data/mockData";
+import { plansData } from "../../data/mockData";
 
 const FODashboardMain = () => {
   const navigate = useNavigate();
@@ -13,12 +14,25 @@ const FODashboardMain = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [allProjects, setAllProjects] = useState(projectsData);
+  const [allProjects, setAllProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Load approved projects from localStorage
+  // Load approved projects from API
   useEffect(() => {
-    const savedProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-    setAllProjects([...projectsData, ...savedProjects]);
+    const loadApprovedProjects = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/api/projects/approved');
+        setAllProjects(response.data);
+      } catch (error) {
+        console.error('Error loading approved projects:', error);
+        setAllProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadApprovedProjects();
   }, []);
 
   // Handle navigation state when returning from lots page
@@ -60,9 +74,17 @@ const FODashboardMain = () => {
 
   return (
     <div className="p-6">
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-        {/* Left Column */}
-        <div className="xl:col-span-3 space-y-8">
+      {loading ? (
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading projects...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Left Column */}
+          <div className="xl:col-span-3 space-y-8">
           {!selectedProject ? (
             <>
               {/* Section Title and Add Financial Details Button */}
@@ -118,6 +140,7 @@ const FODashboardMain = () => {
           {selectedProject && <ProjectDetails project={selectedProject} />}
         </div>
       </div>
+      )}
     </div>
   );
 };

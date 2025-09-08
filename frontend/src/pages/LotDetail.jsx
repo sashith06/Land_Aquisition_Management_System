@@ -1,11 +1,15 @@
 // src/pages/LotDetail.jsx
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import api from "../api";
 import CompensationDetails from "../components/CompensationDetails";
 
 const LotDetail = () => {
   const { planId, lotId } = useParams();
   const navigate = useNavigate();
+  const [planData, setPlanData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Determine user role based on current route
   const getCurrentUserRole = () => {
@@ -17,6 +21,26 @@ const LotDetail = () => {
   };
 
   const userRole = getCurrentUserRole();
+
+  // Fetch plan data
+  useEffect(() => {
+    const fetchPlanData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/api/plans/${planId}`);
+        setPlanData(response.data);
+      } catch (error) {
+        console.error('Error fetching plan data:', error);
+        // If plan not found, we'll still show the planId as fallback
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (planId) {
+      fetchPlanData();
+    }
+  }, [planId]);
 
   // Mock lot data - this should come from your actual data source
   const getLotDetails = () => {
@@ -72,7 +96,7 @@ const LotDetail = () => {
           } 
           className="hover:text-blue-600 transition-colors"
         >
-          Plan {planId} Lots
+          Plan {planData?.plan_cadastral_no || planId} Lots
         </Link>
         <span>/</span>
         <span className="text-gray-800 font-medium">Lot {lotId}</span>

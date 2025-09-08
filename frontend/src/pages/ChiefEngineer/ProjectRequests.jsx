@@ -1,192 +1,108 @@
 import React, { useState, useEffect } from 'react';
-import { FolderPlus, Clock, CheckCircle, XCircle, Eye, Filter, Search } from 'lucide-react';
-
-// Mock project request data
-const mockRequests = [
-  {
-    id: 'REQ-001',
-    title: 'Highway Extension Project',
-    requester: 'John Doe',
-    department: 'Infrastructure',
-    priority: 'High',
-    status: 'Pending',
-    submittedDate: '2024-01-15',
-    estimatedCost: '$2.5M',
-    description: 'Extend highway from Colombo to Kandy'
-  },
-  {
-    id: 'REQ-002',
-    title: 'Bridge Construction',
-    requester: 'Jane Smith',
-    department: 'Civil Engineering',
-    priority: 'Medium',
-    status: 'Under Review',
-    submittedDate: '2024-01-20',
-    estimatedCost: '$1.8M',
-    description: 'New bridge over the river'
-  },
-  {
-    id: 'REQ-003',
-    title: 'Road Maintenance',
-    requester: 'Mike Johnson',
-    department: 'Maintenance',
-    priority: 'Low',
-    status: 'Approved',
-    submittedDate: '2024-01-10',
-    estimatedCost: '$500K',
-    description: 'Routine road maintenance and repairs'
-  },
-  {
-    id: 'REQ-004',
-    title: 'Tunnel Project',
-    requester: 'Sarah Wilson',
-    department: 'Infrastructure',
-    priority: 'High',
-    status: 'Rejected',
-    submittedDate: '2024-01-05',
-    estimatedCost: '$5.2M',
-    description: 'Underground tunnel construction'
-  },
-  {
-    id: 'REQ-005',
-    title: 'Smart Traffic System',
-    requester: 'David Brown',
-    department: 'Technology',
-    priority: 'Medium',
-    status: 'Pending',
-    submittedDate: '2024-01-25',
-    estimatedCost: '$800K',
-    description: 'Implementation of smart traffic management system'
-  },
-];
+import { FolderPlus, Clock, CheckCircle, XCircle, Eye, Filter, Search, AlertCircle } from 'lucide-react';
+import api from '../../api';
 
 const ProjectRequests = () => {
   const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
-  const [selectedPriority, setSelectedPriority] = useState('');
 
   // Load pending projects on component mount
   useEffect(() => {
-    const pendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
-    const formattedRequests = pendingProjects.map(project => ({
-      id: `REQ-${project.id}`,
-      title: project.projectName,
-      requester: project.submittedBy || 'Project Engineer',
-      department: 'Land Acquisition',
-      priority: 'High',
-      status: project.status === 'pending_approval' ? 'Pending' : project.status,
-      submittedDate: project.createdDate,
-      estimatedCost: project.estimatedCost,
-      description: `Land acquisition project: ${project.projectName}`,
-      originalProject: project
-    }));
-    setRequests([...mockRequests, ...formattedRequests]);
+    loadPendingProjects();
   }, []);
 
+  const loadPendingProjects = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/api/projects/pending');
+      setRequests(response.data);
+      setError('');
+    } catch (err) {
+      console.error('Error loading pending projects:', err);
+      setError('Failed to load pending projects');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredRequests = requests.filter(request => {
-    const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.requester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = request.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.creator_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.id.toString().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === '' || request.status === selectedStatus;
-    const matchesPriority = selectedPriority === '' || request.priority === selectedPriority;
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus;
   });
 
-  const handleApprove = (requestId) => {
-    const request = requests.find(req => req.id === requestId);
-    
-    if (request && request.originalProject) {
-      // Move project from pending to approved projects
-      const pendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
-      const approvedProjects = JSON.parse(localStorage.getItem('approvedProjects') || '[]');
-      
-      // Remove from pending
-      const updatedPending = pendingProjects.filter(p => p.id !== request.originalProject.id);
-      localStorage.setItem('pendingProjects', JSON.stringify(updatedPending));
-      
-      // Add to approved and main projects data
-      const approvedProject = {
-        ...request.originalProject,
-        status: 'approved',
-        approvedBy: 'Chief Engineer',
-        approvedAt: new Date().toISOString()
-      };
-      approvedProjects.push(approvedProject);
-      localStorage.setItem('approvedProjects', JSON.stringify(approvedProjects));
-      
-      // Add to main projects data for display in PE dashboard
-      const existingProjects = JSON.parse(localStorage.getItem('projectsData') || '[]');
-      const newProjectForDisplay = {
-        id: `p${Date.now()}`,
-        name: approvedProject.projectName,
-        description: `Land acquisition project: ${approvedProject.projectName}`,
-        createdDate: approvedProject.createdDate,
-        progress: 0
-      };
-      existingProjects.push(newProjectForDisplay);
-      localStorage.setItem('projectsData', JSON.stringify(existingProjects));
-    }
-    
-    setRequests(requests.map(req => 
-      req.id === requestId ? { ...req, status: 'Approved' } : req
-    ));
-    alert(`Request ${requestId} approved successfully! The project is now available in the Project Engineer dashboard.`);
-  };
-
-  const handleReject = (requestId) => {
-    const confirmed = window.confirm('Are you sure you want to reject this request?');
-    if (confirmed) {
-      const request = requests.find(req => req.id === requestId);
-      
-      if (request && request.originalProject) {
-        // Remove from pending projects
-        const pendingProjects = JSON.parse(localStorage.getItem('pendingProjects') || '[]');
-        const updatedPending = pendingProjects.filter(p => p.id !== request.originalProject.id);
-        localStorage.setItem('pendingProjects', JSON.stringify(updatedPending));
-      }
-      
-      setRequests(requests.map(req => 
-        req.id === requestId ? { ...req, status: 'Rejected' } : req
-      ));
+  const handleApprove = async (projectId) => {
+    try {
+      await api.put(`/api/projects/approve/${projectId}`);
+      await loadPendingProjects(); // Reload the list
+      alert('Project approved successfully!');
+    } catch (err) {
+      console.error('Error approving project:', err);
+      alert('Failed to approve project. Please try again.');
     }
   };
 
-  const handleViewDetails = (requestId) => {
-    alert(`View details for request ${requestId}`);
+  const handleReject = async (projectId) => {
+    const rejectionReason = prompt('Please provide a reason for rejection:');
+    if (!rejectionReason) return;
+
+    try {
+      await api.put(`/api/projects/reject/${projectId}`, {
+        rejection_reason: rejectionReason
+      });
+      await loadPendingProjects(); // Reload the list
+      alert('Project rejected successfully!');
+    } catch (err) {
+      console.error('Error rejecting project:', err);
+      alert('Failed to reject project. Please try again.');
+    }
+  };
+
+  const handleViewDetails = (request) => {
+    alert(`Project Details:\n\nName: ${request.name}\nCreated by: ${request.creator_name}\nStatus: ${request.status}\nCreated: ${new Date(request.created_at).toLocaleDateString()}\n\nEstimated Cost: $${request.initial_estimated_cost || 'Not specified'}\nExtent: ${request.initial_extent_ha || 0} ha, ${request.initial_extent_perch || 0} perch\n\nNotes: ${request.notes || 'No additional notes'}`);
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'Pending': return <Clock className="text-yellow-500" size={16} />;
-      case 'Under Review': return <Eye className="text-blue-500" size={16} />;
-      case 'Approved': return <CheckCircle className="text-green-500" size={16} />;
-      case 'Rejected': return <XCircle className="text-red-500" size={16} />;
-      default: return null;
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'High': return 'bg-red-100 text-red-800';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800';
-      case 'Low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending': return <Clock className="text-yellow-500" size={16} />;
+      case 'approved': return <CheckCircle className="text-green-500" size={16} />;
+      case 'rejected': return <XCircle className="text-red-500" size={16} />;
+      default: return <AlertCircle className="text-gray-500" size={16} />;
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Pending': return 'bg-yellow-100 text-yellow-800';
-      case 'Under Review': return 'bg-blue-100 text-blue-800';
-      case 'Approved': return 'bg-green-100 text-green-800';
-      case 'Rejected': return 'bg-red-100 text-red-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'rejected': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const statuses = ['Pending', 'Under Review', 'Approved', 'Rejected'];
-  const priorities = ['High', 'Medium', 'Low'];
+  const formatCurrency = (amount) => {
+    if (!amount) return 'Not specified';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading project requests...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -197,23 +113,32 @@ const ProjectRequests = () => {
             <FolderPlus className="mr-2 sm:mr-3 text-green-600" size={28} />
             Project Requests
           </h1>
-          <p className="text-gray-600 mt-2 text-sm sm:text-base">Review and manage project requests from various departments</p>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Review and approve project requests from Project Engineers</p>
         </div>
         <div className="flex items-center space-x-2">
           <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
-            {requests.filter(req => req.status === 'Pending').length} Pending
+            {requests.filter(req => req.status === 'pending').length} Pending
           </span>
         </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          <div className="flex">
+            <AlertCircle className="flex-shrink-0 mr-2 mt-0.5" size={16} />
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
-              placeholder="Search requests..."
+              placeholder="Search projects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
@@ -227,22 +152,9 @@ const ProjectRequests = () => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none"
             >
               <option value="">All Status</option>
-              {statuses.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <select
-              value={selectedPriority}
-              onChange={(e) => setSelectedPriority(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 appearance-none"
-            >
-              <option value="">All Priority</option>
-              {priorities.map(priority => (
-                <option key={priority} value={priority}>{priority}</option>
-              ))}
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
           <div className="text-sm text-gray-600 flex items-center justify-center sm:justify-start">
@@ -252,87 +164,98 @@ const ProjectRequests = () => {
       </div>
 
       {/* Requests Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-        {filteredRequests.map((request) => (
-          <div key={request.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-            <div className="p-4 sm:p-6">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{request.title}</h3>
-                  <p className="text-sm text-gray-500">ID: {request.id}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(request.priority)}`}>
-                    {request.priority}
-                  </span>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Requester:</span>
-                    <p className="font-medium truncate">{request.requester}</p>
+      {filteredRequests.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+          <FolderPlus className="mx-auto text-gray-400 mb-4" size={48} />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No project requests found</h3>
+          <p className="text-gray-600">
+            {searchTerm || selectedStatus ? 'Try adjusting your filters.' : 'Project requests will appear here when Project Engineers submit them.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+          {filteredRequests.map((request) => (
+            <div key={request.id} className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+              <div className="p-4 sm:p-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">{request.name}</h3>
+                    <p className="text-sm text-gray-500">ID: {request.id}</p>
                   </div>
-                  <div>
-                    <span className="text-gray-500">Department:</span>
-                    <p className="font-medium truncate">{request.department}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Estimated Cost:</span>
-                    <p className="font-medium text-green-600">{request.estimatedCost}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Submitted:</span>
-                    <p className="font-medium">{request.submittedDate}</p>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(request.status)}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
+                      {request.status}
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <span className="text-gray-500 text-sm">Description:</span>
-                  <p className="text-sm text-gray-700 mt-1 line-clamp-2">{request.description}</p>
+                {/* Content */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Created by:</span>
+                      <p className="font-medium truncate">{request.creator_name || 'Project Engineer'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Department:</span>
+                      <p className="font-medium truncate">Land Acquisition</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Estimated Cost:</span>
+                      <p className="font-medium text-green-600">{formatCurrency(request.initial_estimated_cost)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Submitted:</span>
+                      <p className="font-medium">{new Date(request.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="col-span-1 sm:col-span-2">
+                      <span className="text-gray-500">Extent:</span>
+                      <p className="font-medium">
+                        {request.initial_extent_ha || 0} ha, {request.initial_extent_perch || 0} perch
+                      </p>
+                    </div>
+                  </div>
+
+                  {request.notes && (
+                    <div>
+                      <span className="text-gray-500 text-sm">Notes:</span>
+                      <p className="text-sm text-gray-700 mt-1 line-clamp-2">{request.notes}</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Status */}
-                <div className="flex items-center space-x-2">
-                  {getStatusIcon(request.status)}
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
-                    {request.status}
-                  </span>
+                {/* Actions */}
+                <div className="mt-6 flex flex-col sm:flex-row items-center gap-2">
+                  <button
+                    onClick={() => handleViewDetails(request)}
+                    className="w-full sm:flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                  >
+                    View Details
+                  </button>
+                  {request.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleApprove(request.id)}
+                        className="w-full sm:flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(request.id)}
+                        className="w-full sm:flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
                 </div>
-              </div>
-
-              {/* Actions */}
-              <div className="mt-6 flex flex-col sm:flex-row items-center gap-2">
-                <button
-                  onClick={() => handleViewDetails(request.id)}
-                  className="w-full sm:flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-                >
-                  View Details
-                </button>
-                {request.status === 'Pending' && (
-                  <>
-                    <button
-                      onClick={() => handleApprove(request.id)}
-                      className="w-full sm:flex-1 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleReject(request.id)}
-                      className="w-full sm:flex-1 bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                    >
-                      Reject
-                    </button>
-                  </>
-                )}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -343,19 +266,19 @@ const ProjectRequests = () => {
         <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">Pending</h3>
           <p className="text-2xl lg:text-3xl font-bold text-yellow-600">
-            {requests.filter(req => req.status === 'Pending').length}
+            {requests.filter(req => req.status === 'pending').length}
           </p>
         </div>
         <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">Approved</h3>
           <p className="text-2xl lg:text-3xl font-bold text-green-600">
-            {requests.filter(req => req.status === 'Approved').length}
+            {requests.filter(req => req.status === 'approved').length}
           </p>
         </div>
         <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">High Priority</h3>
+          <h3 className="text-sm lg:text-lg font-semibold text-gray-900 mb-2">Rejected</h3>
           <p className="text-2xl lg:text-3xl font-bold text-red-600">
-            {requests.filter(req => req.priority === 'High').length}
+            {requests.filter(req => req.status === 'rejected').length}
           </p>
         </div>
       </div>

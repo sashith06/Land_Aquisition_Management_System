@@ -1,36 +1,50 @@
 import axios from "axios";
 import { logout } from "./utils/auth";
 
-// ✅ Use /api/auth since backend is mounted there
+// ✅ Create a general API instance for all endpoints
+const api = axios.create({
+  baseURL: "http://localhost:5000",
+});
+
+// ✅ Use /api/auth since backend is mounted there  
 const API = axios.create({
   baseURL: "http://localhost:5000/api/auth",
 });
 
 // Add authorization header to all requests
-API.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+const addAuthInterceptors = (axiosInstance) => {
+  axiosInstance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+  );
 
-// Handle token expiration
-API.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Use the logout utility function
-      logout();
+  // Handle token expiration
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        // Use the logout utility function
+        logout();
+      }
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
-);
+  );
+};
+
+// Add interceptors to both instances
+addAuthInterceptors(API);
+addAuthInterceptors(api);
+
+// Export default api instance for general use
+export default api;
 
 // ================= REGISTER USER =================
 export const registerUser = (userData) => API.post("/register", userData);
@@ -53,6 +67,9 @@ export const getApprovedUsers = () => API.get("/users/approved");
 // ================= GET PENDING USERS =================
 export const getPendingUsers = () => API.get("/users/pending");
 
+// ================= GET PENDING USERS COUNT =================
+export const getPendingUsersCount = () => API.get("/users/pending/count");
+
 // ================= GET REJECTED USERS =================
 export const getRejectedUsers = () => API.get("/users/rejected");
 
@@ -61,3 +78,61 @@ export const rejectUser = (userId) => API.put(`/reject/${userId}`);
 
 // ================= UPDATE USER =================
 export const updateUser = (userId, updatedData) => API.put(`/users/${userId}`, updatedData);
+
+// ================= NOTIFICATIONS =================
+const NOTIFICATIONS_API = axios.create({
+  baseURL: "http://localhost:5000/api/notifications",
+});
+
+// Add authorization header to notification requests  
+addAuthInterceptors(NOTIFICATIONS_API);
+
+export const getNotifications = (limit = 10) => NOTIFICATIONS_API.get(`/?limit=${limit}`);
+
+export const getUnreadNotificationsCount = () => NOTIFICATIONS_API.get("/unread/count");
+
+export const markNotificationAsRead = (notificationId) => NOTIFICATIONS_API.put(`/${notificationId}/read`);
+
+export const markAllNotificationsAsRead = () => NOTIFICATIONS_API.put("/mark-all-read");
+
+// ================= PLANS API =================
+const PLANS_API = axios.create({
+  baseURL: "http://localhost:5000/api/plans",
+});
+
+// Add authorization header to plan requests  
+addAuthInterceptors(PLANS_API);
+
+export const createPlan = (planData) => PLANS_API.post("/create", planData);
+
+export const getAssignedProjects = () => PLANS_API.get("/assigned/projects");
+
+export const getMyPlans = () => PLANS_API.get("/my-plans");
+
+export const getPlansByProject = (projectId) => PLANS_API.get(`/project/${projectId}`);
+
+export const getPlanById = (planId) => PLANS_API.get(`/${planId}`);
+
+export const updatePlan = (planId, planData) => PLANS_API.put(`/${planId}`, planData);
+
+export const deletePlan = (planId) => PLANS_API.delete(`/${planId}`);
+
+// ================= VALUATION API =================
+export const saveValuation = (planId, lotId, valuationData) => 
+  api.post(`/api/plans/${planId}/lots/${lotId}/valuation`, valuationData);
+
+export const getValuation = (planId, lotId) => 
+  api.get(`/api/plans/${planId}/lots/${lotId}/valuation`);
+
+export const getValuationsByPlan = (planId) => 
+  api.get(`/api/plans/${planId}/valuations`);
+
+// ================= COMPENSATION API =================
+export const saveCompensation = (planId, lotId, compensationData) => 
+  api.post(`/api/plans/${planId}/lots/${lotId}/compensation`, compensationData);
+
+export const getCompensation = (planId, lotId) => 
+  api.get(`/api/plans/${planId}/lots/${lotId}/compensation`);
+
+export const getCompensationsByPlan = (planId) => 
+  api.get(`/api/plans/${planId}/compensations`);
