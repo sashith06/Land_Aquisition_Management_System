@@ -329,4 +329,88 @@ Plan.updateStatus = (id, status, callback) => {
   db.query(sql, [status, id], callback);
 };
 
+// Dashboard-specific methods for CE and PE viewing
+Plan.getAllPlansWithProjectInfo = (callback) => {
+  const sql = `
+    SELECT 
+      p.*, 
+      pr.name as project_name,
+      pr.status as project_status,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      CONCAT(pe.first_name, ' ', pe.last_name) as project_engineer_name,
+      (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id) as lots_count
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    LEFT JOIN users pe ON pr.created_by = pe.id
+    ORDER BY pr.name ASC, p.created_at DESC
+  `;
+  db.query(sql, [], callback);
+};
+
+// Get plans for a specific Project Engineer (only their assigned projects)
+Plan.getPlansForProjectEngineer = (projectEngineerId, callback) => {
+  const sql = `
+    SELECT 
+      p.*, 
+      pr.name as project_name,
+      pr.status as project_status,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id) as lots_count
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE pr.created_by = ?
+    ORDER BY pr.name ASC, p.created_at DESC
+  `;
+  db.query(sql, [projectEngineerId], callback);
+};
+
+// Get plans with lots for a specific project (for detailed view)
+Plan.getPlansWithLotsForProject = (projectId, callback) => {
+  const sql = `
+    SELECT 
+      p.*, 
+      pr.name as project_name,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE p.project_id = ?
+    ORDER BY p.created_at DESC
+  `;
+  
+  db.query(sql, [projectId], (err, plans) => {
+    if (err) return callback(err);
+    
+    if (plans.length === 0) return callback(null, []);
+    
+    // Get lots for each plan
+    let completedPlans = 0;
+    plans.forEach((plan) => {
+      const lotsSql = `
+        SELECT l.*, CONCAT(lu.first_name, ' ', lu.last_name) as created_by_name
+        FROM lots l
+        LEFT JOIN users lu ON l.created_by = lu.id
+        WHERE l.plan_id = ?
+        ORDER BY l.lot_no ASC
+      `;
+      
+      db.query(lotsSql, [plan.id], (lotsErr, lots) => {
+        if (lotsErr) {
+          console.error('Error fetching lots for plan', plan.id, ':', lotsErr);
+          plan.lots = [];
+        } else {
+          plan.lots = lots;
+        }
+        
+        completedPlans++;
+        if (completedPlans === plans.length) {
+          callback(null, plans);
+        }
+      });
+    });
+  });
+};
+
 module.exports = Plan;

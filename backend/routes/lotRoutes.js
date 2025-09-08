@@ -54,4 +54,8 @@ router.delete("/:lotId/owners/:ownerId", verifyToken, requireEngineersOrLO, lotC
 // Delete lot (Land Officers only)
 router.delete("/:id", verifyToken, requireLandOfficer, lotController.deleteLot);
 
+// Dashboard specific routes for CE and PE
+router.get("/dashboard/all", verifyToken, lotController.getAllLotsWithProjectPlanInfo);
+router.get("/dashboard/pe", verifyToken, lotController.getLotsForProjectEngineer);
+
 module.exports = router;

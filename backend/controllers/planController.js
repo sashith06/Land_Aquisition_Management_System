@@ -448,3 +448,63 @@ exports.updatePlanStatus = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Dashboard endpoints for CE and PE
+// Get all plans with project info for Chief Engineer
+exports.getAllPlansWithProjectInfo = (req, res) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userRole = decoded.role;
+    
+    // Only CE can access this endpoint
+    if (userRole !== 'CE' && userRole !== 'chief_engineer') {
+      return res.status(403).json({ error: 'Access denied. Chief Engineer only.' });
+    }
+    
+    Plan.getAllPlansWithProjectInfo((err, plans) => {
+      if (err) {
+        console.error('Error fetching all plans:', err);
+        return res.status(500).json({ error: 'Failed to fetch plans' });
+      }
+      res.json(plans);
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Get plans for Project Engineer (only their projects)
+exports.getPlansForProjectEngineer = (req, res) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+    const userRole = decoded.role;
+    
+    // Only PE can access this endpoint
+    if (userRole !== 'PE' && userRole !== 'project_engineer') {
+      return res.status(403).json({ error: 'Access denied. Project Engineer only.' });
+    }
+    
+    Plan.getPlansForProjectEngineer(userId, (err, plans) => {
+      if (err) {
+        console.error('Error fetching PE plans:', err);
+        return res.status(500).json({ error: 'Failed to fetch plans' });
+      }
+      res.json(plans);
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};

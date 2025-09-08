@@ -1,18 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
-import { Plus, ArrowLeft, Building2 } from "lucide-react";
+import { Plus, Building2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api";
 import SearchBar from "../../components/SearchBar";
-import ProjectDetails from "../../components/ProjectDetails";
-import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
-import { plansData } from "../../data/mockData";
 
 const PEDashboardMain = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,15 +59,8 @@ const PEDashboardMain = () => {
   // Handle navigation state when returning from lots page
   useEffect(() => {
     if (location.state?.returnToProject && location.state?.planId) {
-      // Find the project that contains the plan with the given planId
-      const planId = location.state.planId;
-      const plan = plansData.find(p => p.id === planId);
-      if (plan) {
-        const project = allProjects.find(proj => proj.id === plan.projectId);
-        if (project) {
-          setSelectedProject(project);
-        }
-      }
+      // This handles return navigation if needed
+      console.log('Returned from plan/lots view');
     }
   }, [location.state, allProjects]);
 
@@ -82,19 +70,17 @@ const PEDashboardMain = () => {
     return allProjects.filter((p) => p.name.toLowerCase().includes(term));
   }, [searchTerm, allProjects]);
 
-  const filteredPlans = useMemo(() => {
-    if (!selectedProject) return [];
-    const term = searchTerm.trim();
-    return plansData.filter(
-      (plan) =>
-        plan.projectId === selectedProject.id &&
-        (!term || plan.id.includes(term))
-    );
-  }, [searchTerm, selectedProject]);
+  const handleProjectSelect = (project) => {
+    console.log('Project selected for viewing:', project);
+    // Navigate to project plans view
+    navigate(`/pe-dashboard/project/${project.id}/plans`, {
+      state: { 
+        projectName: project.name
+      }
+    });
+  };
 
   const handleBackToProjects = () => {
-    setSelectedProject(null);
-    setSelectedPlan(null);
     setSearchTerm("");
   };
 
@@ -108,12 +94,6 @@ const PEDashboardMain = () => {
       
       // Update local state by removing the deleted project
       setAllProjects(prev => prev.filter(p => p.id !== projectId));
-      
-      // If the deleted project was selected, clear selection
-      if (selectedProject?.id === projectId) {
-        setSelectedProject(null);
-        setSelectedPlan(null);
-      }
       
       alert('Project deleted successfully!');
     } catch (error) {
@@ -135,86 +115,54 @@ const PEDashboardMain = () => {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
           {/* Left Column */}
           <div className="xl:col-span-3 space-y-8">
-          {!selectedProject ? (
-            <>
-              {/* Section Title and Create Button */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  Projects & Overview
-                </h2>
+            {/* Section Title and Create Button */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">
+                Projects & Overview
+              </h2>
+              <button
+                onClick={() => navigate("/pe-dashboard/create-project")}
+                className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+              >
+                <Plus size={20} />
+                <span>Create Project</span>
+              </button>
+            </div>
+
+            {/* Project Cards */}
+            {filteredProjects.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                <div className="mb-4">
+                  <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No approved projects yet</h3>
+                <p className="text-gray-500 mb-6">Projects will appear here after being approved by the Chief Engineer.</p>
                 <button
                   onClick={() => navigate("/pe-dashboard/create-project")}
-                  className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+                  className="inline-flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >
                   <Plus size={20} />
-                  <span>Create Project</span>
+                  <span>Create Your First Project</span>
                 </button>
               </div>
-
-              {/* Project Cards */}
-              {filteredProjects.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                  <div className="mb-4">
-                    <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No approved projects yet</h3>
-                  <p className="text-gray-500 mb-6">Projects will appear here after being approved by the Chief Engineer.</p>
-                  <button
-                    onClick={() => navigate("/pe-dashboard/create-project")}
-                    className="inline-flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    <Plus size={20} />
-                    <span>Create Your First Project</span>
-                  </button>
-                </div>
-              ) : (
-                <ProjectList
-                  projects={filteredProjects}
-                  onSelect={setSelectedProject}
-                  selectedProject={selectedProject}
-                  showActions={true}
-                  onEdit={handleEditProject}
-                  onDelete={handleDeleteProject}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              {/* Breadcrumb Navigation */}
-              <div className="mb-6">
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <button
-                    onClick={handleBackToProjects}
-                    className="text-gray-500 hover:text-orange-500 font-medium transition-colors"
-                  >
-                    Projects & Overview
-                  </button>
-                  <span className="text-gray-400">›</span>
-                  <span className="text-orange-500 font-medium">Plans & Progress</span>
-                </div>
-              </div>
-              
-              {/* Plans for selected project */}
-              <PlanProgressList
-                plans={filteredPlans}
-                onPlanSelect={setSelectedPlan}
-                selectedPlan={selectedPlan}
+            ) : (
+              <ProjectList
+                projects={filteredProjects}
+                onSelect={handleProjectSelect}
+                showActions={true}
+                onEdit={handleEditProject}
+                onDelete={handleDeleteProject}
               />
-            </>
-          )}
-        </div>
+            )}
+          </div>
 
         {/* Right Column */}
         <div className="xl:col-span-1 space-y-6">
           <SearchBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
-            placeholder={
-              !selectedProject ? "Search projects..." : "Search plans..."
-            }
+            placeholder="Search projects..."
           />
-
-          {selectedProject && <ProjectDetails project={selectedProject} />}
         </div>
       </div>
       )}

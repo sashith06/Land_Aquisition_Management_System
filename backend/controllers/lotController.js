@@ -584,3 +584,63 @@ exports.getAllOwners = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Dashboard endpoints for CE and PE
+// Get all lots with project/plan info for Chief Engineer
+exports.getAllLotsWithProjectPlanInfo = (req, res) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userRole = decoded.role;
+    
+    // Only CE can access this endpoint
+    if (userRole !== 'CE' && userRole !== 'chief_engineer') {
+      return res.status(403).json({ error: 'Access denied. Chief Engineer only.' });
+    }
+    
+    Lot.getAllLotsWithProjectPlanInfo((err, lots) => {
+      if (err) {
+        console.error('Error fetching all lots:', err);
+        return res.status(500).json({ error: 'Failed to fetch lots' });
+      }
+      res.json(lots);
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+
+// Get lots for Project Engineer (only their projects)
+exports.getLotsForProjectEngineer = (req, res) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+    const userRole = decoded.role;
+    
+    // Only PE can access this endpoint
+    if (userRole !== 'PE' && userRole !== 'project_engineer') {
+      return res.status(403).json({ error: 'Access denied. Project Engineer only.' });
+    }
+    
+    Lot.getLotsForProjectEngineer(userId, (err, lots) => {
+      if (err) {
+        console.error('Error fetching PE lots:', err);
+        return res.status(500).json({ error: 'Failed to fetch lots' });
+      }
+      res.json(lots);
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};

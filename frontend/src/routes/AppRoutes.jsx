@@ -24,11 +24,14 @@ import LODashboard from "../pages/Landowner/landownerdashboard/LODashboard";
 
 import UserManagement from "../pages/ChiefEngineer/UserManagement";
 import ProjectRequests from "../pages/ChiefEngineer/ProjectRequests";
+import CEProjectPlans from "../pages/ChiefEngineer/CEProjectPlans";
+import CEDashboardMain from "../pages/ChiefEngineer/CEDashboardMain";
 
 import PEDashboardMain from "../pages/ProjectEngineer/PEDashboardMain";
 import CreateProject from "../pages/ProjectEngineer/CreateProject";
 import EditProject from "../pages/ProjectEngineer/EditProject";
 import ProjectAssignment from "../pages/ProjectEngineer/ProjectAssignment";
+import PEProjectPlans from "../pages/ProjectEngineer/PEProjectPlans";
 
 import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
 import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
@@ -73,7 +76,8 @@ export default function AppRoutes() {
           <CEDashboardLayout />
         </ChiefEngineerRoute>
       }>
-        <Route index element={<Dashboard />} />
+        <Route index element={<CEDashboardMain />} />
+        <Route path="project/:projectId/plans" element={<CEProjectPlans />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />
@@ -91,6 +95,7 @@ export default function AppRoutes() {
         </ProjectEngineerRoute>
       }>
         <Route index element={<PEDashboardMain />} />
+        <Route path="project/:projectId/plans" element={<PEProjectPlans />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />

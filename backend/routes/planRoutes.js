@@ -33,4 +33,8 @@ router.delete("/:id", verifyToken, requireLandOfficer, planController.deletePlan
 // Get assigned projects for current land officer
 router.get("/assigned/projects", verifyToken, requireLandOfficer, planController.getAssignedProjects);
 
+// Dashboard specific routes for CE and PE
+router.get("/dashboard/all", verifyToken, planController.getAllPlansWithProjectInfo);
+router.get("/dashboard/pe", verifyToken, planController.getPlansForProjectEngineer);
+
 module.exports = router;

@@ -547,4 +547,47 @@ Lot.getLandDetailsById = (id, callback) => {
   });
 };
 
+// Dashboard-specific methods for CE and PE viewing
+Lot.getAllLotsWithProjectPlanInfo = (callback) => {
+  const sql = `
+    SELECT 
+      l.*, 
+      p.plan_number,
+      p.description as plan_description,
+      pr.name as project_name,
+      pr.status as project_status,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      CONCAT(pe.first_name, ' ', pe.last_name) as project_engineer_name,
+      (SELECT COUNT(*) FROM lot_owners lo WHERE lo.lot_id = l.id AND lo.status = 'active') as owners_count
+    FROM lots l
+    LEFT JOIN plans p ON l.plan_id = p.id
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON l.created_by = u.id
+    LEFT JOIN users pe ON pr.created_by = pe.id
+    ORDER BY pr.name ASC, p.plan_number ASC, l.lot_no ASC
+  `;
+  db.query(sql, [], callback);
+};
+
+// Get lots for a specific Project Engineer (only their assigned projects)
+Lot.getLotsForProjectEngineer = (projectEngineerId, callback) => {
+  const sql = `
+    SELECT 
+      l.*, 
+      p.plan_number,
+      p.description as plan_description,
+      pr.name as project_name,
+      pr.status as project_status,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      (SELECT COUNT(*) FROM lot_owners lo WHERE lo.lot_id = l.id AND lo.status = 'active') as owners_count
+    FROM lots l
+    LEFT JOIN plans p ON l.plan_id = p.id
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON l.created_by = u.id
+    WHERE pr.created_by = ?
+    ORDER BY pr.name ASC, p.plan_number ASC, l.lot_no ASC
+  `;
+  db.query(sql, [projectEngineerId], callback);
+};
+
 module.exports = Lot;
