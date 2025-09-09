@@ -34,9 +34,7 @@ exports.createProject = (req, res) => {
       type: 'project_request',
       title: 'New Project Request',
       message: `Project "${name}" has been submitted for approval`,
-      user_id: 1, // Chief Engineer user ID
-      related_id: result.insertId,
-      related_type: 'project'
+      user_id: 1 // Chief Engineer user ID
     }, (notifErr) => {
       if (notifErr) console.log('Notification error:', notifErr);
     });
@@ -227,9 +225,7 @@ exports.approveProject = (req, res) => {
         type: 'project_approved',
         title: 'Project Approved',
         message: `Your project "${project.name}" has been approved`,
-        user_id: project.created_by,
-        related_id: projectId,
-        related_type: 'project'
+        user_id: project.created_by
       }, (notifErr) => {
         if (notifErr) console.log('Notification error:', notifErr);
       });
@@ -263,9 +259,7 @@ exports.rejectProject = (req, res) => {
         type: 'project_rejected',
         title: 'Project Rejected',
         message: `Your project "${project.name}" has been rejected. Reason: ${rejection_reason}`,
-        user_id: project.created_by,
-        related_id: projectId,
-        related_type: 'project'
+        user_id: project.created_by
       }, (notifErr) => {
         if (notifErr) console.log('Notification error:', notifErr);
       });

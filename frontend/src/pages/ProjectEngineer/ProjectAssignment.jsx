@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, UserCheck, Search, Users, FolderOpen, CheckCircle, AlertCircle, Edit2, Save, X, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import api from '../../api';
 
 const ProjectAssignment = () => {
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [allProjects, setAllProjects] = useState([]);
   const [landOfficers, setLandOfficers] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -173,23 +176,13 @@ const ProjectAssignment = () => {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb Navigation */}
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          {/* Breadcrumb Navigation */}
-          <div className="mb-4">
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <button
-                onClick={() => navigate('/pe-dashboard')}
-                className="text-gray-500 hover:text-orange-500 font-medium transition-colors"
-              >
-                Projects & Overview
-              </button>
-              <span className="text-gray-400">›</span>
-              <span className="text-orange-500 font-medium">Project Assignment</span>
-            </div>
-          </div>
-          
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
             Project Assignment
           </h1>

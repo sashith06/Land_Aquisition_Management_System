@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { DollarSign, Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { projectsData } from '../../data/mockData';
 
 const FinancialDetails = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [project, setProject] = useState(null);
   const [financialData, setFinancialData] = useState({
     budgetAllocated: '',
@@ -91,12 +93,7 @@ const FinancialDetails = () => {
   return (
     <div className="space-y-6">
       {/* Breadcrumb Navigation */}
-      <Breadcrumb
-        items={[
-          { label: "Dashboard", to: "/fo-dashboard" },
-          { label: "Financial Details" },
-        ]}
-      />
+      <Breadcrumb items={generateBreadcrumbs()} />
 
       {/* Header */}
       <div className="flex items-center justify-between">

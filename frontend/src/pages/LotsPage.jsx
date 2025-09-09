@@ -536,6 +536,7 @@ const LotsPage = () => {
                     lotId={selectedLot.backend_id || selectedLot.id}
                     initialData={landDetails}
                     onSave={handleSaveLandDetails}
+                    planData={planData}
                   />
                 )
               ) : (

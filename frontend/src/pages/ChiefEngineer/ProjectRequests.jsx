@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FolderPlus, Clock, CheckCircle, XCircle, Eye, Filter, Search, AlertCircle } from 'lucide-react';
+import { FolderPlus, Clock, CheckCircle, XCircle, Eye, Filter, Search, AlertCircle, FileText, Calendar, DollarSign, MapPin, User, X, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api';
+import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 const ProjectRequests = () => {
+  const { generateBreadcrumbs } = useBreadcrumbs();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,12 +22,12 @@ const ProjectRequests = () => {
   const loadPendingProjects = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/projects/pending');
+      const response = await api.get('/api/projects/all');
       setRequests(response.data);
       setError('');
     } catch (err) {
-      console.error('Error loading pending projects:', err);
-      setError('Failed to load pending projects');
+      console.error('Error loading projects:', err);
+      setError('Failed to load projects');
     } finally {
       setLoading(false);
     }
@@ -49,11 +54,14 @@ const ProjectRequests = () => {
 
   const handleReject = async (projectId) => {
     const rejectionReason = prompt('Please provide a reason for rejection:');
-    if (!rejectionReason) return;
+    if (!rejectionReason || rejectionReason.trim() === '') {
+      alert('Rejection reason is required');
+      return;
+    }
 
     try {
       await api.put(`/api/projects/reject/${projectId}`, {
-        rejection_reason: rejectionReason
+        rejection_reason: rejectionReason.trim()
       });
       await loadPendingProjects(); // Reload the list
       alert('Project rejected successfully!');
@@ -64,7 +72,7 @@ const ProjectRequests = () => {
   };
 
   const handleViewDetails = (request) => {
-    alert(`Project Details:\n\nName: ${request.name}\nCreated by: ${request.creator_name}\nStatus: ${request.status}\nCreated: ${new Date(request.created_at).toLocaleDateString()}\n\nEstimated Cost: $${request.initial_estimated_cost || 'Not specified'}\nExtent: ${request.initial_extent_ha || 0} ha, ${request.initial_extent_perch || 0} perch\n\nNotes: ${request.notes || 'No additional notes'}`);
+    navigate(`/ce-dashboard/project-details/${request.id}`);
   };
 
   const getStatusIcon = (status) => {
@@ -106,18 +114,27 @@ const ProjectRequests = () => {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
             <FolderPlus className="mr-2 sm:mr-3 text-green-600" size={28} />
-            Project Requests
+            Project Management
           </h1>
-          <p className="text-gray-600 mt-2 text-sm sm:text-base">Review and approve project requests from Project Engineers</p>
+          <p className="text-gray-600 mt-2 text-sm sm:text-base">Review and manage all project requests and approvals</p>
         </div>
         <div className="flex items-center space-x-2">
           <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
             {requests.filter(req => req.status === 'pending').length} Pending
+          </span>
+          <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+            {requests.filter(req => req.status === 'approved').length} Approved
+          </span>
+          <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+            {requests.filter(req => req.status === 'rejected').length} Rejected
           </span>
         </div>
       </div>
@@ -167,9 +184,9 @@ const ProjectRequests = () => {
       {filteredRequests.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
           <FolderPlus className="mx-auto text-gray-400 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No project requests found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No projects found</h3>
           <p className="text-gray-600">
-            {searchTerm || selectedStatus ? 'Try adjusting your filters.' : 'Project requests will appear here when Project Engineers submit them.'}
+            {searchTerm || selectedStatus ? 'Try adjusting your filters.' : 'Projects will appear here when they are created.'}
           </p>
         </div>
       ) : (

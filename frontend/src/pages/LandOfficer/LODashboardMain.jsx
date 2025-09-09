@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderOpen, MapPin, Calendar, User, Plus, FileText, Building2, Bell, CheckCircle } from 'lucide-react';
 import api from '../../api';
+import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 const LODashboardMain = () => {
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [assignedProjects, setAssignedProjects] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -85,6 +88,9 @@ const LODashboardMain = () => {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       {/* Header */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">

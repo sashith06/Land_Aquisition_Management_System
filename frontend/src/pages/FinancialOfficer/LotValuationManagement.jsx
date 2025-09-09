@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, Save, Edit, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { projectsData, plansData, lotsData } from '../../data/mockData';
 
 const LotValuationManagement = () => {
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [selectedProject, setSelectedProject] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [lots, setLots] = useState([]);
@@ -128,13 +130,9 @@ const LotValuationManagement = () => {
   if (!selectedProject) {
     return (
       <div className="p-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", to: "/fo-dashboard" },
-            { label: "Lot Valuation Management" },
-          ]}
-        />
-
+        <div className="mb-6">
+          <Breadcrumb items={generateBreadcrumbs()} />
+        </div>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Lot Valuation Management</h1>
@@ -169,6 +167,9 @@ const LotValuationManagement = () => {
     
     return (
       <div className="p-6">
+        <div className="mb-6">
+          <Breadcrumb items={generateBreadcrumbs({ projectName: selectedProject.name })} />
+        </div>
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">Select Plan</h1>
@@ -217,6 +218,9 @@ const LotValuationManagement = () => {
 
   return (
     <div className="p-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs({ projectName: selectedProject.name, planName: selectedPlan.id })} />
+      </div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

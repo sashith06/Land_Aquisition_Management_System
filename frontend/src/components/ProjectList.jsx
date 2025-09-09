@@ -1,7 +1,7 @@
 import { Building2, Edit2, Trash2, UserCheck, Eye } from "lucide-react";
 import { getCurrentUserFullName, isCurrentUserCreator } from "../utils/userUtils";
 
-const ProjectList = ({ projects, onSelect, selectedProject, showActions = false, onEdit, onDelete, assignedProjects = [], userRole }) => {
+const ProjectList = ({ projects, onSelect, selectedProject, showActions = false, onEdit, onDelete, onViewDetails, assignedProjects = [], userRole }) => {
   // Check if a project is assigned to current land officer
   const isAssignedProject = (projectId) => {
     return assignedProjects.some(project => project.id === projectId);
@@ -67,6 +67,16 @@ const ProjectList = ({ projects, onSelect, selectedProject, showActions = false,
               {/* Action Buttons - Only show for creators */}
               {showActions && isCreator && (
                 <div className="flex space-x-2 mt-4 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails(project);
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Eye size={14} />
+                    <span>View Details</span>
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

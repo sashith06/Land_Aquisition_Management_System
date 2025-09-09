@@ -6,14 +6,26 @@ const Project = {};
 Project.create = (project, userId, callback) => {
   const sql = `
     INSERT INTO projects 
-    (name, description, initial_estimated_cost, created_by, status) 
-    VALUES (?, ?, ?, ?, ?)
+    (name, description, initial_estimated_cost, initial_extent_ha, initial_extent_perch,
+     section_2_order, section_2_com, advance_tracing_no, advance_tracing_date,
+     section_5_no, section_5_no_date, compensation_type, notes, created_by, status) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.query(sql, [
     project.name,
-    project.description || null,
+    project.description || project.notes || null, // Use notes if description is not provided
     project.initial_estimated_cost || null,
+    project.initial_extent_ha || null,
+    project.initial_extent_perch || null,
+    project.section_2_order || null,
+    project.section_2_com || null,
+    project.advance_tracing_no || null,
+    project.advance_tracing_date || null,
+    project.section_5_no || null,
+    project.section_5_no_date || null,
+    project.compensation_type || 'regulation',
+    project.notes || null,
     userId,
     "pending"
   ], callback);
@@ -43,7 +55,7 @@ Project.update = (id, project, callback) => {
 // ============ GET PROJECTS ============
 Project.findById = (id, callback) => {
   const sql = `
-    SELECT p.*, 
+    SELECT p.*, p.rejection_reason,
            CONCAT(creator.first_name, ' ', creator.last_name) as creator_name, 
            CONCAT(approver.first_name, ' ', approver.last_name) as approver_name
     FROM projects p
@@ -61,7 +73,7 @@ Project.findById = (id, callback) => {
 // Land Officer: Only projects assigned to them
 Project.getByUserRole = (userId, userRole, callback) => {
   let sql = `
-    SELECT p.*, 
+    SELECT p.*, p.rejection_reason,
            CONCAT(creator.first_name, ' ', creator.last_name) as creator_name, 
            CONCAT(approver.first_name, ' ', approver.last_name) as approver_name
     FROM projects p
@@ -118,7 +130,7 @@ Project.getByUserRole = (userId, userRole, callback) => {
 
 Project.getAll = (callback) => {
   const sql = `
-    SELECT p.*, 
+    SELECT p.*, p.rejection_reason,
            CONCAT(creator.first_name, ' ', creator.last_name) as creator_name, 
            CONCAT(approver.first_name, ' ', approver.last_name) as approver_name
     FROM projects p
@@ -131,7 +143,7 @@ Project.getAll = (callback) => {
 
 Project.getByStatus = (status, callback) => {
   const sql = `
-    SELECT p.*, 
+    SELECT p.*, p.rejection_reason,
            CONCAT(creator.first_name, ' ', creator.last_name) as creator_name, 
            CONCAT(approver.first_name, ' ', approver.last_name) as approver_name
     FROM projects p
@@ -153,7 +165,7 @@ Project.getApproved = (callback) => {
 
 Project.getByCreator = (userId, callback) => {
   const sql = `
-    SELECT p.*, 
+    SELECT p.*, p.rejection_reason,
            CONCAT(creator.first_name, ' ', creator.last_name) as creator_name, 
            CONCAT(approver.first_name, ' ', approver.last_name) as approver_name
     FROM projects p
@@ -168,7 +180,7 @@ Project.getByCreator = (userId, callback) => {
 // Get only approved projects created by a specific user (for assignment)
 Project.getApprovedProjectsByCreator = (userId, callback) => {
   const sql = `
-    SELECT p.*, 
+    SELECT p.*, p.rejection_reason,
            CONCAT(creator.first_name, ' ', creator.last_name) as creator_name, 
            CONCAT(approver.first_name, ' ', approver.last_name) as approver_name
     FROM projects p
@@ -196,10 +208,12 @@ Project.reject = (projectId, rejecterId, rejectionReason, callback) => {
   const sql = `
     UPDATE projects 
     SET status = 'rejected', 
+        approved_by = ?, 
+        rejection_reason = ?,
         updated_at = CURRENT_TIMESTAMP 
     WHERE id = ?
   `;
-  db.query(sql, [projectId], callback);
+  db.query(sql, [rejecterId, rejectionReason, projectId], callback);
 };
 
 // ============ STATISTICS ============

@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api';
 import ProjectList from '../../components/ProjectList';
 import SearchBar from '../../components/SearchBar';
+import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 // Header component for the dashboard
 const FODashboardHeader = () => (
@@ -41,6 +43,7 @@ const FODashboardSidebar = ({ searchTerm, onSearchChange }) => (
 const FODashboardMain = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [searchTerm, setSearchTerm] = useState('');
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +99,9 @@ const FODashboardMain = () => {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       <FODashboardHeader />
 
       {/* Loading State */}

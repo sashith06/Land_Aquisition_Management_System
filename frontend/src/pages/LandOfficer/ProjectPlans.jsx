@@ -3,11 +3,13 @@ import { Link, useParams, useLocation } from 'react-router-dom';
 import { FileText, Calendar, Plus } from 'lucide-react';
 import PlanProgressList from '../../components/PlanProgressList';
 import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import api from '../../api';
 
 export default function ProjectPlans() {
   const { projectId } = useParams();
   const location = useLocation();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const { projectName } = location.state || {};
   const [plans, setPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -42,13 +44,7 @@ export default function ProjectPlans() {
     return (
       <div className="p-6">
         <div className="mb-6">
-          <Breadcrumb
-            items={[
-              { label: "Dashboard", to: "/lo-dashboard" },
-              { label: projectName || "Project", to: `/lo-dashboard/project/${projectId}/plans` },
-              { label: "Plans" },
-            ]}
-          />
+          <Breadcrumb items={generateBreadcrumbs({ projectName })} />
           <h1 className="text-2xl font-bold text-gray-900">
             {projectName ? `${projectName} - Plans` : 'Project Plans'}
           </h1>
@@ -67,13 +63,7 @@ export default function ProjectPlans() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", to: "/lo-dashboard" },
-            { label: projectName || "Project", to: `/lo-dashboard/project/${projectId}/plans` },
-            { label: "Plans" },
-          ]}
-        />
+        <Breadcrumb items={generateBreadcrumbs({ projectName })} />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">

@@ -67,7 +67,7 @@ CREATE TABLE `projects` (
   `section_5_no_date` date DEFAULT NULL,
   
   -- Type of Acquisition
-  `compensation_type` enum('regulation','larc','special') DEFAULT 'regulation',
+  `compensation_type` enum('regulation','larc/super larc','special Committee Decision') DEFAULT 'regulation',
   
   -- Additional Notes
   `notes` text DEFAULT NULL,
@@ -140,6 +140,7 @@ CREATE TABLE `lots` (
   `extent_ha` decimal(10,4) DEFAULT NULL,
   `extent_perch` decimal(10,4) DEFAULT NULL,
   `land_type` enum('State','Private','Development Only') DEFAULT 'Private',
+  `advance_tracing_no` varchar(100) DEFAULT NULL,
   `advance_tracing_extent_ha` decimal(10,4) DEFAULT NULL,
   `advance_tracing_extent_perch` decimal(10,4) DEFAULT NULL,
   `preliminary_plan_extent_ha` decimal(10,4) DEFAULT NULL,
@@ -157,6 +158,9 @@ CREATE TABLE `lots` (
   CONSTRAINT `lots_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `lots_ibfk_3` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Add advance_tracing_no column to lots table (for existing databases)
+ALTER TABLE `lots` ADD COLUMN `advance_tracing_no` varchar(100) DEFAULT NULL AFTER `land_type`;
 
 -- ================================================
 -- TABLE: project_assignments

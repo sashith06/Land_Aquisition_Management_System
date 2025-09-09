@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, MapPin } from 'lucide-react';
 import api from '../api';
 
-const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
+const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => {
   const [formData, setFormData] = useState({
     land_type: 'Private',
     advance_tracing_no: '',
@@ -32,8 +32,14 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
   }, [initialData]);
 
   useEffect(() => {
-    loadAdvanceTracingNumbers();
-  }, []);
+    // Set advance tracing number from plan data if available
+    if (planData?.advance_tracing_no && !formData.advance_tracing_no) {
+      setFormData(prev => ({
+        ...prev,
+        advance_tracing_no: planData.advance_tracing_no
+      }));
+    }
+  }, [planData]);
 
   const loadAdvanceTracingNumbers = async () => {
     try {
@@ -60,6 +66,7 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
     try {
       const dataToSend = {
         land_type: formData.land_type,
+        advance_tracing_no: formData.advance_tracing_no || null,
         advance_tracing_extent_ha: parseFloat(formData.advance_tracing_extent_ha) || null,
         advance_tracing_extent_perch: parseFloat(formData.advance_tracing_extent_perch) || null,
         preliminary_plan_extent_ha: parseFloat(formData.preliminary_plan_extent_ha) || null,
@@ -139,11 +146,20 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
             >
               <option value="">Select Advance Tracing No</option>
-              {advanceTracingNumbers.map((number) => (
-                <option key={number} value={number}>
-                  {number}
+              {/* Show plan's Advance Tracing No first if available */}
+              {planData?.advance_tracing_no && (
+                <option value={planData.advance_tracing_no}>
+                  {planData.advance_tracing_no} (From Plan)
                 </option>
-              ))}
+              )}
+              {/* Show other available advance tracing numbers */}
+              {advanceTracingNumbers
+                .filter(number => number !== planData?.advance_tracing_no)
+                .map((number) => (
+                  <option key={number} value={number}>
+                    {number}
+                  </option>
+                ))}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,7 +168,10 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
             </div>
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            Same for relevant lot under relevant plan under relevant project
+            {planData?.advance_tracing_no 
+              ? `Plan's Advance Tracing No: ${planData.advance_tracing_no}`
+              : 'Same for relevant lot under relevant plan under relevant project'
+            }
           </div>
         </div>
 

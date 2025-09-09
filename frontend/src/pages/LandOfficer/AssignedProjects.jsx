@@ -1,10 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, Eye, Edit } from 'lucide-react';
+import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 export default function AssignedProjects() {
+  const { generateBreadcrumbs } = useBreadcrumbs();
+
   return (
     <div className="p-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Assigned Projects</h1>
         <p className="text-gray-600 mt-1">Projects assigned to you by project engineers</p>

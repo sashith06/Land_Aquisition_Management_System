@@ -446,6 +446,7 @@ Lot.updateLandDetails = (id, landDetails, callback) => {
   const sql = `
     UPDATE lots 
     SET land_type = ?,
+        advance_tracing_no = ?,
         advance_tracing_extent_ha = ?, 
         advance_tracing_extent_perch = ?,
         preliminary_plan_extent_ha = ?, 
@@ -457,6 +458,7 @@ Lot.updateLandDetails = (id, landDetails, callback) => {
   
   const params = [
     landDetails.land_type,
+    landDetails.advance_tracing_no || null,
     landDetails.advance_tracing_extent_ha || null,
     landDetails.advance_tracing_extent_perch || null,
     landDetails.preliminary_plan_extent_ha || null,
@@ -473,6 +475,7 @@ Lot.saveLandDetails = (id, landDetails, callback) => {
   const sql = `
     UPDATE lots 
     SET land_type = ?,
+        advance_tracing_no = ?,
         advance_tracing_extent_ha = ?, 
         advance_tracing_extent_perch = ?,
         preliminary_plan_extent_ha = ?, 
@@ -484,6 +487,7 @@ Lot.saveLandDetails = (id, landDetails, callback) => {
   
   const params = [
     landDetails.land_type,
+    landDetails.advance_tracing_no || null,
     landDetails.advance_tracing_extent_ha || null,
     landDetails.advance_tracing_extent_perch || null,
     landDetails.preliminary_plan_extent_ha || null,
@@ -508,7 +512,7 @@ Lot.saveLandDetails = (id, landDetails, callback) => {
 // Get lot land details by ID
 Lot.getLandDetailsById = (id, callback) => {
   const sql = `
-    SELECT id, land_type, 
+    SELECT id, land_type, advance_tracing_no,
            advance_tracing_extent_ha, advance_tracing_extent_perch,
            preliminary_plan_extent_ha, preliminary_plan_extent_perch,
            created_by, updated_by, created_at, updated_at
@@ -536,7 +540,7 @@ Lot.getLandDetailsById = (id, callback) => {
     console.log('Found lot:', lot);
     
     // Return only if there are land details (not just default values)
-    if (lot.land_type || lot.advance_tracing_extent_ha || lot.advance_tracing_extent_perch ||
+    if (lot.land_type || lot.advance_tracing_no || lot.advance_tracing_extent_ha || lot.advance_tracing_extent_perch ||
         lot.preliminary_plan_extent_ha || lot.preliminary_plan_extent_perch) {
       console.log('Returning land details for lot:', lot.id);
       callback(null, lot);

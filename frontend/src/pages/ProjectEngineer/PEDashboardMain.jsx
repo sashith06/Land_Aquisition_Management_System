@@ -4,10 +4,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api";
 import SearchBar from "../../components/SearchBar";
 import ProjectList from "../../components/ProjectList";
+import Breadcrumb from "../../components/Breadcrumb";
+import { useBreadcrumbs } from "../../hooks/useBreadcrumbs";
 
 const PEDashboardMain = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [searchTerm, setSearchTerm] = useState("");
   const [allProjects, setAllProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +91,10 @@ const PEDashboardMain = () => {
     navigate(`/pe-dashboard/edit-project/${project.id}`);
   };
 
+  const handleViewDetails = (project) => {
+    navigate(`/pe-dashboard/project-details/${project.id}`);
+  };
+
   const handleDeleteProject = async (projectId) => {
     try {
       await api.delete(`/api/projects/delete/${projectId}`);
@@ -104,6 +111,9 @@ const PEDashboardMain = () => {
 
   return (
     <div className="p-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       {loading ? (
         <div className="flex items-center justify-center min-h-96">
           <div className="text-center">
@@ -151,6 +161,7 @@ const PEDashboardMain = () => {
                 onSelect={handleProjectSelect}
                 showActions={true}
                 onEdit={handleEditProject}
+                onViewDetails={handleViewDetails}
                 onDelete={handleDeleteProject}
               />
             )}

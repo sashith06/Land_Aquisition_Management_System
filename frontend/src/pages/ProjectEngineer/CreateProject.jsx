@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Plus, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import api from '../../api';
 
 const CreateProject = () => {
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -110,12 +112,7 @@ const CreateProject = () => {
   return (
     <div className="space-y-6">
       {/* Breadcrumb Navigation */}
-      <Breadcrumb
-        items={[
-          { label: "Dashboard", to: "/pe-dashboard" },
-          { label: "Create Project" },
-        ]}
-      />
+      <Breadcrumb items={generateBreadcrumbs()} />
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -191,8 +188,8 @@ const CreateProject = () => {
                   className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="regulation">Regulation</option>
-                  <option value="larc">LARC / Super LARC</option>
-                  <option value="special_committee">Special Committee Decision</option>
+                  <option value="larc/super larc">LARC / Super LARC</option>
+                  <option value="special Committee Decision">Special Committee Decision</option>
                 </select>
               </div>
 

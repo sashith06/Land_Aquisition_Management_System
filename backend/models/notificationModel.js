@@ -87,7 +87,7 @@ Notification.deleteOld = (callback) => {
 };
 
 // Create notification for Chief Engineer (system admin - CE role)
-Notification.createForChiefEngineer = (type, title, message, relatedId = null, callback) => {
+Notification.createForChiefEngineer = (type, title, message, callback) => {
   const notification = {
     user_id: 1, // Chief Engineer (CE) is the system admin - user ID 1
     type,

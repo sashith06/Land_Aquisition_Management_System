@@ -25,11 +25,13 @@ import LODashboard from "../pages/Landowner/landownerdashboard/LODashboard";
 import UserManagement from "../pages/ChiefEngineer/UserManagement";
 import ProjectRequests from "../pages/ChiefEngineer/ProjectRequests";
 import CEProjectPlans from "../pages/ChiefEngineer/CEProjectPlans";
+import CEProjectDetailsPage from "../pages/ChiefEngineer/CEProjectDetailsPage";
 import CEDashboardMain from "../pages/ChiefEngineer/CEDashboardMain";
 
 import PEDashboardMain from "../pages/ProjectEngineer/PEDashboardMain";
 import CreateProject from "../pages/ProjectEngineer/CreateProject";
 import EditProject from "../pages/ProjectEngineer/EditProject";
+import ProjectDetailsPage from "../pages/ProjectEngineer/ProjectDetailsPage";
 import ProjectAssignment from "../pages/ProjectEngineer/ProjectAssignment";
 import PEProjectPlans from "../pages/ProjectEngineer/PEProjectPlans";
 
@@ -86,6 +88,7 @@ export default function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="user-management" element={<UserManagement />} />
         <Route path="project-requests" element={<ProjectRequests />} />
+        <Route path="project-details/:projectId" element={<CEProjectDetailsPage />} />
         {/* No profile route for Chief Engineer (admin) */}
       </Route>
 
@@ -104,6 +107,7 @@ export default function AppRoutes() {
         <Route path="reports" element={<Reports />} />
         <Route path="create-project" element={<CreateProject />} />
         <Route path="edit-project/:projectId" element={<EditProject />} />
+        <Route path="project-details/:projectId" element={<ProjectDetailsPage />} />
         <Route path="project-assignment" element={<ProjectAssignment />} />
         <Route path="profile" element={<Profile />} />
       </Route>

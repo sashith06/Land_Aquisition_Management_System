@@ -3,11 +3,13 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import api from '../../api';
 import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 const CreatePlan = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { projectId: urlProjectId, id: planId } = useParams(); // Get planId for edit mode
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const projectFromQuery = searchParams.get('project');
   
   // Determine if we're in edit mode
@@ -248,12 +250,7 @@ const CreatePlan = () => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <Breadcrumb
-          items={[
-            { label: "Dashboard", onClick: () => navigate(getDashboardPath()) },
-            { label: isEditMode ? "Edit Plan" : "Create Plan" }
-          ]}
-        />
+        <Breadcrumb items={generateBreadcrumbs()} />
         <div className="mt-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">

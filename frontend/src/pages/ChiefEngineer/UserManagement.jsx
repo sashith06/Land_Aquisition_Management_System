@@ -14,6 +14,8 @@ import {
   updateUser
 } from '../../api.js';
 import usePendingUsersCount from '../../hooks/usePendingUsersCount.js';
+import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 // Helper to safely format a date value (string or Date). Returns fallback or '-' when absent.
 const formatDate = (value, fallback = '-') => {
@@ -237,6 +239,7 @@ const SearchAndFilter = ({ searchTerm, onSearchChange, selectedRole, onRoleChang
 
 // Main Component
 const UserManagement = () => {
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [users, setUsers] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [rejectedUsers, setRejectedUsers] = useState([]);
@@ -386,6 +389,9 @@ const UserManagement = () => {
 
   return (
     <div className="space-y-6">
+      <div className="mb-6">
+        <Breadcrumb items={generateBreadcrumbs()} />
+      </div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

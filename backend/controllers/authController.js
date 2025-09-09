@@ -65,7 +65,6 @@ exports.register = async (req, res) => {
         Notification.TYPES.USER_REGISTRATION,
         'New User Registration',
         `New user ${firstName} ${lastName} (${email}) has requested ${role} access.`,
-        result.insertId,
         (notifErr) => {
           if (notifErr) console.error("Error creating notification:", notifErr);
         }

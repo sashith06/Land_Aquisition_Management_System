@@ -44,6 +44,7 @@ exports.saveLandDetails = async (req, res) => {
     const { id } = req.params;
     const { 
       land_type, 
+      advance_tracing_no,
       advance_tracing_extent_ha, 
       advance_tracing_extent_perch,
       preliminary_plan_extent_ha, 
@@ -68,6 +69,7 @@ exports.saveLandDetails = async (req, res) => {
 
     const landDetails = {
       land_type,
+      advance_tracing_no: advance_tracing_no || null,
       advance_tracing_extent_ha: advance_tracing_extent_ha || null,
       advance_tracing_extent_perch: advance_tracing_extent_perch || null,
       preliminary_plan_extent_ha: preliminary_plan_extent_ha || null,
@@ -103,6 +105,7 @@ exports.updateLotLandDetails = async (req, res) => {
     const { id } = req.params;
     const { 
       land_type, 
+      advance_tracing_no,
       advance_tracing_extent_ha, 
       advance_tracing_extent_perch,
       preliminary_plan_extent_ha, 
@@ -123,6 +126,7 @@ exports.updateLotLandDetails = async (req, res) => {
 
     const landDetails = {
       land_type,
+      advance_tracing_no: advance_tracing_no || null,
       advance_tracing_extent_ha: advance_tracing_extent_ha || null,
       advance_tracing_extent_perch: advance_tracing_extent_perch || null,
       preliminary_plan_extent_ha: preliminary_plan_extent_ha || null,

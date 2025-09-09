@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Breadcrumb from '../../components/Breadcrumb';
+import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import api from '../../api';
 
 const EditProject = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [formData, setFormData] = useState({
     projectName: '',
     estimatedCost: '',
@@ -155,12 +157,7 @@ const EditProject = () => {
   return (
     <div className="space-y-6">
       {/* Breadcrumb Navigation */}
-      <Breadcrumb
-        items={[
-          { label: "Dashboard", to: "/pe-dashboard" },
-          { label: "Edit Project" },
-        ]}
-      />
+      <Breadcrumb items={generateBreadcrumbs()} />
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -467,8 +464,8 @@ const EditProject = () => {
                     <input
                       type="radio"
                       name="acquisitionType"
-                      value="larc"
-                      checked={formData.acquisitionType === 'larc'}
+                      value="larc/super larc"
+                      checked={formData.acquisitionType === 'larc/super larc'}
                       onChange={handleInputChange}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
@@ -478,8 +475,8 @@ const EditProject = () => {
                     <input
                       type="radio"
                       name="acquisitionType"
-                      value="special"
-                      checked={formData.acquisitionType === 'special'}
+                      value="special Committee Decision"
+                      checked={formData.acquisitionType === 'special Committee Decision'}
                       onChange={handleInputChange}
                       className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                     />
