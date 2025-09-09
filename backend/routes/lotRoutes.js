@@ -37,7 +37,7 @@ router.get("/:id", verifyToken, requireAll, lotController.getLotById);
 router.get("/:id/land-details", verifyToken, requireAll, lotController.getLandDetails);
 
 // Save/Create lot land details
-router.post("/:id/land-details", verifyToken, requireAll, lotController.saveLandDetails);
+router.post("/:id/land-details", verifyToken, requireLandOfficer, lotController.saveLandDetails);
 
 // Add owner to lot
 router.post("/:lotId/owners", verifyToken, requireEngineersOrLO, lotController.addOwnerToLot);
@@ -46,7 +46,7 @@ router.post("/:lotId/owners", verifyToken, requireEngineersOrLO, lotController.a
 router.put("/:id", verifyToken, requireLandOfficer, lotController.updateLot);
 
 // Update lot land details (Land Officers, Project Engineers, Chief Engineers)
-router.put("/:id/land-details", verifyToken, requireAll, lotController.updateLotLandDetails);
+router.put("/:id/land-details", verifyToken, requireLandOfficer, lotController.updateLotLandDetails);
 
 // Remove owner from lot
 router.delete("/:lotId/owners/:ownerId", verifyToken, requireEngineersOrLO, lotController.removeOwnerFromLot);

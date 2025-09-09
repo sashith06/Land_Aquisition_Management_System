@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import api from '../../api';
-import { plansData } from '../../data/mockData';
 import PlanList from '../../components/PlanList';
 import ProjectList from '../../components/ProjectList';
 import ProjectDetails from '../../components/ProjectDetails';
@@ -107,6 +106,7 @@ const CEDashboardMain = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [allProjects, setAllProjects] = useState([]);
+  const [allPlans, setAllPlans] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Load approved projects from API
@@ -133,12 +133,27 @@ const CEDashboardMain = () => {
     if (location.state?.returnToProject && location.state?.planId) {
       // Find the project that contains the plan with the given planId
       const planId = location.state.planId;
-      const plan = plansData.find(p => p.id === planId);
-      if (plan) {
-        const project = allProjects.find(proj => proj.id === plan.projectId);
-        if (project) {
-          setSelectedProject(project);
+      // Load plans for all projects to find the matching plan
+      const loadPlansAndFindProject = async () => {
+        try {
+          // Load all plans to find the matching plan
+          const plansResponse = await api.get('/api/plans');
+          const allPlansData = plansResponse.data;
+          const plan = allPlansData.find(p => p.id === parseInt(planId));
+          if (plan) {
+            const project = allProjects.find(proj => proj.id === plan.project_id);
+            if (project) {
+              setSelectedProject(project);
+              loadPlansForProject(project.id);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading plans for navigation:', error);
         }
+      };
+
+      if (allProjects.length > 0) {
+        loadPlansAndFindProject();
       }
     }
   }, [location.state, allProjects]);
@@ -159,17 +174,30 @@ const CEDashboardMain = () => {
   const filteredPlans = useMemo(() => {
     if (!selectedProject) return [];
     const term = searchTerm.trim();
-    return plansData.filter(
+    return allPlans.filter(
       (plan) =>
-        plan.projectId === selectedProject.id &&
-        (!term || plan.id.includes(term))
+        plan.project_id === selectedProject.id &&
+        (!term || plan.plan_number.toLowerCase().includes(term.toLowerCase()) ||
+         plan.description?.toLowerCase().includes(term.toLowerCase()))
     );
-  }, [searchTerm, selectedProject]);
+  }, [searchTerm, selectedProject, allPlans]);
+
+  // Load plans for selected project
+  const loadPlansForProject = async (projectId) => {
+    try {
+      const response = await api.get(`/api/plans/project/${projectId}`);
+      setAllPlans(response.data);
+    } catch (error) {
+      console.error('Error loading plans for project:', error);
+      setAllPlans([]);
+    }
+  };
 
   const handleProjectSelect = (project) => {
     console.log('Project selected for viewing:', project);
     setSelectedProject(project);
     setSelectedPlan(null); // Reset plan selection when project changes
+    loadPlansForProject(project.id); // Load plans for the selected project
   };
 
   const handlePlanSelect = (plan) => {

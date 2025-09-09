@@ -7,9 +7,9 @@ const getUserRole = () => {
   if (!token) return null;
   
   try {
-    // Decode JWT token to get role
+    // Decode JWT token to get role or type
     const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.role;
+    return payload.role || payload.type;
   } catch (error) {
     console.error('Error decoding token:', error);
     return null;
@@ -67,6 +67,12 @@ export const FinancialOfficerRoute = ({ children }) => (
 
 export const LandOfficerRoute = ({ children }) => (
   <ProtectedRoute allowedRoles={['land_officer']}>
+    {children}
+  </ProtectedRoute>
+);
+
+export const LandownerRoute = ({ children }) => (
+  <ProtectedRoute allowedRoles={['landowner']}>
     {children}
   </ProtectedRoute>
 );

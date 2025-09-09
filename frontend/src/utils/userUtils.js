@@ -14,6 +14,8 @@ export const getCurrentUserFullName = () => {
   const user = getCurrentUser();
   if (!user) return 'Guest';
   
+  if (user.name) return user.name;
+  
   const firstName = user.firstName || '';
   const lastName = user.lastName || '';
   
@@ -30,7 +32,7 @@ export const getCurrentUserFullName = () => {
 
 export const getCurrentUserRole = () => {
   const user = getCurrentUser();
-  return user?.role || 'User';
+  return user?.role || user?.type || 'User';
 };
 
 export const isCurrentUserCreator = (creatorName) => {

@@ -229,86 +229,25 @@ Plan.getByProjectWithPermissions = (project_id, userId, userRole, callback) => {
   db.query(sql, [userId], callback);
 };
 
-// Get plans with role-based access control
+// Get plans with role-based access control - ALL users can see all plans
 Plan.getByUserRole = (userId, userRole, callback) => {
-  let sql = `
+  const sql = `
     SELECT p.*, 
            pr.name as project_name,
            CONCAT(u.first_name, ' ', u.last_name) as created_by_name
     FROM plans p
     LEFT JOIN projects pr ON p.project_id = pr.id
     LEFT JOIN users u ON p.created_by = u.id
+    ORDER BY p.created_at DESC
   `;
   
-  let whereCondition = '';
-  let params = [];
-  
-  switch(userRole) {
-    case 'CE': // Chief Engineer - can see all plans
-    case 'chief_engineer':
-      whereCondition = '';
-      break;
-      
-    case 'PE': // Project Engineer - only plans for projects they created
-    case 'project_engineer':
-      whereCondition = 'WHERE pr.created_by = ?';
-      params = [userId];
-      break;
-      
-    case 'FO': // Financial Officer - only plans for approved projects
-    case 'financial_officer':
-      whereCondition = 'WHERE pr.status = ?';
-      params = ['approved'];
-      break;
-      
-    case 'LO': // Land Officer - only plans for assigned projects or plans they created
-    case 'land_officer':
-      sql = `
-        SELECT DISTINCT p.*, 
-               pr.name as project_name,
-               CONCAT(u.first_name, ' ', u.last_name) as created_by_name
-        FROM plans p
-        LEFT JOIN projects pr ON p.project_id = pr.id
-        LEFT JOIN users u ON p.created_by = u.id
-        LEFT JOIN project_assignments pa ON pr.id = pa.project_id
-        WHERE (pa.land_officer_id = ? AND pa.status = 'active' AND pr.status = 'approved')
-           OR p.created_by = ?
-      `;
-      params = [userId, userId];
-      break;
-      
-    default:
-      return callback(new Error('Invalid user role'));
-  }
-  
-  const finalSql = sql + whereCondition + ' ORDER BY p.created_at DESC';
-  db.query(finalSql, params, callback);
+  db.query(sql, [], callback);
 };
 
-// Get plans by project with role-based access
+// Get plans by project with role-based access - ALL users can see plans for any project
 Plan.getByProjectWithRole = (project_id, userId, userRole, callback) => {
-  // First check if user has access to this project
-  const accessCheckSql = `
-    SELECT p.id, p.created_by, p.status
-    FROM projects p
-    LEFT JOIN project_assignments pa ON p.id = pa.project_id
-    WHERE p.id = ? AND (
-      ? IN ('CE', 'chief_engineer') OR 
-      (? IN ('PE', 'project_engineer') AND p.created_by = ?) OR
-      (? IN ('FO', 'financial_officer') AND p.status = 'approved') OR
-      (? IN ('LO', 'land_officer') AND (pa.land_officer_id = ? AND pa.status = 'active'))
-    )
-  `;
-  
-  db.query(accessCheckSql, [project_id, userRole, userRole, userId, userRole, userRole, userId], (accessErr, accessRows) => {
-    if (accessErr) return callback(accessErr);
-    if (accessRows.length === 0) {
-      return callback(new Error('Access denied: You do not have permission to view plans for this project'));
-    }
-    
-    // If access is granted, get the plans
-    Plan.getByProject(project_id, callback);
-  });
+  // All authenticated users can see plans for any project
+  Plan.getByProject(project_id, callback);
 };
 
 // Get all plans for assigned projects

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Upload,
   Send,
@@ -6,47 +6,70 @@ import {
   Mail,
   CreditCard,
   FileText,
-  MessageSquare,
   X,
-  Paperclip,
   Phone,
 } from "lucide-react";
 import Navigation from "../../../components/Navigation";
+import { getLandownerDashboard } from "../../../api";
 
 const NAVBAR_HEIGHT = "64px"; // define navbar height
 
-
 function LODashboard() {
-  const [selectedLot, setSelectedLot] = useState("lot4");
-  const [inquiryType, setInquiryType] = useState("general");
+  const [selectedLot, setSelectedLot] = useState(null);
   const [inquiryText, setInquiryText] = useState("");
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [bankBookFile, setBankBookFile] = useState(null);
   const [idCardFile, setIdCardFile] = useState(null);
+  const [lots, setLots] = useState([]);
+  const [owner, setOwner] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Lot data
-  const lotData = {
-    lot4: {
-      lotNumber: 4,
-      compensationAmount: "Rs. 1,200,000",
-      interest: "5% per annum",
-      acquisitionDate: "12 Aug 2024",
-      acquisitionAmount: "Rs. 950,000",
-      otherOwners: "None",
-      progress: 75
-    },
-    lot5: {
-      lotNumber: 5,
-      compensationAmount: "Rs. 1,500,000",
-      interest: "5.5% per annum",
-      acquisitionDate: "15 Aug 2024",
-      acquisitionAmount: "Rs. 1,100,000",
-      otherOwners: "Jane Smith",
-      progress: 60
-    }
-  };
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await getLandownerDashboard();
+        setOwner(response.data.owner);
+        setLots(response.data.lots);
+        if (response.data.lots.length > 0) {
+          setSelectedLot(response.data.lots[0]);
+        }
+      } catch (err) {
+        setError("Failed to load dashboard data");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const currentLot = lotData[selectedLot];
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600">
+        {error}
+      </div>
+    );
+  }
+
+  if (lots.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        No lots found for your account.
+      </div>
+    );
+  }
+
+  const currentLot = selectedLot;
 
   const handleFileUpload = (e) => {
     setAttachedFiles([...attachedFiles, ...Array.from(e.target.files)]);
@@ -69,7 +92,9 @@ function LODashboard() {
       alert("Please enter your inquiry message");
       return;
     }
-    alert(`${inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} inquiry sent for Lot ${currentLot.lotNumber}: ${inquiryText} with ${attachedFiles.length} file(s)`);
+    alert(
+      `Inquiry sent for Lot ${currentLot.lot_no}: ${inquiryText} with ${attachedFiles.length} file(s)`
+    );
     setInquiryText("");
     setAttachedFiles([]);
   };
@@ -91,13 +116,13 @@ function LODashboard() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Your
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                {" "}Land
+                {" "}
+                Land
               </span>
-              
-               {""} in Our
-             
+              in Our
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                {" "}Process
+                {" "}
+                Process
               </span>
             </h1>
           </div>
@@ -108,51 +133,50 @@ function LODashboard() {
             <div className="xl:col-span-2 space-y-6">
               {/* Stats Cards */}
               <div className="grid grid-cols-2 gap-6">
-                <div 
-                  className={`bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer ${
-                    selectedLot === 'lot4' ? 'border-orange-500 bg-orange-50' : 'border-amber-500'
-                  }`}
-                  onClick={() => setSelectedLot('lot4')}
-                >
-                  <h2 className="text-lg font-semibold mb-2 text-gray-900">
-                    Diyagama - Walgama
-                  </h2>
-                  <p className="text-gray-600 text-sm mb-1">Plan 8890</p>
-                  <p className="text-2xl font-bold text-gray-900">Lot No: 4</p>
-                  {selectedLot === 'lot4' && (
-                    <div className="mt-2 text-orange-600 text-sm font-medium">Selected</div>
-                  )}
-                </div>
-
-                <div 
-                  className={`bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer ${
-                    selectedLot === 'lot5' ? 'border-orange-500 bg-orange-50' : 'border-amber-500'
-                  }`}
-                  onClick={() => setSelectedLot('lot5')}
-                >
-                  <h2 className="text-lg font-semibold mb-2 text-gray-900">
-                    Diyagama - Walgama
-                  </h2>
-                  <p className="text-gray-600 text-sm mb-1">Plan 8890</p>
-                  <p className="text-2xl font-bold text-gray-900">Lot No: 5</p>
-                  {selectedLot === 'lot5' && (
-                    <div className="mt-2 text-orange-600 text-sm font-medium">Selected</div>
-                  )}
-                </div>
+                {lots.map((lot) => (
+                  <div
+                    key={lot.id}
+                    className={`bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer ${
+                      selectedLot?.id === lot.id
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-amber-500"
+                    }`}
+                    onClick={() => setSelectedLot(lot)}
+                  >
+                    <h2 className="text-lg font-semibold mb-2 text-gray-900">
+                      {lot.project_name}
+                    </h2>
+                    <p className="text-gray-600 text-sm mb-1">
+                      Plan {lot.plan_number}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      Lot No: {lot.lot_no}
+                    </p>
+                    {selectedLot?.id === lot.id && (
+                      <div className="mt-2 text-orange-600 text-sm font-medium">
+                        Selected
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
 
               {/* Lot Info & Progress */}
               <div className="bg-white p-6 rounded-2xl shadow-lg border border-dashed border-gray-300">
                 <h2 className="text-lg font-semibold mb-2 text-gray-900">
-                  Diyagama - Walgama
+                  {currentLot.project_name}
                 </h2>
-                <p className="text-gray-600 text-sm mb-1">Plan 8890</p>
-                <p className="text-2xl font-bold text-gray-900 mb-4">Lot No: {currentLot.lotNumber}</p>
+                <p className="text-gray-600 text-sm mb-1">
+                  Plan {currentLot.plan_number}
+                </p>
+                <p className="text-2xl font-bold text-gray-900 mb-4">
+                  Lot No: {currentLot.lot_no}
+                </p>
 
                 <div className="w-full bg-gray-200 rounded-full h-3 mb-6">
                   <div
                     className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${currentLot.progress}%` }}
+                    style={{ width: `50%` }}
                   ></div>
                 </div>
 
@@ -163,24 +187,42 @@ function LODashboard() {
 
                   <ul className="space-y-3 text-sm text-gray-700">
                     <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Compensation Amount:</span>
-                      <span className="text-gray-900">{currentLot.compensationAmount}</span>
+                      <span className="font-medium text-gray-600">
+                        Lot Number:
+                      </span>
+                      <span className="text-gray-900">{currentLot.lot_no}</span>
                     </li>
                     <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Interest:</span>
-                      <span className="text-gray-900">{currentLot.interest}</span>
+                      <span className="font-medium text-gray-600">
+                        Extent (Ha):
+                      </span>
+                      <span className="text-gray-900">
+                        {currentLot.extent_ha}
+                      </span>
                     </li>
                     <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Acquisition Date:</span>
-                      <span className="text-gray-900">{currentLot.acquisitionDate}</span>
+                      <span className="font-medium text-gray-600">
+                        Extent (Perch):
+                      </span>
+                      <span className="text-gray-900">
+                        {currentLot.extent_perch}
+                      </span>
                     </li>
                     <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Acquisition Amount:</span>
-                      <span className="text-gray-900">{currentLot.acquisitionAmount}</span>
+                      <span className="font-medium text-gray-600">
+                        Land Type:
+                      </span>
+                      <span className="text-gray-900">
+                        {currentLot.land_type}
+                      </span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="font-medium text-gray-600">Other Owners:</span>
-                      <span className="text-gray-900">{currentLot.otherOwners}</span>
+                      <span className="font-medium text-gray-600">
+                        Location:
+                      </span>
+                      <span className="text-gray-900">
+                        {currentLot.location || "N/A"}
+                      </span>
                     </li>
                   </ul>
                 </div>
@@ -201,37 +243,49 @@ function LODashboard() {
                     </h2>
                   </div>
 
-
-
                   {/* Profile Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
-                      <User className="h-5 w-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm text-gray-500">Name</p>
-                        <p className="font-medium text-gray-900">John Doe</p>
-                      </div>
-                    </div>
+                  <div className="mb-6">
+                    <ul className="space-y-4">
+                      <li className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-b border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <User className="h-5 w-5 text-gray-500" />
+                          <span className="font-medium text-gray-600">Name:</span>
+                        </div>
+                        <span className="font-medium text-gray-900">
+                          {owner?.name || "N/A"}
+                        </span>
+                      </li>
 
-                    <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
-                      <Mail className="h-5 w-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm text-gray-500">Email</p>
-                        <p className="font-mono text-gray-900">
-                          john@example.com
-                        </p>
-                      </div>
-                    </div>
+                      <li className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-b border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <CreditCard className="h-5 w-5 text-gray-500" />
+                          <span className="font-medium text-gray-600">NIC:</span>
+                        </div>
+                        <span className="font-mono text-gray-900">
+                          {owner?.nic || "N/A"}
+                        </span>
+                      </li>
 
-                    <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
-                      <Phone className="h-5 w-5 text-gray-500" />
-                      <div>
-                        <p className="text-sm text-gray-500">Mobile</p>
-                        <p className="font-normal text-gray-900">
-                          +94 77 123 4567
-                        </p>
-                      </div>
-                    </div>
+                      <li className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border-b border-gray-200">
+                        <div className="flex items-center space-x-3">
+                          <Mail className="h-5 w-5 text-gray-500" />
+                          <span className="font-medium text-gray-600">Email:</span>
+                        </div>
+                        <span className="font-mono text-gray-900">
+                          {owner?.email || "Not provided"}
+                        </span>
+                      </li>
+
+                      <li className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                        <div className="flex items-center space-x-3">
+                          <Phone className="h-5 w-5 text-gray-500" />
+                          <span className="font-medium text-gray-600">Mobile:</span>
+                        </div>
+                        <span className="font-normal text-gray-900">
+                          {owner?.phone || "N/A"}
+                        </span>
+                      </li>
+                    </ul>
                   </div>
 
                   {/* Bank Book & ID Card */}
@@ -242,7 +296,9 @@ function LODashboard() {
                         <div className="p-2 bg-emerald-100 rounded-lg mr-3">
                           <CreditCard className="h-5 w-5 text-emerald-600" />
                         </div>
-                        <h3 className="font-semibold text-gray-900">Bank Book</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          Bank Book
+                        </h3>
                       </div>
                       <input
                         type="file"
@@ -291,79 +347,45 @@ function LODashboard() {
 
                   {/* Lot Selection Radio Buttons */}
                   <div className="mb-6">
-                    <span className="block text-sm font-medium text-gray-700 mb-3">Select Lot for Inquiry:</span>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="selectedLot"
-                          value="lot4"
-                          checked={selectedLot === "lot4"}
-                          onChange={() => setSelectedLot("lot4")}
-                          className="accent-orange-600"
-                        />
-                        <span className="text-sm font-medium">Lot 4</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="selectedLot"
-                          value="lot5"
-                          checked={selectedLot === "lot5"}
-                          onChange={() => setSelectedLot("lot5")}
-                          className="accent-orange-600"
-                        />
-                        <span className="text-sm font-medium">Lot 5</span>
-                      </label>
+                    <span className="block text-sm font-medium text-gray-700 mb-3">
+                      Select Lot for Inquiry:
+                    </span>
+                    <div className="flex gap-4 flex-wrap">
+                      {lots.map((lot) => (
+                        <label
+                          key={lot.id}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <input
+                            type="radio"
+                            name="selectedLot"
+                            value={lot.id}
+                            checked={selectedLot?.id === lot.id}
+                            onChange={() => setSelectedLot(lot)}
+                            className="accent-orange-600"
+                          />
+                          <span className="text-sm font-medium">
+                            Lot {lot.lot_no}
+                          </span>
+                        </label>
+                      ))}
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
-                      Currently selected: Lot {currentLot.lotNumber} - {currentLot.compensationAmount}
-                    </div>
-                  </div>
-
-                  {/* Inquiry Type Radio Buttons */}
-                  <div className="mb-6">
-                    <span className="block text-sm font-medium text-gray-700 mb-3">Inquiry Type:</span>
-                    <div className="flex flex-wrap gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="inquiryType"
-                          value="general"
-                          checked={inquiryType === "general"}
-                          onChange={() => setInquiryType("general")}
-                          className="accent-blue-600"
-                        />
-                        <span className="text-sm">General</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="inquiryType"
-                          value="payment"
-                          checked={inquiryType === "payment"}
-                          onChange={() => setInquiryType("payment")}
-                          className="accent-blue-600"
-                        />
-                        <span className="text-sm">Payment</span>
-                      </label>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      Selected inquiry type: <span className="font-medium capitalize">{inquiryType}</span>
+                      Currently selected: Lot {currentLot.lot_no}
                     </div>
                   </div>
 
                   {/* Inquiry Textarea */}
                   <div>
                     <label className="block mb-2 font-semibold text-gray-700">
-                      {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry for Lot {currentLot.lotNumber}
+                      Inquiry for Lot {currentLot.lot_no}
                     </label>
                     <textarea
                       rows={4}
                       value={inquiryText}
                       onChange={(e) => setInquiryText(e.target.value)}
                       className="w-full border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                      placeholder={`Write your ${inquiryType} inquiry about Lot ${currentLot.lotNumber} here...`}
+                      placeholder={`Write your inquiry about Lot ${currentLot.lot_no} here...`}
                     />
                   </div>
 
@@ -404,7 +426,7 @@ function LODashboard() {
                       onClick={handleInquirySubmit}
                       className="flex items-center justify-center px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl shadow hover:bg-orange-600 transition-all"
                     >
-                      <Send className="w-4 h-4 mr-2" /> Send {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry
+                      <Send className="w-4 h-4 mr-2" /> Send Inquiry
                     </button>
                   </div>
                 </div>

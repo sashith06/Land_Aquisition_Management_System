@@ -238,36 +238,32 @@ exports.getMyPlans = (req, res) => {
   }
 };
 
-// Get all plans for assigned projects (for Land Officers - read-only for others' plans)
+// Get all viewable plans (All authenticated users can view all plans)
 exports.getAllViewablePlans = (req, res) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
-  
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
     const userRole = decoded.role;
-    
-    if (userRole === 'land_officer') {
-      // Get all plans for projects assigned to this land officer
-      Plan.getAllPlansForAssignedProjects(userId, (err, rows) => {
-        if (err) return res.status(500).json({ error: err });
-        
-        // Add permissions based on ownership
-        const plansWithPermissions = rows.map(plan => ({
-          ...plan,
-          can_edit: plan.created_by === userId,
-          can_delete: plan.created_by === userId,
-          is_own_plan: plan.created_by === userId
-        }));
-        
-        res.json(plansWithPermissions);
-      });
-    } else {
-      return res.status(403).json({ error: 'Access denied' });
-    }
+
+    // All authenticated users can see all plans
+    Plan.getAllPlansForAssignedProjects(userId, (err, rows) => {
+      if (err) return res.status(500).json({ error: err });
+
+      // Add permissions based on role and ownership
+      const plansWithPermissions = rows.map(plan => ({
+        ...plan,
+        can_edit: userRole === 'land_officer' && plan.created_by === userId,
+        can_delete: userRole === 'land_officer' && plan.created_by === userId,
+        is_own_plan: plan.created_by === userId
+      }));
+
+      res.json(plansWithPermissions);
+    });
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
   }

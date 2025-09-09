@@ -457,5 +457,26 @@ DESCRIBE plans;
 DESCRIBE lots;
 
 -- ================================================
--- END OF SETUP
+-- SAMPLE DATA FOR TESTING
 -- ================================================
+
+-- Insert sample projects
+INSERT INTO `projects` (`name`, `description`, `status`, `created_by`, `initial_estimated_cost`, `start_date`) VALUES
+('Colombo City Development Project', 'Urban development project in Colombo metropolitan area', 'approved', 1, 50000000.00, '2024-01-15'),
+('Highway Expansion Project', 'Expansion of main highway connecting major cities', 'approved', 1, 75000000.00, '2024-02-01'),
+('Rural Infrastructure Project', 'Infrastructure development in rural areas', 'approved', 1, 25000000.00, '2024-03-10');
+
+-- Insert sample plans
+INSERT INTO `plans` (`plan_number`, `project_id`, `description`, `location`, `total_extent`, `estimated_cost`, `status`, `created_by`) VALUES
+('PLAN-001', 1, 'Colombo North Development Plan', 'Colombo North', 50.25, 15000000.00, 'pending', 1),
+('PLAN-002', 1, 'Colombo Central Development Plan', 'Colombo Central', 75.50, 22500000.00, 'in_progress', 1),
+('PLAN-003', 2, 'Highway Section A Plan', 'Highway Section A', 100.00, 30000000.00, 'pending', 1),
+('PLAN-004', 3, 'Rural Village A Plan', 'Village A', 25.75, 7500000.00, 'completed', 1);
+
+-- Insert sample lots
+INSERT INTO `lots` (`plan_id`, `lot_no`, `extent_ha`, `extent_perch`, `land_type`, `created_by`) VALUES
+(1, 1, 5.25, 2075.00, 'Private', 1),
+(1, 2, 3.75, 1480.00, 'Private', 1),
+(2, 1, 10.50, 4145.00, 'State', 1),
+(3, 1, 15.00, 5920.00, 'Private', 1),
+(4, 1, 8.25, 3255.00, 'Private', 1);

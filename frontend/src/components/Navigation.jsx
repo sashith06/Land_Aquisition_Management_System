@@ -2,7 +2,7 @@ import { Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { useState } from 'react';
 import { logout } from '../utils/auth';
-import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin } from '../utils/userUtils';
+import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin, getCurrentUserRole } from '../utils/userUtils';
 import Logo from './Logo';
 import NotificationDropdown from './NotificationDropdown';
 import useNotifications from '../hooks/useNotifications';
@@ -33,6 +33,11 @@ const Navigation = () => {
   const getProfilePath = () => {
     if (isUserAdmin) {
       return null; // No profile for Chief Engineer/Admin
+    }
+    
+    const userRole = getCurrentUserRole();
+    if (userRole === 'landowner') {
+      return null; // No profile for landowners yet
     }
     
     if (location.pathname.startsWith('/pe-dashboard')) {

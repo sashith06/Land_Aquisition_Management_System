@@ -47,6 +47,7 @@ import {
   ProjectEngineerRoute, 
   FinancialOfficerRoute, 
   LandOfficerRoute, 
+  LandownerRoute,
   AnyOfficerRoute 
 } from "../components/ProtectedRoute";
 
@@ -66,6 +67,13 @@ export default function AppRoutes() {
       <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="/lodashboard" element={<LODashboard />} />
+
+      {/* Landowner Dashboard */}
+      <Route path="/landowner-dashboard" element={
+        <LandownerRoute>
+          <LODashboard />
+        </LandownerRoute>
+      } />
 
       {/* Chief Engineer Dashboard Routes With CE Layout */}
       <Route path="/ce-dashboard" element={

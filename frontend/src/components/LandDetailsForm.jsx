@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Save, MapPin } from 'lucide-react';
 import api from '../api';
 
-const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
+const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, projectId }) => {
   const [formData, setFormData] = useState({
     land_type: 'Private',
     advance_tracing_no: '',
@@ -31,9 +31,27 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel }) => {
     }
   }, [initialData]);
 
+
   useEffect(() => {
     loadAdvanceTracingNumbers();
-  }, []);
+    if (projectId) {
+      fetchAdvanceTracingNumberFromProject(projectId);
+    }
+  }, [projectId]);
+
+  const fetchAdvanceTracingNumberFromProject = async (projectId) => {
+    try {
+      const response = await api.get(`/api/projects/${projectId}/advance-tracing-number`);
+      if (response.data.advance_tracing_no) {
+        setFormData(prev => ({
+          ...prev,
+          advance_tracing_no: response.data.advance_tracing_no
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching advance tracing number from project:', error);
+    }
+  };
 
   const loadAdvanceTracingNumbers = async () => {
     try {

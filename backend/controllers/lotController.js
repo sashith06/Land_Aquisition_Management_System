@@ -157,14 +157,14 @@ exports.updateLotLandDetails = async (req, res) => {
 // Create new lot
 exports.createLot = async (req, res) => {
   try {
-    const { plan_id, lot_number, lot_no, extent_ha, extent_perch, land_type, owners } = req.body;
+    const { plan_id, lot_number, lot_no, extent_ha, extent_perch, land_type } = req.body;
     
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
     if (decoded.role !== 'land_officer') {
@@ -180,7 +180,7 @@ exports.createLot = async (req, res) => {
       created_by: userId
     };
 
-    console.log('Creating lot with data:', lotData, 'and owners:', owners); // Debug log
+    console.log('Creating lot with data:', lotData); // Debug log
 
     Lot.create(lotData, (err, result) => {
       if (err) {
@@ -193,50 +193,12 @@ exports.createLot = async (req, res) => {
       
       const lotId = result.insertId;
       
-      // If owners are provided, add them to the lot
-      if (owners && Array.isArray(owners) && owners.length > 0) {
-        let processedOwners = 0;
-        const totalOwners = owners.length;
-        let hasError = false;
-        
-        console.log(`Processing ${totalOwners} owners for lot ${lotId}`);
-        
-        owners.forEach((ownerData, index) => {
-          console.log(`Processing owner ${index + 1}:`, ownerData);
-          
-          // Add owner directly to lot_owners table (WAMP server structure)
-          // We need to pass plan_id and user_id for the foreign key constraints
-          Lot.addOwnerToLot(lotId, ownerData, ownerData.share_percentage, userId, plan_id, (ownerErr, result) => {
-            if (ownerErr && !hasError) {
-              hasError = true;
-              console.error('Error adding owner to lot:', ownerErr);
-              return res.status(500).json({ error: 'Failed to add owner to lot' });
-            }
-            
-            if (!hasError) {
-              console.log(`Owner ${index + 1} added successfully:`, result);
-              processedOwners++;
-              
-              if (processedOwners === totalOwners && !hasError) {
-                console.log(`All ${totalOwners} owners processed successfully`);
-                res.status(201).json({ 
-                  message: 'Lot created successfully with owners',
-                  id: lotId,
-                  lotId,
-                  ownersAdded: totalOwners
-                });
-              }
-            }
-          });
-        });
-      } else {
-        // No owners provided, return success for lot creation only
-        res.status(201).json({ 
-          message: 'Lot created successfully',
-          id: lotId,
-          lotId
-        });
-      }
+      console.log('Lot created successfully with ID:', lotId);
+      res.status(201).json({ 
+        message: 'Lot created successfully',
+        id: lotId,
+        lotId
+      });
     });
   } catch (error) {
     console.error('Error in createLot:', error);
@@ -390,7 +352,7 @@ exports.updateLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (decoded.role !== 'land_officer') {
       return res.status(403).json({ error: 'Only land officers can update lots' });
@@ -435,7 +397,7 @@ exports.deleteLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (decoded.role !== 'land_officer') {
       return res.status(403).json({ error: 'Only land officers can delete lots' });
@@ -470,7 +432,7 @@ exports.addOwnerToLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (!['land_officer', 'chief_engineer', 'project_engineer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to add owners' });
@@ -524,24 +486,24 @@ exports.removeOwnerFromLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (!['land_officer', 'chief_engineer', 'project_engineer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to remove owners' });
     }
     
-    // Remove owner from lot_owners table by id (WAMP server structure)
-    const sql = `DELETE FROM lot_owners WHERE lot_id = ? AND id = ?`;
+    // Remove owner from lot_owners table by owner_id (normalized structure)
+    const sql = `DELETE FROM lot_owners WHERE lot_id = ? AND owner_id = ?`;
     db.query(sql, [lotId, ownerId], (err, result) => {
       if (err) {
         console.error('Error removing owner from lot:', err);
         return res.status(500).json({ error: 'Failed to remove owner from lot' });
       }
-      
+
       if (result.affectedRows === 0) {
         return res.status(404).json({ error: 'Owner-lot relationship not found' });
       }
-      
+
       res.json({ message: 'Owner removed from lot successfully' });
     });
   } catch (error) {
@@ -558,17 +520,16 @@ exports.getAllOwners = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (!['land_officer', 'chief_engineer', 'project_engineer', 'financial_officer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to view owners' });
     }
     
-    // Get unique owners from lot_owners table (WAMP server structure)
+    // Get all owners from owners table (normalized structure)
     const sql = `
-      SELECT DISTINCT name, nic, mobile as phone, address 
-      FROM lot_owners 
-      WHERE status = 'active' 
+      SELECT id, name, nic, phone, address, email
+      FROM owners
       ORDER BY name ASC
     `;
     db.query(sql, (err, owners) => {
@@ -576,7 +537,7 @@ exports.getAllOwners = async (req, res) => {
         console.error('Error fetching owners:', err);
         return res.status(500).json({ error: 'Failed to fetch owners' });
       }
-      
+
       res.json(owners);
     });
   } catch (error) {

@@ -13,7 +13,7 @@ const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
-    console.log('Auth middleware - Token decoded successfully. User:', decoded.id, 'Role:', decoded.role);
+    console.log('Auth middleware - Token decoded successfully. User:', decoded.id, 'Role/Type:', decoded.role || decoded.type);
     req.user = decoded;
     next();
   } catch (err) {
@@ -26,18 +26,19 @@ const verifyToken = (req, res, next) => {
 const authorize = (...roles) => {
   return (req, res, next) => {
     console.log('Authorization middleware - Required roles:', roles);
-    console.log('Authorization middleware - User role:', req.user?.role);
+    console.log('Authorization middleware - User role/type:', req.user?.role || req.user?.type);
     
     if (!req.user) {
       console.log('Authorization middleware - No user in request');
       return res.status(401).json({ error: 'Access denied. Not authenticated.' });
     }
 
-    if (!roles.includes(req.user.role)) {
-      console.log('Authorization middleware - Role not authorized. Required:', roles.join(' or '), 'User has:', req.user.role);
+    const userRole = req.user.role || req.user.type;
+    if (!roles.includes(userRole)) {
+      console.log('Authorization middleware - Role not authorized. Required:', roles.join(' or '), 'User has:', userRole);
       console.log('Authorization middleware - Full user object:', JSON.stringify(req.user));
       return res.status(403).json({ 
-        error: `Access denied. Required role: ${roles.join(' or ')}. Your role: ${req.user.role}` 
+        error: `Access denied. Required role: ${roles.join(' or ')}. Your role: ${userRole}` 
       });
     }
 

@@ -6,7 +6,6 @@ import SearchBar from "../../components/SearchBar";
 import ProjectDetails from "../../components/ProjectDetails";
 import PlanProgressList from "../../components/PlanProgressList";
 import ProjectList from "../../components/ProjectList";
-import { plansData } from "../../data/mockData";
 import { Plus } from "lucide-react";
 
 const Dashboard = () => {
@@ -53,9 +52,13 @@ const Dashboard = () => {
           setAssignedProjects(assignedProjectsResponse.data || []);
           setMyPlans(plansResponse.data || []);
         } else {
-          // Load all approved projects for other roles
-          const response = await api.get('/api/projects/approved');
-          setAllProjects(response.data);
+          // Load all approved projects and plans for other roles (CE, PE, FO)
+          const [projectsResponse, plansResponse] = await Promise.all([
+            api.get('/api/projects/approved'),
+            api.get('/api/plans/user/plans')
+          ]);
+          setAllProjects(projectsResponse.data);
+          setMyPlans(plansResponse.data);
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -76,9 +79,10 @@ const Dashboard = () => {
   useEffect(() => {
     if (location.state?.returnToProject && location.state?.planId) {
       const planId = location.state.planId;
-      const plan = plansData.find(p => p.id === planId);
+      // For CE/LO dashboard, plans are loaded via API, so we need to find by ID
+      const plan = myPlans.find(p => p.id === parseInt(planId));
       if (plan) {
-        const project = allProjects.find(proj => proj.id === plan.projectId);
+        const project = allProjects.find(proj => proj.id === plan.project_id);
         if (project) {
           setSelectedProject(project);
         }
@@ -105,7 +109,7 @@ const Dashboard = () => {
         navigate(location.pathname, { replace: true, state: {} });
       }, 100);
     }
-  }, [location.state, allProjects, navigate, location.pathname]);
+  }, [location.state, allProjects, myPlans, navigate, location.pathname]);
 
   // Reset message shown ref when location changes (for subsequent plan creations)
   useEffect(() => {
@@ -141,11 +145,13 @@ const Dashboard = () => {
       );
     }
     
-    // For other roles, use mock data (can be replaced with API call)
-    return plansData.filter(
-      (plan) =>
-        plan.projectId === selectedProject.id &&
-        (!term || plan.id.includes(term))
+    // For other roles, filter from myPlans (real API data)
+    const projectPlans = myPlans.filter(plan => plan.project_id === selectedProject.id);
+    if (!term) return projectPlans;
+    return projectPlans.filter(plan => 
+      plan.plan_no?.toLowerCase().includes(term.toLowerCase()) ||
+      plan.cadastral_no?.toLowerCase().includes(term.toLowerCase()) ||
+      plan.description?.toLowerCase().includes(term.toLowerCase())
     );
   }, [searchTerm, selectedProject, myPlans, userRole]);
 

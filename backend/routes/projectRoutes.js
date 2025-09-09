@@ -29,4 +29,21 @@ router.get("/user/projects", verifyToken, requireAll, projectController.getProje
 
 router.get("/:id", verifyToken, requireAll, projectController.getProjectById);
 
+
+// Get advance tracing number for a project by projectId
+const db = require('../config/db');
+router.get('/:projectId/advance-tracing-number', (req, res) => {
+	const { projectId } = req.params;
+	const sql = 'SELECT advance_tracing_no FROM projects WHERE id = ?';
+	db.query(sql, [projectId], (err, results) => {
+		if (err) {
+			return res.status(500).json({ error: 'Failed to fetch advance tracing number' });
+		}
+		if (!results.length) {
+			return res.status(404).json({ error: 'Project not found' });
+		}
+		res.json({ advance_tracing_no: results[0].advance_tracing_no });
+	});
+});
+
 module.exports = router;

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const BACKEND_URL = 'http://localhost:5000';
+import { requestOtp, verifyOtp } from '../../api';
 
 const LandownerHero = () => {
   const [nic, setNic] = useState('');
@@ -22,7 +20,7 @@ const LandownerHero = () => {
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
-  const requestOtp = async () => {
+  const requestOtpHandler = async () => {
     if (!/^\d{12}$/.test(nic)) {
       setMessage('NIC must be 12 digits');
       return false;
@@ -36,7 +34,7 @@ const LandownerHero = () => {
     setLoading(true);
     setMessage('');
     try {
-      const res = await axios.post(`${BACKEND_URL}/request-otp`, { nic, mobile });
+      const res = await requestOtp(nic, mobile);
       setOtpSent(true);
       setResendCooldown(60);
       setMessage('OTP sent to your mobile number');
@@ -55,7 +53,7 @@ const LandownerHero = () => {
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
-    await requestOtp();
+    await requestOtpHandler();
   };
 
   const handleVerifyOtp = async (e) => {
@@ -65,12 +63,20 @@ const LandownerHero = () => {
     setLoading(true);
     setMessage('');
     try {
-      const res = await axios.post(`${BACKEND_URL}/verify-otp`, { nic, mobile, otp });
+      const res = await verifyOtp(nic, mobile, otp);
       setMessage(res.data.message);
 
-      // Save token and redirect
-      localStorage.setItem('authToken', res.data.token);
-      window.location.href = '/dashboard';
+      // Save token and user data, then redirect
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify({
+        id: res.data.ownerId,
+        name: res.data.owner.name,
+        nic: res.data.owner.nic,
+        phone: res.data.owner.phone,
+        email: res.data.owner.email,
+        type: 'landowner'
+      }));
+      window.location.href = '/landowner-dashboard';
     } catch (err) {
       setMessage(err.response?.data?.message || 'Invalid OTP');
     } finally {
@@ -80,7 +86,7 @@ const LandownerHero = () => {
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    await requestOtp();
+    await requestOtpHandler();
   };
 
   return (
