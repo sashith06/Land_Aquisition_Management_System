@@ -69,8 +69,14 @@ exports.updateProject = (req, res) => {
       name: requestData.name,
       description: requestData.description || requestData.notes, // Map notes to description
       initial_estimated_cost: requestData.initial_estimated_cost,
+      final_cost: requestData.final_cost,
+      initial_extent_ha: requestData.initial_extent_ha,
+      initial_extent_perch: requestData.initial_extent_perch,
+      compensation_type: requestData.compensation_type,
+      notes: requestData.notes,
       start_date: requestData.start_date,
-      expected_completion_date: requestData.expected_completion_date
+      expected_completion_date: requestData.expected_completion_date,
+      actual_completion_date: requestData.actual_completion_date
     };
 
     // Remove undefined values
@@ -271,10 +277,16 @@ exports.rejectProject = (req, res) => {
 
 // ================= DELETE PROJECT =================
 exports.deleteProject = (req, res) => {
-  const projectId = req.params.id;
+  const projectId = parseInt(req.params.id);
   const userId = req.user.id;
 
   console.log(`Delete request for project ${projectId} by user ${userId}`);
+  console.log(`Project ID type: ${typeof projectId}, value: ${projectId}`);
+
+  // Validate project ID
+  if (isNaN(projectId) || projectId <= 0) {
+    return res.status(400).json({ error: "Invalid project ID" });
+  }
 
   // First check if project exists and user has permission to delete
   Project.findById(projectId, (findErr, projectRows) => {
@@ -289,7 +301,8 @@ exports.deleteProject = (req, res) => {
     }
     
     const project = projectRows[0];
-    console.log(`Found project: ${project.name}, created by: ${project.created_by}`);
+    console.log(`Found project: ${project.name}, created by: ${project.created_by} (type: ${typeof project.created_by})`);
+    console.log(`Current user ID: ${userId} (type: ${typeof userId})`);
     
     // Only allow project creator to delete their own projects
     if (project.created_by !== userId) {
@@ -303,11 +316,27 @@ exports.deleteProject = (req, res) => {
     Project.delete(projectId, (err, result) => {
       if (err) {
         console.error('Error deleting project:', err);
+        console.error('Error code:', err.code);
+        console.error('Error message:', err.message);
         
         // Provide more specific error messages
-        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+        if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.message.includes('foreign key constraint')) {
           return res.status(400).json({ 
-            error: "Cannot delete project because it has related records. Please contact system administrator." 
+            error: "Cannot delete project because it has related records (plans, lots, etc.). The system will attempt to delete all related data automatically." 
+          });
+        }
+        
+        if (err.code === 'ER_NO_SUCH_TABLE') {
+          return res.status(400).json({ 
+            error: "Database table missing. Please ensure the database is properly set up.",
+            details: err.message
+          });
+        }
+        
+        if (err.code === 'ER_BAD_FIELD_ERROR') {
+          return res.status(400).json({ 
+            error: "Database schema issue. Please check the database structure.",
+            details: err.message
           });
         }
         
@@ -315,14 +344,26 @@ exports.deleteProject = (req, res) => {
           return res.status(404).json({ error: "Project not found" });
         }
         
+        if (err.message.includes('Failed to delete project due to foreign key constraints')) {
+          return res.status(400).json({ 
+            error: "Cannot delete project due to database constraints. Please ensure all related data can be safely removed.",
+            details: "This project may have complex relationships that prevent deletion."
+          });
+        }
+        
+        // Generic database error
         return res.status(500).json({ 
-          error: "Failed to delete project. Please try again or contact support.",
-          details: err.message 
+          error: "Failed to delete project due to a database error.",
+          details: err.message,
+          code: err.code
         });
       }
       
       console.log(`Project ${projectId} deleted successfully`);
-      res.json({ message: "Project and all related data deleted successfully" });
+      res.json({ 
+        message: "Project and all related data deleted successfully",
+        deletedProject: project.name
+      });
     });
   });
 };

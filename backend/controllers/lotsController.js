@@ -14,7 +14,7 @@ class LotsController {
         return res.status(401).json({ error: 'No token provided' });
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
       const userId = decoded.id;
       
       if (decoded.role !== 'land_officer') {
@@ -77,7 +77,7 @@ class LotsController {
         return res.status(401).json({ error: 'No token provided' });
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
       const userId = decoded.id;
       const userRole = decoded.role;
       
@@ -157,7 +157,7 @@ class LotsController {
         return res.status(401).json({ error: 'No token provided' });
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
       const userId = decoded.id;
       
       if (decoded.role !== 'land_officer') {
@@ -200,7 +200,7 @@ class LotsController {
         return res.status(401).json({ error: 'No token provided' });
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
       const userId = decoded.id;
       
       if (decoded.role !== 'financial_officer') {
@@ -244,7 +244,7 @@ class LotsController {
         return res.status(401).json({ error: 'No token provided' });
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
       const userId = decoded.id;
       
       if (decoded.role !== 'financial_officer') {
@@ -287,7 +287,7 @@ class LotsController {
         return res.status(401).json({ error: 'No token provided' });
       }
       
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
       const userId = decoded.id;
       
       if (decoded.role !== 'land_officer') {

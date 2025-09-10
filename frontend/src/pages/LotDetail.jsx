@@ -1,13 +1,15 @@
 // src/pages/LotDetail.jsx
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import api from "../api";
+import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
+import Breadcrumb from "../components/Breadcrumb";
 import CompensationDetails from "../components/CompensationDetails";
 
 const LotDetail = () => {
   const { planId, lotId } = useParams();
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [planData, setPlanData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +57,7 @@ const LotDetail = () => {
       nic: "200127702072",
       mobile: "077-9504969",
       address: "1st mile post, Pituwela road, Elpitiya",
-      status: "active",
+      status: lotDetails.status || "active",
       landArea: "2.5 acres",
       valuation: "Rs. 2,500,000",
       compensation: compensationInfo?.totalCompensation 
@@ -74,49 +76,11 @@ const LotDetail = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Breadcrumb navigation */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
-        <Link 
-          to={
-            window.location.pathname.includes('/pe-dashboard') ? "/pe-dashboard" :
-            window.location.pathname.includes('/ce-dashboard') ? "/ce-dashboard" :
-            window.location.pathname.includes('/fo-dashboard') ? "/fo-dashboard" :
-            "/dashboard"
-          } 
-          className="hover:text-blue-600 transition-colors"
-        >
-          Plans & Progress
-        </Link>
-        <span>/</span>
-        <Link 
-          to={
-            window.location.pathname.includes('/pe-dashboard') ? `/pe-dashboard/plan/${planId}/lots` :
-            window.location.pathname.includes('/ce-dashboard') ? `/ce-dashboard/plan/${planId}/lots` :
-            window.location.pathname.includes('/fo-dashboard') ? `/fo-dashboard/plan/${planId}/lots` :
-            `/dashboard/plan/${planId}/lots`
-          } 
-          className="hover:text-blue-600 transition-colors"
-        >
-          Plan {planData?.plan_cadastral_no || planId} Lots
-        </Link>
-        <span>/</span>
-        <span className="text-gray-800 font-medium">Lot {lotId}</span>
-      </nav>
+      <Breadcrumb items={generateBreadcrumbs()} />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate(
-              window.location.pathname.includes('/pe-dashboard') ? `/pe-dashboard/plan/${planId}/lots` :
-              window.location.pathname.includes('/ce-dashboard') ? `/ce-dashboard/plan/${planId}/lots` :
-              window.location.pathname.includes('/fo-dashboard') ? `/fo-dashboard/plan/${planId}/lots` :
-              `/dashboard/plan/${planId}/lots`
-            )}
-            className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Lots</span>
-          </button>
+        <div>
           <h1 className="text-3xl font-bold text-gray-800">
             Lot {lotId} Details
           </h1>

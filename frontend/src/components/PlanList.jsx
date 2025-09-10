@@ -1,4 +1,4 @@
-import { Building2 } from 'lucide-react';
+import { Building2, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const PlanList = ({ plans, onPlanSelect, selectedPlan }) => {
@@ -8,6 +8,21 @@ const PlanList = ({ plans, onPlanSelect, selectedPlan }) => {
     onPlanSelect(plan);
     // Navigate to a detailed view of the plan
     navigate(`/plan/${plan.id}`, { state: { plan } });
+  };
+
+  const handleViewDetails = (plan, e) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    // Navigate to plan detail page based on current dashboard
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/pe-dashboard')) {
+      navigate(`/pe-dashboard/plan/${plan.id}`);
+    } else if (currentPath.includes('/ce-dashboard')) {
+      navigate(`/ce-dashboard/plan/${plan.id}`);
+    } else if (currentPath.includes('/fo-dashboard')) {
+      navigate(`/fo-dashboard/plan/${plan.id}`);
+    } else {
+      navigate(`/dashboard/plan/${plan.id}`);
+    }
   };
 
   return (
@@ -28,10 +43,22 @@ const PlanList = ({ plans, onPlanSelect, selectedPlan }) => {
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                 <Building2 size={20} className="text-gray-600" />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="font-bold text-lg text-gray-800">{plan.id}</p>
                 <p className="text-sm text-gray-500 truncate">{plan.name}</p>
               </div>
+            </div>
+
+            {/* View Details Button */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={(e) => handleViewDetails(plan, e)}
+                className="flex items-center space-x-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                title="View Plan Details"
+              >
+                <Eye size={16} />
+                <span>View Details</span>
+              </button>
             </div>
           </div>
         ))}

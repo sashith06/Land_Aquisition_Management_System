@@ -68,7 +68,7 @@ const EditProject = () => {
           section05GazetteDay: '', // section5Date ? section5Date.getDate().toString() : '',
           section05GazetteMonth: '', // section5Date ? (section5Date.getMonth() + 1).toString() : '',
           section05GazetteYear: '', // section5Date ? section5Date.getFullYear().toString() : '',
-          acquisitionType: 'regulation', // project.compensation_type || 'regulation',
+          acquisitionType: project.compensation_type || 'regulation',
           note: project.description || '' // Map description to note field
         });
         
@@ -139,6 +139,7 @@ const EditProject = () => {
       const updateData = {
         name: formData.projectName,
         initial_estimated_cost: parseFloat(formData.estimatedCost),
+        compensation_type: formData.acquisitionType,
         description: formData.note || null
         // Note: Other form fields (sections, dates) are stored for display only
         // as the current database schema doesn't support these additional fields

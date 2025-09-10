@@ -8,7 +8,6 @@ exports.createPlan = async (req, res) => {
     const {
       project_id,
       plan_no,
-      cadastral_no,
       description,
       estimated_cost,
       estimated_extent,
@@ -29,7 +28,7 @@ exports.createPlan = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
     // Verify that the current user is a land officer
@@ -44,27 +43,27 @@ exports.createPlan = async (req, res) => {
     }
 
     if (!project_id || !plan_no) {
-      return res.status(400).json({ error: "Project ID and Plan Number are required" });
+      return res.status(400).json({ error: "Project ID and Plan Identifier are required" });
     }
 
     // Map frontend fields to actual database columns - save ALL form data
     const planData = {
       project_id: project_id,
-      plan_number: plan_no,
+      plan_identifier: plan_no,  // Use single identifier field
       description: description || null,
       location: divisional_secretary || null,
-      total_extent: estimated_extent || null,
-      estimated_cost: estimated_cost || null,
+      total_extent: null,  // Fixed: Don't use estimated_extent for total_extent
+      estimated_cost: estimated_cost ? parseFloat(estimated_cost) : null,
       estimated_extent: estimated_extent || null,
       advance_tracing_no: advance_tracing_no || null,
       divisional_secretary: divisional_secretary || null,
-      current_extent_value: current_extent_value || null,
+      current_extent_value: current_extent_value ? parseFloat(current_extent_value) : null,
       section_07_gazette_no: section_07_gazette_no || null,
       section_07_gazette_date: section_07_gazette_date || null,
       section_38_gazette_no: section_38_gazette_no || null,
       section_38_gazette_date: section_38_gazette_date || null,
       section_5_gazette_no: section_5_gazette_no || null,
-      pending_cost_estimate: pending_cost_estimate || null,
+      pending_cost_estimate: pending_cost_estimate ? parseFloat(pending_cost_estimate) : null,
       status: 'pending'
     };
 
@@ -72,7 +71,7 @@ exports.createPlan = async (req, res) => {
       if (err) {
         console.error('Error creating plan:', err);
         if (err.code === 'ER_DUP_ENTRY') {
-          return res.status(400).json({ error: 'Plan with this Plan/Cadastral No already exists in this project' });
+          return res.status(400).json({ error: 'Plan with this Plan Identifier already exists in this project' });
         }
         if (err.code === 'ER_BAD_FIELD_ERROR') {
           console.error('Database field error - likely missing columns from migration');
@@ -97,7 +96,7 @@ exports.getPlansForUser = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     const userRole = decoded.role;
     
@@ -140,7 +139,7 @@ exports.getPlansByProject = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userRole = decoded.role;
     const userId = decoded.id;
     
@@ -202,10 +201,26 @@ exports.getPlansByProject = (req, res) => {
 exports.getPlanById = (req, res) => {
   const { id } = req.params;
 
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid plan ID' });
+  }
+
   Plan.findById(id, (err, rows) => {
-    if (err) return res.status(500).json({ error: err });
-    if (rows.length === 0) return res.status(404).json({ error: "Plan not found" });
-    res.json(rows[0]);
+    if (err) {
+      console.error('Error fetching plan:', err);
+      return res.status(500).json({ error: 'Failed to fetch plan details' });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    const plan = rows[0];
+
+    // Add some computed fields for frontend compatibility
+    plan.plan_no = plan.plan_identifier; // Map database field to frontend expectation
+
+    res.json(plan);
   });
 };
 
@@ -217,7 +232,7 @@ exports.getMyPlans = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
     Plan.getByCreator(userId, (err, rows) => {
@@ -246,7 +261,7 @@ exports.getAllViewablePlans = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     const userRole = decoded.role;
     
@@ -286,7 +301,7 @@ exports.updatePlan = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
     console.log('User ID:', userId);
@@ -310,9 +325,9 @@ exports.updatePlan = async (req, res) => {
         return res.status(403).json({ error: 'You can only update plans you created' });
       }
 
-      // Map plan_no to plan_number for database compatibility
+      // Map plan_no to plan_identifier for database compatibility
       if (planData.plan_no) {
-        planData.plan_number = planData.plan_no;
+        planData.plan_identifier = planData.plan_no;
         delete planData.plan_no;
       }
       
@@ -323,7 +338,7 @@ exports.updatePlan = async (req, res) => {
           console.error('Error updating plan:', err);
           console.log('=== UPDATE PLAN DEBUG END (ERROR) ===');
           if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ error: 'Plan with this Plan/Cadastral No already exists in this project' });
+            return res.status(400).json({ error: 'Plan with this Plan Identifier already exists in this project' });
           }
           return res.status(500).json({ error: 'Failed to update plan' });
         }
@@ -390,7 +405,7 @@ exports.getAssignedProjects = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
     if (decoded.role !== 'land_officer') {
@@ -416,7 +431,7 @@ exports.updatePlanStatus = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userRole = decoded.role;
     
     // Define allowed status transitions by role
@@ -458,7 +473,7 @@ exports.getAllPlansWithProjectInfo = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userRole = decoded.role;
     
     // Only CE can access this endpoint
@@ -487,7 +502,7 @@ exports.getPlansForProjectEngineer = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     const userRole = decoded.role;
     

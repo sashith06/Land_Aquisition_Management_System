@@ -15,7 +15,16 @@ const usePendingUsersCount = (pollingInterval = 30000) => { // Poll every 30 sec
       setError(null);
     } catch (err) {
       console.error('Error fetching pending users count:', err);
-      setError(err);
+      
+      // Handle different error types
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else if (err.response?.status === 403) {
+        setError('Access denied. Insufficient permissions.');
+      } else {
+        setError(err.response?.data?.error || err.message || 'Failed to fetch pending users count');
+      }
+      
       setCount(0);
     } finally {
       setLoading(false);

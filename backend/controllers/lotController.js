@@ -161,14 +161,14 @@ exports.updateLotLandDetails = async (req, res) => {
 // Create new lot
 exports.createLot = async (req, res) => {
   try {
-    const { plan_id, lot_number, lot_no, extent_ha, extent_perch, land_type, owners } = req.body;
+    const { plan_id, lot_number, lot_no, extent_ha, extent_perch, land_type, status, owners } = req.body;
     
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
     if (decoded.role !== 'land_officer') {
@@ -181,6 +181,7 @@ exports.createLot = async (req, res) => {
       extent_ha: extent_ha || 0,
       extent_perch: extent_perch || 0,
       land_type: land_type || 'Private',
+      status: status || 'active',
       created_by: userId
     };
 
@@ -394,7 +395,7 @@ exports.updateLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (decoded.role !== 'land_officer') {
       return res.status(403).json({ error: 'Only land officers can update lots' });
@@ -405,6 +406,7 @@ exports.updateLot = async (req, res) => {
       extent_ha: extent_ha || 0,
       extent_perch: extent_perch || 0,
       land_type: land_type || 'Private',
+      status: status || 'active',
       updated_by: decoded.id
     };
 
@@ -439,7 +441,7 @@ exports.deleteLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (decoded.role !== 'land_officer') {
       return res.status(403).json({ error: 'Only land officers can delete lots' });
@@ -474,7 +476,7 @@ exports.addOwnerToLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (!['land_officer', 'chief_engineer', 'project_engineer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to add owners' });
@@ -528,7 +530,7 @@ exports.removeOwnerFromLot = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (!['land_officer', 'chief_engineer', 'project_engineer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to remove owners' });
@@ -562,7 +564,7 @@ exports.getAllOwners = async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     
     if (!['land_officer', 'chief_engineer', 'project_engineer', 'financial_officer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to view owners' });
@@ -598,7 +600,7 @@ exports.getAllLotsWithProjectPlanInfo = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userRole = decoded.role;
     
     // Only CE can access this endpoint
@@ -627,7 +629,7 @@ exports.getLotsForProjectEngineer = (req, res) => {
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     const userRole = decoded.role;
     

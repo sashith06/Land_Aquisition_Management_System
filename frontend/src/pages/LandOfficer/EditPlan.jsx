@@ -137,9 +137,9 @@ const EditPlan = () => {
       setSaving(false);
       
       if (error.response?.data?.error) {
-        if (error.response.data.error.includes('Plan with this Plan/Cadastral No already exists')) {
+        if (error.response.data.error.includes('Plan with this Plan Identifier already exists')) {
           setErrors({ 
-            plan_number: 'This Plan/Cadastral No already exists in this project'
+            plan_number: 'This Plan No / Cadastral No already exists in this project'
           });
         } else if (error.response.status === 403) {
           alert('You do not have permission to edit this plan');

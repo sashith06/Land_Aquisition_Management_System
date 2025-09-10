@@ -52,29 +52,21 @@ const requireProjectEngineer = authorize('project_engineer');
 const requireFinancialOfficer = authorize('financial_officer');
 const requireLandOfficer = authorize('land_officer');
 
-// Special middleware to ensure only admin@lams.gov.lk can access admin functions
+// Special middleware to ensure only chief engineers can access admin functions
 const requireSystemAdmin = (req, res, next) => {
-  console.log('System Admin check - User:', req.user?.id, 'Email:', req.user?.email);
-  
+  console.log('System Admin check - User:', req.user?.id, 'Email:', req.user?.email, 'Role:', req.user?.role);
+
   if (!req.user) {
     return res.status(401).json({ error: 'Access denied. Not authenticated.' });
   }
 
   if (req.user.role !== 'chief_engineer') {
-    return res.status(403).json({ 
-      error: 'Access denied. System administrator privileges required.' 
+    return res.status(403).json({
+      error: 'Access denied. Chief Engineer privileges required.'
     });
   }
 
-  // Additional check: ensure it's the actual admin@lams.gov.lk user
-  if (req.user.email && req.user.email !== 'admin@lams.gov.lk') {
-    console.log('System Admin check failed - Not admin@lams.gov.lk:', req.user.email);
-    return res.status(403).json({ 
-      error: 'Access denied. Only the system administrator (admin@lams.gov.lk) can access this function.' 
-    });
-  }
-
-  console.log('System Admin check passed');
+  console.log('System Admin check passed - Chief Engineer authorized');
   next();
 };
 

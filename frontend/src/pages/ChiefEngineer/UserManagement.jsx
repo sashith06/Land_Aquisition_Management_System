@@ -350,13 +350,27 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Are you sure you want to delete this user? This will permanently remove all associated data.")) return;
+    
     try {
-      await deleteUser(userId);
+      const response = await deleteUser(userId);
       setUsers(users.filter(u => u.id !== userId));
-      alert("User deleted 🗑️");
+      alert("User deleted successfully 🗑️");
     } catch (err) {
-      alert("Failed to delete user");
+      console.error('Delete user error:', err);
+      
+      // Handle different types of errors
+      let errorMessage = "Failed to delete user";
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      alert(`Error: ${errorMessage}`);
     }
   };
 

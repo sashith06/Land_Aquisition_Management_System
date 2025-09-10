@@ -1,30 +1,89 @@
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { X, Eye, Building2, FileText, Calendar, User, MapPin, DollarSign } from 'lucide-react';
 import Breadcrumb from "../components/Breadcrumb";
-import { plansData } from "../data/mockData";
-import { DollarSign, MapPin, Calendar, TrendingUp } from "lucide-react";
+import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
+import api from "../api";
 
 const PlanDetail = () => {
   const { id } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
+  const [planData, setPlanData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Get plan data from location state or find by ID
-  const plan = location.state?.plan || plansData.find((p) => p.id === parseInt(id));
+  // Load plan data when component mounts
+  useEffect(() => {
+    if (id) {
+      loadPlanData();
+    }
+  }, [id]);
 
-  if (!plan) {
+  const loadPlanData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await api.get(`/api/plans/${id}`);
+      setPlanData(response.data);
+    } catch (error) {
+      console.error('Error loading plan data:', error);
+      setError(error.response?.data?.error || 'Failed to load plan details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount) return 'N/A';
+    return `LKR ${parseFloat(amount).toLocaleString()}`;
+  };
+
+  if (loading) {
     return (
       <div className="p-6">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading plan details...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <p className="text-red-700">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!planData) {
+    return (
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">Plan Not Found</h1>
           <p className="text-gray-600 mb-6">
             The requested plan could not be found.
           </p>
-          <button
-            onClick={() => navigate("/")}
-            className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-          >
-            Back to Dashboard
-          </button>
         </div>
       </div>
     );
@@ -34,172 +93,228 @@ const PlanDetail = () => {
     <div className="p-6">
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb navigation */}
-        <Breadcrumb
-          items={[
-            { label: "Back to Dashboard", onClick: () => navigate("/") },
-            { label: `Plan ${plan.id}` },
-          ]}
-        />
+        <Breadcrumb items={generateBreadcrumbs()} />
 
-        <div className="flex items-center space-x-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Plan {plan.id}</h1>
-            <p className="text-gray-600">{plan.name}</p>
+        <div className="space-y-6">
+          {/* Plan Overview */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <Building2 size={24} className="text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {planData.plan_no || planData.plan_identifier || `Plan-${planData.id}`}
+                </h1>
+                <p className="text-lg text-gray-600">{planData.project_name}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <User size={16} className="text-gray-500" />
+                <span className="text-sm text-gray-700">Created by: {planData.created_by_name}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Calendar size={16} className="text-gray-500" />
+                <span className="text-sm text-gray-700">Created: {formatDate(planData.created_at)}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Project Image */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <img
-                src={plan.image}
-                alt={plan.name}
-                className="w-full h-64 object-cover"
-              />
+          {/* Plan Identifier Details */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              📄 Plan No / Cadastral No Details
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Project
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {planData.project_name || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Plan No / Cadastral No <span className="text-red-500">*</span>
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {planData.plan_no || planData.plan_identifier || 'N/A'}
+                </div>
+              </div>
             </div>
 
-            {/* Project Description */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Project Description
-              </h2>
-              <p className="text-gray-700 leading-relaxed">
-                This infrastructure development project is part of the Road
-                Development Authority's initiative to improve transportation
-                networks across the region. The project involves comprehensive
-                road construction, bridge development, and supporting
-                infrastructure to enhance connectivity and economic growth.
-              </p>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 min-h-[60px]">
+                {planData.description || 'No description provided'}
+              </div>
             </div>
+          </div>
 
-            {/* Progress Details */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Progress Overview
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-700">Overall Progress</span>
-                    <span className="font-semibold text-gray-800">
-                      {plan.progress}%
-                    </span>
+          {/* Gazette Details */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">📄 Gazette Details</h3>
+            
+            {/* Section 07 Gazette */}
+            <div className="mb-4">
+              <h4 className="text-md font-medium text-gray-700 mb-3">Section 07 Gazette</h4>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Section 07 Gazette No
+                    </label>
+                    <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                      {planData.section_07_gazette_no || 'N/A'}
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${plan.progress}%` }}
-                    ></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date (DD/MM/YY)
+                    </label>
+                    <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                      {planData.section_07_gazette_date ? formatDate(planData.section_07_gazette_date) : 'N/A'}
+                    </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <p className="text-2xl font-bold text-green-600">
-                      {plan.progress > 0 ? Math.floor(plan.progress / 3) : 0}
-                    </p>
-                    <p className="text-sm text-green-700">Completed Tasks</p>
+            {/* Section 38 Gazette */}
+            <div className="mb-4">
+              <h4 className="text-md font-medium text-gray-700 mb-3">Section 38 Gazette</h4>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Section 38 Gazette No
+                    </label>
+                    <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                      {planData.section_38_gazette_no || 'N/A'}
+                    </div>
                   </div>
-                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                    <p className="text-2xl font-bold text-yellow-600">
-                      {plan.progress < 100
-                        ? Math.floor((100 - plan.progress) / 4)
-                        : 0}
-                    </p>
-                    <p className="text-sm text-yellow-700">In Progress</p>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <p className="text-2xl font-bold text-gray-600">
-                      {plan.progress < 100
-                        ? Math.floor((100 - plan.progress) / 2)
-                        : 0}
-                    </p>
-                    <p className="text-sm text-gray-700">Pending</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date (DD/MM/YY)
+                    </label>
+                    <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                      {planData.section_38_gazette_date ? formatDate(planData.section_38_gazette_date) : 'N/A'}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Project Details */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">
-                Project Details
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <DollarSign size={16} className="text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Estimated Cost</p>
-                    <p className="font-semibold text-gray-800">
-                      {plan.estimatedCost}
-                    </p>
-                  </div>
+          {/* Additional Information */}
+                    {/* Additional Information */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">📋 Additional Information</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Advance Trading No
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {planData.advance_tracing_no || 'N/A'}
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <MapPin size={16} className="text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Estimated Extent</p>
-                    <p className="font-semibold text-gray-800">
-                      {plan.estimatedExtent}
-                    </p>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Section 5 Gazette No
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {planData.section_5_gazette_no || 'N/A'}
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Calendar size={16} className="text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Project Date</p>
-                    <p className="font-semibold text-gray-800">
-                      {plan.projectDate}
-                    </p>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Divisional Secretary
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {planData.divisional_secretary || 'N/A'}
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <TrendingUp size={16} className="text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Progress Status</p>
-                    <p className="font-semibold text-gray-800">
-                      {plan.progress === 0
-                        ? "Not Started"
-                        : plan.progress === 100
-                        ? "Completed"
-                        : "In Progress"}
-                    </p>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Pending Cost Estimate
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {formatCurrency(planData.pending_cost_estimate)}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estimated Cost
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {formatCurrency(planData.estimated_cost)}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Estimated Extent
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {planData.estimated_extent || 'N/A'}
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Extent Value
+                </label>
+                <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                  {formatCurrency(planData.current_extent_value)}
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">
-                Quick Actions
-              </h3>
-              <div className="space-y-3">
-                <button className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
-                  Edit Project
-                </button>
-                <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                  Generate Report
-                </button>
-                <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                  View Timeline
-                </button>
+          {/* Statistics */}
+          <div className="bg-green-50 rounded-lg p-6 border border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              📊 Plan Statistics
+            </h3>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {planData.lots_count || 0}
+                </div>
+                <div className="text-sm text-gray-600">Total Lots</div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-teal-600">
+                  {planData.active_lots || 0}
+                </div>
+                <div className="text-sm text-gray-600">Active Lots</div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {planData.completed_lots || 0}
+                </div>
+                <div className="text-sm text-gray-600">Completed Lots</div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold text-orange-600">
+                  {planData.pending_lots || 0}
+                </div>
+                <div className="text-sm text-gray-600">Pending Lots</div>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { Bell, ChevronDown, LogOut } from 'lucide-react';
-import { useLocation, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { logout } from '../utils/auth';
 import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin } from '../utils/userUtils';
@@ -8,8 +8,7 @@ import NotificationDropdown from './NotificationDropdown';
 import useNotifications from '../hooks/useNotifications';
 
 const Navigation = () => {
-  const [open, setOpen] = useState(false);
-  const location = useLocation();
+  const [open, setOpen] = useState();
   
   // Get current user data from localStorage
   const currentUser = getCurrentUser();
@@ -24,9 +23,6 @@ const Navigation = () => {
     refreshCount, 
     refreshNotifications 
   } = useNotifications();
-
-  // Dynamic breadcrumbs
-  const pathnames = location.pathname.split('/').filter(Boolean);
 
   // Determine the correct profile path based on current location
   // Remove profile option for Chief Engineer (admin)
@@ -59,35 +55,9 @@ const Navigation = () => {
     <div className="bg-white border-b border-gray-200 h-16 w-full shadow-sm">
       <div className="flex items-center justify-between h-full px-6">
         
-        {/* Left Side: Logo + Breadcrumb */}
-        <div className="flex items-center space-x-6">
+        {/* Left Side: Logo */}
+        <div className="flex items-center">
           <Logo />
-          
-          {/* Breadcrumb */}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Link to="/" className="text-gray-500 hover:text-orange-500 font-medium">
-              Home
-            </Link>
-            {pathnames.map((segment, index) => {
-              const to = '/' + pathnames.slice(0, index + 1).join('/');
-              const isLast = index === pathnames.length - 1;
-              return (
-                <span key={to} className="flex items-center space-x-2">
-                  <span className="text-gray-400">›</span>
-                  <Link
-                    to={to}
-                    className={`hover:text-orange-500 ${
-                      isLast
-                        ? 'text-orange-500 font-medium'
-                        : 'text-gray-500'
-                    }`}
-                  >
-                    {segment.charAt(0).toUpperCase() + segment.slice(1)}
-                  </Link>
-                </span>
-              );
-            })}
-          </div>
         </div>
 
         {/* Right Side */}

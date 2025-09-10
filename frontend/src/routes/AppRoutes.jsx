@@ -38,12 +38,13 @@ import PEProjectPlans from "../pages/ProjectEngineer/PEProjectPlans";
 import FODashboardMain from "../pages/FinancialOfficer/FODashboardMain";
 import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
 import FOProjectPlans from "../pages/FinancialOfficer/FOProjectPlans";
+import FOProjectDetailsPage from "../pages/FinancialOfficer/FOProjectDetailsPage";
 
-import LODashboardLayout from "../layouts/LODashboardLayout";
 import LODashboardMain from "../pages/LandOfficer/LODashboardMain";
 import CreatePlan from "../pages/LandOfficer/CreatePlan";
 import ProjectPlans from "../pages/LandOfficer/ProjectPlans";
 import AssignedProjects from "../pages/LandOfficer/AssignedProjects";
+import LOProjectDetailsPage from "../pages/LandOfficer/LOProjectDetailsPage";
 
 import LotsPage from "../pages/LotsPage";
 import LotDetail from "../pages/LotDetail";
@@ -81,6 +82,7 @@ export default function AppRoutes() {
       }>
         <Route index element={<CEDashboardMain />} />
         <Route path="project/:projectId/plans" element={<CEProjectPlans />} />
+        <Route path="plan/:planId" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />
@@ -100,6 +102,7 @@ export default function AppRoutes() {
       }>
         <Route index element={<PEDashboardMain />} />
         <Route path="project/:projectId/plans" element={<PEProjectPlans />} />
+        <Route path="plan/:planId" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />
@@ -120,28 +123,11 @@ export default function AppRoutes() {
       }>
         <Route index element={<FODashboardMain />} />
         <Route path="project/:projectId/plans" element={<FOProjectPlans />} />
+        <Route path="plan/:planId" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
+        <Route path="project-details/:projectId" element={<FOProjectDetailsPage />} />
         <Route path="financial-details/:projectId" element={<FinancialDetails />} />
-        <Route path="analysis" element={<Analysis />} />
-        <Route path="messages" element={<Messages />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="profile" element={<Profile />} />
-      </Route>
-
-      {/* Land Officer Dashboard Routes With LO Layout */}
-      <Route path="/lo-dashboard" element={
-        <LandOfficerRoute>
-          <LODashboardLayout />
-        </LandOfficerRoute>
-      }>
-        <Route index element={<LODashboardMain />} />
-        <Route path="create-plan/:projectId" element={<CreatePlan />} />
-        <Route path="edit-plan/:id" element={<CreatePlan />} />
-        <Route path="project/:projectId/plans" element={<ProjectPlans />} />
-        <Route path="assigned-projects" element={<AssignedProjects />} />
-        <Route path="plan/:planId/lots" element={<LotsPage />} />
-        <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="analysis" element={<Analysis />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
@@ -154,10 +140,14 @@ export default function AppRoutes() {
           <DashboardLayout />
         </LandOfficerRoute>
       }>
-        <Route index element={<Dashboard />} />
+        <Route index element={<LODashboardMain />} />
         <Route path="create-plan" element={<CreatePlan />} />
+        <Route path="create-plan/:projectId" element={<CreatePlan />} />
         <Route path="edit-plan/:id" element={<CreatePlan />} />
         <Route path="plan/:id" element={<PlanDetail />} />
+        <Route path="project/:projectId/plans" element={<ProjectPlans />} />
+        <Route path="project-details/:projectId" element={<LOProjectDetailsPage />} />
+        <Route path="assigned-projects" element={<AssignedProjects />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="profile" element={<Profile />} />

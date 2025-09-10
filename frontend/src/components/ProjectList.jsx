@@ -1,7 +1,7 @@
-import { Building2, Edit2, Trash2, UserCheck, Eye } from "lucide-react";
+import { Building2, Edit2, Trash2, UserCheck, Eye, Plus } from "lucide-react";
 import { getCurrentUserFullName, isCurrentUserCreator } from "../utils/userUtils";
 
-const ProjectList = ({ projects, onSelect, selectedProject, showActions = false, onEdit, onDelete, onViewDetails, assignedProjects = [], userRole }) => {
+const ProjectList = ({ projects, onSelect, selectedProject, showActions = false, onEdit, onDelete, onViewDetails, onCreatePlan, assignedProjects = [], userRole }) => {
   // Check if a project is assigned to current land officer
   const isAssignedProject = (projectId) => {
     return assignedProjects.some(project => project.id === projectId);
@@ -18,8 +18,13 @@ const ProjectList = ({ projects, onSelect, selectedProject, showActions = false,
           return (
             <div
               key={project.id}
-              onClick={() => onSelect(project)}
-              className={`bg-white rounded-xl p-6 border-2 cursor-pointer transition-all duration-200 hover:shadow-lg flex flex-col space-y-4
+              {...(onSelect ? { onClick: (e) => {
+                // Check if the click target is not a button or button descendant
+                if (!e.target.closest('button') && !e.defaultPrevented) {
+                  onSelect(project);
+                }
+              }} : {})}
+              className={`bg-white rounded-xl p-6 border-2 ${onSelect ? 'cursor-pointer' : ''} transition-all duration-200 hover:shadow-lg flex flex-col space-y-4
                 ${selectedProject?.id === project.id
                   ? "border-orange-500 shadow-lg"
                   : "border-gray-200 hover:border-orange-300"
@@ -109,14 +114,19 @@ const ProjectList = ({ projects, onSelect, selectedProject, showActions = false,
                 </div>
               )}
 
-              {/* Assignment status for land officers */}
-              {userRole === 'land_officer' && !showActions && (
-                <div className="mt-2">
-                  {isAssigned ? (
-                    <p className="text-xs text-green-600 font-medium">✓ You can create plans for this project</p>
-                  ) : (
-                    <p className="text-xs text-gray-500">⚠ View only - Not assigned to this project</p>
-                  )}
+              {/* Action buttons for financial officer and land officer: always show View Details */}
+              {(userRole === 'financial_officer' || userRole === 'land_officer') && onViewDetails && (
+                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewDetails(project);
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Eye size={14} />
+                    <span>View Details</span>
+                  </button>
                 </div>
               )}
             </div>

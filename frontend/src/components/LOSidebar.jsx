@@ -12,12 +12,12 @@ import useMessageCount from "../hooks/useMessageCount";
 
 // Land Officer specific navigation items
 const loNavigationItems = [
-  { path: '/lo-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { path: '/lo-dashboard/assigned-projects', label: 'Assigned Projects', icon: 'Building2' },
-  { path: '/lo-dashboard/create-plan', label: 'Create Plan', icon: 'Plus' },
-  { path: '/lo-dashboard/plans', label: 'Plans & Lots', icon: 'MapPin' },
-  { path: '/lo-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
-  { path: '/lo-dashboard/reports', label: 'Reports', icon: 'FileText' },
+  { path: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+  { path: '/dashboard/assigned-projects', label: 'Assigned Projects', icon: 'Building2' },
+  { path: '/dashboard/create-plan', label: 'Create Plan', icon: 'Plus' },
+  { path: '/dashboard/plans', label: 'Plans & Lots', icon: 'MapPin' },
+  { path: '/dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+  { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
 
 const iconMap = {
@@ -38,7 +38,7 @@ const LOSidebar = () => {
   const navigationItems = [
     ...loNavigationItems.slice(0, 5), // All items before messages
     { 
-      path: '/lo-dashboard/messages', 
+      path: '/dashboard/messages', 
       label: 'Messages', 
       icon: 'MessageSquare',
       badge: unreadCount > 0 ? unreadCount : null

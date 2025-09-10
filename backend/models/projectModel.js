@@ -231,52 +231,90 @@ Project.getStats = (callback) => {
 
 // ============ DELETE PROJECT ============
 Project.delete = (projectId, callback) => {
-  // Simple approach: try to delete related records first, then the project
-  // If foreign key constraints fail, provide a clear error message
+  console.log(`Starting deletion of project ${projectId} and all related records`);
   
-  const deleteProjectOnly = () => {
-    db.query('DELETE FROM projects WHERE id = ?', [projectId], (err, result) => {
-      if (err) {
-        console.error('Error deleting project:', err);
-        return callback(err);
-      }
-      
-      if (result.affectedRows === 0) {
-        return callback(new Error('Project not found'));
-      }
-      
-      callback(null, { message: 'Project deleted successfully' });
-    });
-  };
-  
-  // Try to delete related records first
-  const cleanupRelatedRecords = (finalCallback) => {
-    // Delete notifications
-    db.query('DELETE FROM notifications WHERE related_id = ? AND related_type = "project"', [projectId], (notifErr) => {
-      if (notifErr && notifErr.code !== 'ER_NO_SUCH_TABLE') {
-        console.error('Error deleting notifications:', notifErr);
-      }
-      
-      // Delete project assignments if table exists
-      db.query('DELETE FROM project_assignments WHERE project_id = ?', [projectId], (assignErr) => {
-        if (assignErr && assignErr.code !== 'ER_NO_SUCH_TABLE') {
-          console.error('Error deleting project assignments:', assignErr);
+  // Use transaction to ensure all deletions succeed or none do
+  db.beginTransaction((err) => {
+    if (err) {
+      console.error('Error starting transaction:', err);
+      return callback(err);
+    }
+    
+    // Delete in proper order to respect foreign key constraints
+    const deleteQueries = [
+      // 1. Delete lot_valuations (references lots)
+      "DELETE FROM lot_valuations WHERE lot_id IN (SELECT id FROM lots WHERE plan_id IN (SELECT id FROM plans WHERE project_id = ?))",
+      // 2. Delete lot_compensations (references lots)
+      "DELETE FROM lot_compensations WHERE lot_id IN (SELECT id FROM lots WHERE plan_id IN (SELECT id FROM plans WHERE project_id = ?))",
+      // 3. Delete lot_owners (references lots)
+      "DELETE FROM lot_owners WHERE lot_id IN (SELECT id FROM lots WHERE plan_id IN (SELECT id FROM plans WHERE project_id = ?))",
+      // 4. Delete lots (references plans)
+      "DELETE FROM lots WHERE plan_id IN (SELECT id FROM plans WHERE project_id = ?)",
+      // 5. Delete plans (references projects)
+      "DELETE FROM plans WHERE project_id = ?",
+      // 6. Delete project assignments
+      "DELETE FROM project_assignments WHERE project_id = ?",
+      // 7. Delete project documents
+      "DELETE FROM project_documents WHERE project_id = ?",
+      // 8. Delete audit logs related to this project
+      "DELETE FROM audit_logs WHERE table_name = 'projects' AND record_id = ?",
+      // 9. Finally delete the project
+      "DELETE FROM projects WHERE id = ?"
+    ];
+    
+    let completedQueries = 0;
+    let hasError = false;
+    
+    const executeNextQuery = () => {
+      if (hasError || completedQueries >= deleteQueries.length) {
+        if (hasError) {
+          return db.rollback(() => {
+            callback(new Error('Failed to delete project due to foreign key constraints'));
+          });
         }
         
-        // Delete plans (CASCADE should handle lots and lot_owners)
-        db.query('DELETE FROM plans WHERE project_id = ?', [projectId], (planErr) => {
-          if (planErr && planErr.code !== 'ER_NO_SUCH_TABLE') {
-            console.error('Error deleting plans:', planErr);
+        // All queries completed successfully, commit transaction
+        db.commit((err) => {
+          if (err) {
+            console.error('Error committing transaction:', err);
+            return callback(err);
           }
           
-          finalCallback();
+          console.log(`Project ${projectId} and all related records deleted successfully`);
+          callback(null, { message: 'Project and all related data deleted successfully' });
         });
+        return;
+      }
+      
+      const query = deleteQueries[completedQueries];
+      const params = [projectId]; // All queries use projectId as parameter
+      
+      console.log(`Executing query ${completedQueries + 1}/${deleteQueries.length}:`, query);
+      
+      db.query(query, params, (err, result) => {
+        if (err) {
+          console.error(`Error executing query ${completedQueries + 1}:`, err);
+          
+          // If the error is due to a missing table, continue with the next query
+          if (err.code === 'ER_NO_SUCH_TABLE') {
+            console.log(`Table doesn't exist for query ${completedQueries + 1}, skipping...`);
+            completedQueries++;
+            return executeNextQuery();
+          }
+          
+          // For other errors, fail the transaction
+          hasError = true;
+          return executeNextQuery();
+        }
+        
+        console.log(`Query ${completedQueries + 1} completed, affected rows:`, result.affectedRows);
+        completedQueries++;
+        executeNextQuery();
       });
-    });
-  };
-  
-  cleanupRelatedRecords(() => {
-    deleteProjectOnly();
+    };
+    
+    // Start executing queries
+    executeNextQuery();
   });
 };
 

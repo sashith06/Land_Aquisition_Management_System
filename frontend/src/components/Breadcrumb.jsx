@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Home } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 const Breadcrumb = ({ items }) => {
   if (!items || items.length === 0) return null;
@@ -8,20 +8,12 @@ const Breadcrumb = ({ items }) => {
   return (
     <nav className="flex mb-6" aria-label="Breadcrumb">
       <ol className="inline-flex items-center space-x-1 md:space-x-3">
-        <li className="inline-flex items-center">
-          <Link
-            to="/"
-            className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600"
-          >
-            <Home className="w-4 h-4 mr-2" />
-            Home
-          </Link>
-        </li>
-
         {items.map((item, idx) => (
           <li key={idx}>
             <div className="flex items-center">
-              <ChevronRight className="w-4 h-4 text-gray-400 mx-1" />
+              {idx > 0 && (
+                <ChevronRight className="w-4 h-4 text-gray-400 mx-1" />
+              )}
 
               {item.onClick ? (
                 <button

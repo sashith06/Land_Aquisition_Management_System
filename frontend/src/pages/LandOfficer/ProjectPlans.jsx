@@ -72,7 +72,7 @@ export default function ProjectPlans() {
             <p className="text-gray-600 mt-1">Manage plans for this project</p>
           </div>
           <Link
-            to={`/lo-dashboard/create-plan/${projectId}`}
+            to={`/dashboard/create-plan/${projectId}`}
             state={{ projectName }}
             className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
           >
@@ -102,7 +102,7 @@ export default function ProjectPlans() {
               <h3 className="text-lg font-medium text-gray-900 mb-2">No Plans Yet</h3>
               <p className="text-gray-500 mb-4">Plans for this project will appear here once created.</p>
               <Link
-                to={`/lo-dashboard/create-plan/${projectId}`}
+                to={`/dashboard/create-plan/${projectId}`}
                 state={{ projectName }}
                 className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
