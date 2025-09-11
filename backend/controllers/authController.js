@@ -266,9 +266,20 @@ exports.rejectUser = (req, res) => {
 // ===================== DELETE USER =====================
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
-  User.delete(id, (err) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json({ message: "User deleted successfully." });
+  console.log('=== DELETE USER REQUEST ===');
+  console.log('User ID to delete:', id);
+  console.log('Request user:', req.user);
+  
+  User.delete(id, (err, result) => {
+    if (err) {
+      console.error('Delete user error:', err);
+      return res.status(500).json({
+        error: err.message || 'Failed to delete user',
+        details: err.sqlMessage || err.toString()
+      });
+    }
+    console.log('Delete user result:', result);
+    res.json(result || { message: "User deleted successfully." });
   });
 };
 

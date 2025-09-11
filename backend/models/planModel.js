@@ -2,19 +2,16 @@ const db = require("../config/db");
 
 const Plan = {};
 
-// Create new plan with actual database schema
+// Create new plan with simplified schema
 Plan.create = (plan, userId, callback) => {
   console.log('=== DEBUG: Plan.create called ===');
   console.log('Plan data:', plan);
   console.log('User ID:', userId);
   
-  // Generate plan number if not provided
-  const planNumber = plan.plan_number || `PLAN-${Date.now()}`;
-  
   // Map the input data to actual database columns - save ALL form data
   const sql = `
     INSERT INTO plans 
-    (project_id, plan_number, description, location, total_extent, status, created_by, 
+    (project_id, plan_identifier, description, location, total_extent, status, created_by, 
      estimated_cost, estimated_extent, advance_tracing_no, divisional_secretary, 
      current_extent_value, section_07_gazette_no, section_07_gazette_date, 
      section_38_gazette_no, section_38_gazette_date, section_5_gazette_no, pending_cost_estimate)
@@ -23,10 +20,10 @@ Plan.create = (plan, userId, callback) => {
   
   const params = [
     plan.project_id || null,
-    planNumber,
+    plan.plan_identifier || plan.plan_number || null,  // Use single identifier field
     plan.description || null,
     plan.location || plan.divisional_secretary || null,
-    plan.total_extent || plan.estimated_extent || null,
+    plan.total_extent || null,
     plan.status || 'pending',
     userId,
     plan.estimated_cost || null,
@@ -42,7 +39,7 @@ Plan.create = (plan, userId, callback) => {
     plan.pending_cost_estimate || null
   ];
 
-  console.log('Executing SQL with actual schema...');
+  console.log('Executing SQL with simplified schema...');
   console.log('SQL:', sql);
   console.log('Params:', params);
   
@@ -67,12 +64,19 @@ Plan.getByProject = (project_id, callback) => {
 // Get single plan
 Plan.findById = (id, callback) => {
   const sql = `
-    SELECT p.*, 
+    SELECT p.*,
            pr.name as project_name,
-           CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+           pr.status as project_status,
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+           CONCAT(pe.first_name, ' ', pe.last_name) as project_engineer_name,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id) as lots_count,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id AND l.status = 'active') as active_lots,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id AND l.status = 'completed') as completed_lots,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id AND l.status = 'pending') as pending_lots
     FROM plans p
     LEFT JOIN projects pr ON p.project_id = pr.id
     LEFT JOIN users u ON p.created_by = u.id
+    LEFT JOIN users pe ON pr.created_by = pe.id
     WHERE p.id = ?
   `;
   db.query(sql, [id], callback);
@@ -105,7 +109,7 @@ Plan.update = (id, plan, userId, callback) => {
 
   // Only allow updates from the plan creator - using actual database columns
   const allowedFields = [
-    'plan_number', 'description', 'location', 'total_extent', 'status',
+    'plan_identifier', 'description', 'location', 'total_extent', 'status',
     'estimated_cost', 'estimated_extent', 'advance_tracing_no', 
     'divisional_secretary', 'current_extent_value', 'section_07_gazette_no',
     'section_07_gazette_date', 'section_38_gazette_no', 'section_38_gazette_date',

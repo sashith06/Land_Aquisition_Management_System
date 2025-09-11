@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
-import { ArrowLeft, Save, X } from 'lucide-react';
+import { useSearchParams, useParams } from 'react-router-dom';
+import { Save, X } from 'lucide-react';
 import api from '../../api';
 import Breadcrumb from '../../components/Breadcrumb';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 
 const CreatePlan = () => {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { projectId: urlProjectId, id: planId } = useParams(); // Get planId for edit mode
   const { generateBreadcrumbs } = useBreadcrumbs();
@@ -18,7 +17,7 @@ const CreatePlan = () => {
 
   const [formData, setFormData] = useState({
     project_id: initialProjectId || '',
-    plan_no: '',
+    plan_identifier: '',
     description: '',
     estimated_cost: '',
     estimated_extent: '',
@@ -86,7 +85,7 @@ const CreatePlan = () => {
       setOriginalPlan(plan);
       setFormData({
         project_id: plan.project_id || '',
-        plan_no: plan.plan_no || '',
+        plan_identifier: plan.plan_no || plan.cadastral_no || '',
         description: plan.description || '',
         estimated_cost: plan.estimated_cost || '',
         estimated_extent: plan.estimated_extent || '',
@@ -104,10 +103,8 @@ const CreatePlan = () => {
       console.error('Error loading plan:', error);
       if (error.response?.status === 403) {
         alert('You do not have permission to edit this plan');
-        navigate(getDashboardPath());
       } else if (error.response?.status === 404) {
         alert('Plan not found');
-        navigate(getDashboardPath());
       } else {
         alert('Error loading plan details');
       }
@@ -116,11 +113,7 @@ const CreatePlan = () => {
     }
   };
 
-  const getDashboardPath = () => {
-    // Determine the correct dashboard path based on current location
-    const currentPath = window.location.pathname;
-    return currentPath.includes('/lo-dashboard') ? '/lo-dashboard' : '/dashboard';
-  };
+  const getDashboardPath = () => '/dashboard';
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -149,7 +142,7 @@ const CreatePlan = () => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.project_id) newErrors.project_id = 'Project is required';
-    if (!formData.plan_no.trim()) newErrors.plan_no = 'Plan No is required';
+    if (!formData.plan_identifier.trim()) newErrors.plan_identifier = 'Plan No / Cadastral No is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -164,15 +157,12 @@ const CreatePlan = () => {
 
     setLoading(true);
     try {
-      // Convert empty strings to null for optional fields
-      const processedData = {};
-      Object.keys(formData).forEach(key => {
-        if (formData[key] === '') {
-          processedData[key] = null;
-        } else {
-          processedData[key] = formData[key];
-        }
-      });
+      // Handle the single plan identifier field
+      // Send it as plan_no and leave cadastral_no as null
+      const processedData = { ...formData };
+      processedData.plan_no = processedData.plan_identifier;
+      processedData.cadastral_no = null;
+      delete processedData.plan_identifier;
 
       let response;
       if (isEditMode) {
@@ -184,20 +174,14 @@ const CreatePlan = () => {
       }
       
       if (response.data) {
-        navigate(getDashboardPath(), { 
-          state: { 
-            message: isEditMode ? 'Plan updated successfully!' : 'Plan created successfully!',
-            returnToProject: true,
-            projectId: formData.project_id
-          }
-        });
+        alert(isEditMode ? 'Plan updated successfully!' : 'Plan created successfully!');
       }
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} plan:`, error);
       if (error.response?.data?.error) {
         if (error.response.data.error.includes('Plan with this Plan No already exists')) {
           setErrors({ 
-            plan_no: 'This Plan No already exists in this project'
+            plan_identifier: 'This Plan No / Cadastral No already exists in this project'
           });
         } else {
           alert(error.response.data.error);
@@ -217,7 +201,7 @@ const CreatePlan = () => {
   const clearForm = () => {
     setFormData(prev => ({
       ...prev,
-      plan_no: '',
+      plan_identifier: '',
       description: '',
       estimated_cost: '',
       estimated_extent: '',
@@ -254,7 +238,7 @@ const CreatePlan = () => {
         <div className="mt-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {isEditMode ? `Edit Plan: ${originalPlan?.plan_no || planId}` : 'Create Plan'}
+              {isEditMode ? `Edit Plan: ${originalPlan?.plan_no || originalPlan?.cadastral_no || planId}` : 'Create Plan'}
             </h1>
             <p className="text-gray-600">
               {isEditMode ? 'Update the plan details' : 'Create a new plan for your assigned project'}
@@ -297,19 +281,22 @@ const CreatePlan = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Plan No <span className="text-red-500">*</span>
+                  Plan No / Cadastral No <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="plan_no"
-                  value={formData.plan_no}
+                  name="plan_identifier"
+                  value={formData.plan_identifier}
                   onChange={handleInputChange}
-                  placeholder="Enter plan number"
+                  placeholder="Enter Plan Number or Cadastral Number"
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                    errors.plan_no ? 'border-red-500' : 'border-gray-300'
+                    errors.plan_identifier ? 'border-red-500' : 'border-gray-300'
                   }`}
                 />
-                {errors.plan_no && <p className="text-red-500 text-sm mt-1">{errors.plan_no}</p>}
+                {errors.plan_identifier && <p className="text-red-500 text-sm mt-1">{errors.plan_identifier}</p>}
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter either a Plan Number (e.g., P001) or Cadastral Number (e.g., C001)
+                </p>
               </div>
             </div>
 
@@ -525,42 +512,33 @@ const CreatePlan = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-between pt-6 border-t border-gray-200">
+          <div className="flex justify-end pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={clearForm}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors mr-3"
             >
               <X size={20} />
               <span>Clear</span>
             </button>
             
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="px-6 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex items-center space-x-2 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={20} />
-                    <span>{isEditMode ? 'Update Plan' : 'Create Plan'}</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex items-center space-x-2 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
+                </>
+              ) : (
+                <>
+                  <Save size={20} />
+                  <span>{isEditMode ? 'Update Plan' : 'Create Plan'}</span>
+                </>
+              )}
+            </button>
           </div>
         </form>
       </div>
@@ -581,3 +559,5 @@ const CreatePlan = () => {
 };
 
 export default CreatePlan;
+
+

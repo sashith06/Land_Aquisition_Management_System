@@ -1,4 +1,5 @@
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { plansData, projectsData } from '../data/mockData';
 
 // Breadcrumb utility to generate breadcrumbs based on current route and context
 export const useBreadcrumbs = () => {
@@ -15,7 +16,7 @@ export const useBreadcrumbs = () => {
       if (path.includes('/ce-dashboard')) return '/ce-dashboard';
       if (path.includes('/pe-dashboard')) return '/pe-dashboard';
       if (path.includes('/fo-dashboard')) return '/fo-dashboard';
-      if (path.includes('/lo-dashboard')) return '/lo-dashboard';
+      if (path.includes('/lo-dashboard')) return '/dashboard';
       return '/dashboard';
     };
 
@@ -52,6 +53,30 @@ export const useBreadcrumbs = () => {
         { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}/project/${params.projectId}/plans`) },
         { label: 'Lots', to: `${dashboardPath}/plan/${params.planId}/lots` },
         { label: `Lot ${params.lotId}` }
+      ];
+    }
+
+    if (path.match(/\/plan\/[^\/]+$/)) {
+      // Plan Detail page - direct plan access
+      const plan = plansData.find(p => p.id === params.id);
+      
+      if (plan) {
+        const project = projectsData.find(p => p.id === plan.projectId);
+        
+        return [
+          ...baseBreadcrumbs,
+          { 
+            label: project ? project.name : 'Project', 
+            to: project ? `${dashboardPath}/project/${project.id}/plans` : dashboardPath 
+          },
+          { label: `Plan ${plan.id}` }
+        ];
+      }
+      
+      return [
+        ...baseBreadcrumbs,
+        { label: 'Plans & Progress', to: dashboardPath },
+        { label: 'Plan Details' }
       ];
     }
 
@@ -125,10 +150,16 @@ export const useBreadcrumbs = () => {
       ];
     }
 
-    if (path.includes('/project-requests')) {
+    if (path.includes('/project-details/')) {
+      // For Chief Engineer, show "Project Requests" breadcrumb
+      // For Project Engineer, show "Dashboard" breadcrumb
+      const breadcrumbLabel = path.includes('/ce-dashboard') ? 'Project Requests' : 'Dashboard';
+      const breadcrumbPath = path.includes('/ce-dashboard') ? `${dashboardPath}/project-requests` : dashboardPath;
+
       return [
         ...baseBreadcrumbs,
-        { label: 'Project Requests' }
+        { label: breadcrumbLabel, to: breadcrumbPath },
+        { label: 'Project Details' }
       ];
     }
 

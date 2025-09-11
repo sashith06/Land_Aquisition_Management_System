@@ -69,6 +69,7 @@ async function initializeDatabase() {
     console.log('All database tables initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
+    console.log('Continuing without database initialization - tables may already exist');
   }
 }
 

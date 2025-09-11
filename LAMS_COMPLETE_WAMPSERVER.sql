@@ -1,15 +1,15 @@
 -- ================================================
--- LAMS (Land Acquisition Management System) 
+-- LAMS (Land Acquisition Management System)
 -- Complete Database Setup for WampServer
--- Updated: September 8, 2025
+-- Updated: September 10, 2025
+-- Includes: Status column fix for lots table
 -- ================================================
 
 -- Set foreign key checks off to avoid constraint issues during setup
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Drop database if exists and create fresh
-DROP DATABASE IF EXISTS land_acqusition;
-CREATE DATABASE land_acqusition;
+
+
 USE land_acqusition;
 
 -- ================================================
@@ -94,12 +94,12 @@ CREATE TABLE `projects` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
--- TABLE: plans (Enhanced with all form fields)
+-- TABLE: plans (Simplified - Single Plan Identifier)
 -- ================================================
 DROP TABLE IF EXISTS `plans`;
 CREATE TABLE `plans` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `plan_number` varchar(50) NOT NULL,
+  `plan_identifier` varchar(100) NOT NULL COMMENT 'Combined Plan No / Cadastral No',
   `project_id` int NOT NULL,
   `description` text DEFAULT NULL,
   `location` varchar(255) DEFAULT NULL,
@@ -122,7 +122,7 @@ CREATE TABLE `plans` (
   `has_valuation` tinyint(1) DEFAULT '0',
   `has_compensation` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `plan_number` (`plan_number`),
+  UNIQUE KEY `plan_identifier` (`plan_identifier`,`project_id`),
   KEY `created_by` (`created_by`),
   KEY `project_id` (`project_id`),
   CONSTRAINT `plans_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
@@ -130,7 +130,7 @@ CREATE TABLE `plans` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
--- TABLE: lots (Enhanced structure)
+-- TABLE: lots (Enhanced structure with status column)
 -- ================================================
 DROP TABLE IF EXISTS `lots`;
 CREATE TABLE `lots` (
@@ -145,6 +145,7 @@ CREATE TABLE `lots` (
   `advance_tracing_extent_perch` decimal(10,4) DEFAULT NULL,
   `preliminary_plan_extent_ha` decimal(10,4) DEFAULT NULL,
   `preliminary_plan_extent_perch` decimal(10,4) DEFAULT NULL,
+  `status` enum('active','pending','completed') DEFAULT 'active',
   `created_by` int NOT NULL,
   `updated_by` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -158,9 +159,6 @@ CREATE TABLE `lots` (
   CONSTRAINT `lots_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `lots_ibfk_3` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- Add advance_tracing_no column to lots table (for existing databases)
-ALTER TABLE `lots` ADD COLUMN `advance_tracing_no` varchar(100) DEFAULT NULL AFTER `land_type`;
 
 -- ================================================
 -- TABLE: project_assignments

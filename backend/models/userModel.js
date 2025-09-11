@@ -52,9 +52,243 @@ User.reject = (id, callback) => {
   db.query("UPDATE users SET status='rejected' WHERE id = ?", [id], callback);
 };
 
-// Delete user
+// Delete user (with proper cascading deletes for all related records)
 User.delete = (id, callback) => {
-  db.query("DELETE FROM users WHERE id = ?", [id], callback);
+  console.log(`=== USER DELETE MODEL START ===`);
+  console.log(`User ID: ${id}`);
+
+  // First check if user exists
+  db.query('SELECT id, username, email, role FROM users WHERE id = ?', [id], (err, userResults) => {
+    if (err) {
+      console.error('Error checking if user exists:', err);
+      return callback(new Error(`Database error: ${err.message}`));
+    }
+
+    if (userResults.length === 0) {
+      console.log(`User ${id} not found`);
+      return callback(new Error('User not found'));
+    }
+
+    const user = userResults[0];
+    console.log(`Found user: ${user.username} (${user.email})`);
+
+    // Prevent deletion of system administrator
+    if (id === 1) {
+      console.log('Attempted to delete system administrator');
+      return callback(new Error('Cannot delete system administrator'));
+    }
+
+    // Start a transaction to ensure all deletes succeed or all fail
+    db.query('START TRANSACTION', (err) => {
+      if (err) {
+        console.error('Error starting transaction:', err);
+        return callback(new Error(`Transaction error: ${err.message}`));
+      }
+
+      console.log('Transaction started - beginning cascading deletes');
+
+      // Step 1: Delete audit logs (references user_id)
+      console.log('Step 1: Deleting audit logs...');
+      db.query('DELETE FROM audit_logs WHERE user_id = ?', [id], (err, result) => {
+        if (err) {
+          console.error('Error deleting audit logs:', err);
+          return rollbackAndCallback(err);
+        }
+        console.log(`Deleted ${result.affectedRows} audit log entries`);
+
+        // Step 2: Delete notifications (references user_id)
+        console.log('Step 2: Deleting notifications...');
+        db.query('DELETE FROM notifications WHERE user_id = ?', [id], (err, result) => {
+          if (err) {
+            console.error('Error deleting notifications:', err);
+            return rollbackAndCallback(err);
+          }
+          console.log(`Deleted ${result.affectedRows} notifications`);
+
+          // Step 3: Delete message attachments uploaded by this user
+          console.log('Step 3: Deleting message attachments...');
+          db.query('DELETE FROM message_attachments WHERE uploaded_by = ?', [id], (err, result) => {
+            if (err) {
+              console.error('Error deleting message attachments:', err);
+              return rollbackAndCallback(err);
+            }
+            console.log(`Deleted ${result.affectedRows} message attachments`);
+
+            // Step 4: Delete messages (both sent and received by this user)
+            console.log('Step 4: Deleting messages...');
+            db.query('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?', [id, id], (err, result) => {
+              if (err) {
+                console.error('Error deleting messages:', err);
+                return rollbackAndCallback(err);
+              }
+              console.log(`Deleted ${result.affectedRows} messages`);
+
+              // Step 5: Delete project documents uploaded by this user
+              console.log('Step 5: Deleting project documents...');
+              db.query('DELETE FROM project_documents WHERE uploaded_by = ?', [id], (err, result) => {
+                if (err) {
+                  console.error('Error deleting project documents:', err);
+                  return rollbackAndCallback(err);
+                }
+                console.log(`Deleted ${result.affectedRows} project documents`);
+
+                // Step 6: Delete documents uploaded by this user
+                console.log('Step 6: Deleting documents...');
+                db.query('DELETE FROM documents WHERE uploaded_by = ?', [id], (err, result) => {
+                  if (err) {
+                    console.error('Error deleting documents:', err);
+                    return rollbackAndCallback(err);
+                  }
+                  console.log(`Deleted ${result.affectedRows} documents`);
+
+                  // Step 7: Delete lot valuations created/updated/approved by this user
+                  console.log('Step 7: Deleting lot valuations...');
+                  db.query('DELETE FROM lot_valuations WHERE created_by = ? OR updated_by = ? OR approved_by = ?', [id, id, id], (err, result) => {
+                    if (err) {
+                      console.error('Error deleting lot valuations:', err);
+                      return rollbackAndCallback(err);
+                    }
+                    console.log(`Deleted ${result.affectedRows} lot valuations`);
+
+                    // Step 8: Delete lot compensations created/updated/approved by this user
+                    console.log('Step 8: Deleting lot compensations...');
+                    db.query('DELETE FROM lot_compensations WHERE created_by = ? OR updated_by = ? OR approved_by = ?', [id, id, id], (err, result) => {
+                      if (err) {
+                        console.error('Error deleting lot compensations:', err);
+                        return rollbackAndCallback(err);
+                      }
+                      console.log(`Deleted ${result.affectedRows} lot compensations`);
+
+                      // Step 9: Delete valuations created/approved by this user
+                      console.log('Step 9: Deleting valuations...');
+                      db.query('DELETE FROM valuations WHERE created_by = ? OR approved_by = ?', [id, id], (err, result) => {
+                        if (err) {
+                          console.error('Error deleting valuations:', err);
+                          return rollbackAndCallback(err);
+                        }
+                        console.log(`Deleted ${result.affectedRows} valuations`);
+
+                        // Step 10: Delete compensations created/approved by this user
+                        console.log('Step 10: Deleting compensations...');
+                        db.query('DELETE FROM compensations WHERE created_by = ? OR approved_by = ?', [id, id], (err, result) => {
+                          if (err) {
+                            console.error('Error deleting compensations:', err);
+                            return rollbackAndCallback(err);
+                          }
+                          console.log(`Deleted ${result.affectedRows} compensations`);
+
+                          // Step 11: Delete lot owners created/updated by this user
+                          console.log('Step 11: Deleting lot owners...');
+                          db.query('DELETE FROM lot_owners WHERE created_by = ? OR updated_by = ?', [id, id], (err, result) => {
+                            if (err) {
+                              console.error('Error deleting lot owners:', err);
+                              return rollbackAndCallback(err);
+                            }
+                            console.log(`Deleted ${result.affectedRows} lot owners`);
+
+                            // Step 12: Delete lots created/updated by this user
+                            console.log('Step 12: Deleting lots...');
+                            db.query('DELETE FROM lots WHERE created_by = ? OR updated_by = ?', [id, id], (err, result) => {
+                              if (err) {
+                                console.error('Error deleting lots:', err);
+                                return rollbackAndCallback(err);
+                              }
+                              console.log(`Deleted ${result.affectedRows} lots`);
+
+                              // Step 13: Delete plans created by this user
+                              console.log('Step 13: Deleting plans...');
+                              db.query('DELETE FROM plans WHERE created_by = ?', [id], (err, result) => {
+                                if (err) {
+                                  console.error('Error deleting plans:', err);
+                                  return rollbackAndCallback(err);
+                                }
+                                console.log(`Deleted ${result.affectedRows} plans`);
+
+                                // Step 14: Delete project assignments (both assigned to and assigned by this user)
+                                console.log('Step 14: Deleting project assignments...');
+                                db.query('DELETE FROM project_assignments WHERE land_officer_id = ? OR assigned_by = ?', [id, id], (err, result) => {
+                                  if (err) {
+                                    console.error('Error deleting project assignments:', err);
+                                    return rollbackAndCallback(err);
+                                  }
+                                  console.log(`Deleted ${result.affectedRows} project assignments`);
+
+                                  // Step 15: Update projects to remove references to this user (set to NULL)
+                                  console.log('Step 15: Updating project references...');
+                                  db.query('UPDATE projects SET approved_by = NULL WHERE approved_by = ?', [id], (err, result) => {
+                                    if (err) {
+                                      console.error('Error updating project approved_by:', err);
+                                      return rollbackAndCallback(err);
+                                    }
+                                    console.log(`Updated ${result.affectedRows} projects (approved_by set to NULL)`);
+
+                                    db.query('UPDATE projects SET rejected_by = NULL WHERE rejected_by = ?', [id], (err, result) => {
+                                      if (err) {
+                                        console.error('Error updating project rejected_by:', err);
+                                        return rollbackAndCallback(err);
+                                      }
+                                      console.log(`Updated ${result.affectedRows} projects (rejected_by set to NULL)`);
+
+                                      // Note: We don't update created_by as that would break the audit trail
+
+                                      // Step 16: Finally, delete the user
+                                      console.log('Step 16: Deleting user...');
+                                      db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
+                                        if (err) {
+                                          console.error('Error deleting user:', err);
+                                          return rollbackAndCallback(err);
+                                        }
+
+                                        console.log('User delete result:', result);
+                                        console.log('Affected rows:', result.affectedRows);
+
+                                        if (result.affectedRows === 0) {
+                                          console.log('No user was deleted');
+                                          return rollbackAndCallback(new Error('User not found or already deleted'));
+                                        }
+
+                                        // Commit the transaction
+                                        db.query('COMMIT', (err) => {
+                                          if (err) {
+                                            console.error('Error committing transaction:', err);
+                                            return rollbackAndCallback(err);
+                                          }
+
+                                          const message = `User ${user.username} (ID: ${id}) and all related records deleted successfully`;
+                                          console.log(message);
+                                          console.log('=== USER DELETE MODEL END ===');
+                                          callback(null, { message, deletedUser: user.username });
+                                        });
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    // Helper function to rollback transaction and callback with error
+    function rollbackAndCallback(error) {
+      console.error('Rolling back transaction due to error:', error);
+      db.query('ROLLBACK', (rollbackErr) => {
+        if (rollbackErr) {
+          console.error('Error rolling back transaction:', rollbackErr);
+        }
+        callback(new Error(`Failed to delete user: ${error.message}`));
+      });
+    }
+  });
 };
 
 // Update user

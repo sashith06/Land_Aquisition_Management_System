@@ -5,8 +5,7 @@ import api from '../api';
 const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
   const [formData, setFormData] = useState({
     project_id: selectedProject?.id || '',
-    plan_no: '',
-    cadastral_no: '',
+    plan_identifier: '',
     description: '',
     estimated_cost: '',
     estimated_extent: '',
@@ -56,8 +55,7 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.project_id) newErrors.project_id = 'Project is required';
-    if (!formData.plan_no.trim()) newErrors.plan_no = 'Plan No is required';
-    if (!formData.cadastral_no.trim()) newErrors.cadastral_no = 'Cadastral No is required';
+    if (!formData.plan_identifier.trim()) newErrors.plan_identifier = 'Plan No / Cadastral No is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -82,6 +80,12 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
         }
       });
 
+      // Handle the single plan identifier field
+      // Send it as plan_no and leave cadastral_no as null
+      processedData.plan_no = processedData.plan_identifier;
+      processedData.cadastral_no = null;
+      delete processedData.plan_identifier;
+
       const response = await api.post('/api/plans/create', processedData);
       
       if (response.data) {
@@ -93,8 +97,7 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
       if (error.response?.data?.error) {
         if (error.response.data.error.includes('Plan with this Plan No and Cadastral No already exists')) {
           setErrors({ 
-            plan_no: 'This combination of Plan No and Cadastral No already exists',
-            cadastral_no: 'This combination of Plan No and Cadastral No already exists'
+            plan_identifier: 'This Plan No / Cadastral No already exists in this project'
           });
         } else {
           alert(error.response.data.error);
@@ -110,8 +113,7 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
   const handleClose = () => {
     setFormData({
       project_id: selectedProject?.id || '',
-      plan_no: '',
-      cadastral_no: '',
+      plan_identifier: '',
       description: '',
       estimated_cost: '',
       estimated_extent: '',
@@ -132,8 +134,7 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
   const clearForm = () => {
     setFormData(prev => ({
       ...prev,
-      plan_no: '',
-      cadastral_no: '',
+      plan_identifier: '',
       description: '',
       estimated_cost: '',
       estimated_extent: '',
@@ -169,10 +170,10 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
         {/* Form */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Plan No / Cadastral No Details */}
+            {/* Plan Details */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                📄 Plan No / Cadastral No Details
+                📄 Plan Details
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -203,36 +204,22 @@ const CreatePlan = ({ isOpen, onClose, onSuccess, selectedProject = null }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Plan No <span className="text-red-500">*</span>
+                    Plan No / Cadastral No <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="plan_no"
-                    value={formData.plan_no}
+                    name="plan_identifier"
+                    value={formData.plan_identifier}
                     onChange={handleInputChange}
-                    placeholder="Enter plan number"
+                    placeholder="Enter Plan Number or Cadastral Number"
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                      errors.plan_no ? 'border-red-500' : 'border-gray-300'
+                      errors.plan_identifier ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
-                  {errors.plan_no && <p className="text-red-500 text-sm mt-1">{errors.plan_no}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cadastral No <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="cadastral_no"
-                    value={formData.cadastral_no}
-                    onChange={handleInputChange}
-                    placeholder="Enter cadastral number"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                      errors.cadastral_no ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {errors.cadastral_no && <p className="text-red-500 text-sm mt-1">{errors.cadastral_no}</p>}
+                  {errors.plan_identifier && <p className="text-red-500 text-sm mt-1">{errors.plan_identifier}</p>}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter either a Plan Number (e.g., P001) or Cadastral Number (e.g., C001)
+                  </p>
                 </div>
               </div>
 

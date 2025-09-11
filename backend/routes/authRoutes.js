@@ -9,7 +9,7 @@ router.post("/login", authController.login);
 // Protected routes that require System Admin (only admin@lams.gov.lk)
 router.get("/users/approved", verifyToken, requireSystemAdmin, authController.getApprovedUsers);
 router.get("/users/pending", verifyToken, requireSystemAdmin, authController.getPendingUsers);
-router.get("/users/pending/count", verifyToken, requireSystemAdmin, authController.getPendingUsersCount);
+router.get("/users/pending/count", verifyToken, authController.getPendingUsersCount);
 router.get("/users/rejected", verifyToken, requireSystemAdmin, authController.getRejectedUsers);
 
 router.put("/approve/:id", verifyToken, requireSystemAdmin, authController.approveUser);

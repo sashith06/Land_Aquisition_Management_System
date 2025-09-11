@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
+import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
 import ValuationDetails from "../components/LotValuationDetails";
 import CompensationDetailsTab from "../components/CompensationDetailsTab";
 import LandDetailsForm from "../components/LandDetailsForm";
@@ -19,6 +20,7 @@ const tabs = [
 const LotsPage = () => {
   const { planId } = useParams();
   const navigate = useNavigate();
+  const { generateBreadcrumbs } = useBreadcrumbs();
   const [activeTab, setActiveTab] = useState("Owner Details");
   const [search, setSearch] = useState("");
   const [lotsData, setLotsData] = useState([]);
@@ -84,7 +86,7 @@ const LotsPage = () => {
           extent_ha: lot.extent_ha,
           extent_perch: lot.extent_perch,
           land_type: lot.land_type || 'Private',
-          status: 'active', // Default status
+          status: lot.status || 'active', // Use actual status from database
           owners: lot.owners || [], // Use actual owner data from backend
           created_by_name: lot.created_by_name || 'Unknown'
         }));
@@ -150,19 +152,6 @@ const LotsPage = () => {
   // Handle saving land details
   const handleSaveLandDetails = (updatedLandDetails) => {
     setLandDetails(updatedLandDetails);
-  };
-
-  const handleBackToPlansProgress = () => {
-    const currentPath = window.location.pathname;
-    if (currentPath.includes('/pe-dashboard')) {
-      navigate('/pe-dashboard', { state: { returnToProject: true, planId: planId } });
-    } else if (currentPath.includes('/ce-dashboard')) {
-      navigate('/ce-dashboard', { state: { returnToProject: true, planId: planId } });
-    } else if (currentPath.includes('/fo-dashboard')) {
-      navigate('/fo-dashboard', { state: { returnToProject: true, planId: planId } });
-    } else {
-      navigate('/dashboard', { state: { returnToProject: true, planId: planId } });
-    }
   };
 
   const handleAddOwner = () => setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: ''}]);
@@ -244,7 +233,7 @@ const LotsPage = () => {
           extent_ha: 0, // Default value, can be updated later
           extent_perch: 0, // Default value, can be updated later
           land_type: 'Private',
-          status: 'active',
+          status: lotStatus,
           owners: ownerFields.filter(owner => owner.name.trim() && owner.nic.trim()) // Only include owners with at least name and NIC
         };
 
@@ -260,7 +249,7 @@ const LotsPage = () => {
           extent_ha: 0,
           extent_perch: 0,
           land_type: 'Private',
-          status: 'active',
+          status: lotStatus,
           owners: ownerFields,
           created_by_name: response.data.created_by_name || 'You'
         };
@@ -350,12 +339,7 @@ const LotsPage = () => {
   return (
     <div className="p-6">
       {/* Breadcrumb */}
-      <Breadcrumb
-        items={[
-          { label: "Plans & Progress", to: "#", onClick: handleBackToPlansProgress },
-          { label: `Lots for Plan ${planData?.plan_number || planId}` }
-        ]}
-      />
+      <Breadcrumb items={generateBreadcrumbs()} />
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         {loading ? (
           <div className="flex items-center space-x-2">

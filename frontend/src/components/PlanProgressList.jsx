@@ -1,4 +1,4 @@
-import { Building2, Edit, Trash2 } from 'lucide-react';
+import { Building2, Edit, Trash2, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import api from '../api';
@@ -50,11 +50,7 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan, showProgress = tr
     // Determine the correct dashboard route based on current location
     const currentPath = window.location.pathname;
     console.log('Current path:', currentPath);
-    if (currentPath.includes('/lo-dashboard')) {
-      navigate(`/lo-dashboard/edit-plan/${planId}`);
-    } else {
-      navigate(`/dashboard/edit-plan/${planId}`);
-    }
+    navigate(`/dashboard/edit-plan/${planId}`);
   };
 
   const handleDeletePlan = async (planId, planName, e) => {
@@ -87,10 +83,27 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan, showProgress = tr
     return userRole === 'land_officer' && plan.created_by == userId; // Use == for type-flexible comparison
   };
 
+  const handleViewDetails = (plan, e) => {
+    e.stopPropagation(); // Prevent triggering the card click
+    // Navigate to plan detail page based on current dashboard
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/pe-dashboard')) {
+      navigate(`/pe-dashboard/plan/${plan.id}`);
+    } else if (currentPath.includes('/ce-dashboard')) {
+      navigate(`/ce-dashboard/plan/${plan.id}`);
+    } else if (currentPath.includes('/fo-dashboard')) {
+      navigate(`/fo-dashboard/plan/${plan.id}`);
+    } else {
+      navigate(`/dashboard/plan/${plan.id}`);
+    }
+  };
+
   const formatPlanDisplay = (plan) => {
     // For our actual database structure with plan_number and project_name
+    const planIdentifier = plan.plan_number || plan.cadastral_no || `Plan-${plan.id}`;
+
     return {
-      id: plan.plan_number || `Plan-${plan.id}`,
+      id: planIdentifier,
       name: plan.project_name || plan.description || 'No description',
       progress: plan.progress || 0
     };
@@ -114,9 +127,10 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan, showProgress = tr
                   : 'border-gray-200 hover:border-orange-300'
                 }`}
             >
-              {/* Action buttons for land officers */}
-              {canEdit && (
-                <div className="action-buttons absolute top-3 right-3 flex gap-1">
+              {/* Action buttons */}
+              <div className="action-buttons absolute top-3 right-3 flex gap-1">
+                {/* Edit button for land officers who own the plan */}
+                {canEdit && (
                   <button
                     onClick={(e) => handleEditPlan(plan.id, e)}
                     className="p-1 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
@@ -124,8 +138,17 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan, showProgress = tr
                   >
                     <Edit size={14} />
                   </button>
-                </div>
-              )}
+                )}
+
+                {/* View Details button for all users */}
+                <button
+                  onClick={(e) => handleViewDetails(plan, e)}
+                  className="p-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+                  title="View Plan Details"
+                >
+                  <Eye size={14} />
+                </button>
+              </div>
 
               <div className="flex items-center space-x-3">
                 {plan.image ? (

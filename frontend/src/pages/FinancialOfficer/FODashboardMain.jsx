@@ -19,12 +19,14 @@ const FODashboardHeader = () => (
 );
 
 // Main content grid component - Shows projects overview
-const MainContent = ({ filteredProjects, onProjectSelect }) => (
+const MainContent = ({ filteredProjects, onProjectSelect, onViewDetails }) => (
   <div className="space-y-6 sm:space-y-8">
     {/* Project List */}
     <ProjectList
       projects={filteredProjects}
       onSelect={onProjectSelect}
+      onViewDetails={onViewDetails}
+      userRole="financial_officer"
     />
   </div>
 );
@@ -97,6 +99,11 @@ const FODashboardMain = () => {
     });
   };
 
+  const handleViewDetails = (project) => {
+    // Navigate to project details view
+    navigate(`/fo-dashboard/project-details/${project.id}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
@@ -120,6 +127,7 @@ const FODashboardMain = () => {
             <MainContent
               filteredProjects={filteredProjects}
               onProjectSelect={handleProjectSelect}
+              onViewDetails={handleViewDetails}
             />
           </div>
           {/* Right Sidebar */}

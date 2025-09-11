@@ -47,14 +47,6 @@ const Register = () => {
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
 
-      <button
-        onClick={() => navigate(-1)}
-        className="absolute top-6 left-6 z-20 text-white text-3xl font-bold hover:text-orange-400"
-        aria-label="Go back"
-      >
-        ←Back
-      </button>
-
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
         <div className="bg-white/90 backdrop-blur-md p-8 rounded-xl shadow-xl w-full max-w-md">
           <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">Register</h2>

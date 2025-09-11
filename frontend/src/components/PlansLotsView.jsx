@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Eye, FileText, MapPin, Calendar, User } from 'lucide-react';
 import api from '../api';
 
 const PlansLotsView = ({ userRole }) => {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState('plans'); // 'plans' or 'lots'
   const [plans, setPlans] = useState([]);
   const [lots, setLots] = useState([]);
@@ -107,6 +109,21 @@ const PlansLotsView = ({ userRole }) => {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const handleViewDetails = (plan, e) => {
+    e.stopPropagation(); // Prevent any parent click handlers
+    // Navigate to plan detail page based on current dashboard
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/pe-dashboard')) {
+      navigate(`/pe-dashboard/plan/${plan.id}`);
+    } else if (currentPath.includes('/ce-dashboard')) {
+      navigate(`/ce-dashboard/plan/${plan.id}`);
+    } else if (currentPath.includes('/fo-dashboard')) {
+      navigate(`/fo-dashboard/plan/${plan.id}`);
+    } else {
+      navigate(`/dashboard/plan/${plan.id}`);
+    }
   };
 
   // Loading state
@@ -222,17 +239,28 @@ const PlansLotsView = ({ userRole }) => {
                   {/* Plan Header */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="font-semibold text-gray-900">{plan.plan_number}</h3>
+                      <h3 className="font-semibold text-gray-900">
+                        {plan.plan_number || plan.cadastral_no || `Plan-${plan.id}`}
+                      </h3>
                       <p className="text-sm text-blue-600">{plan.project_name}</p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      plan.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      plan.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                      plan.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {plan.status}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        plan.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        plan.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                        plan.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {plan.status}
+                      </span>
+                      <button
+                        onClick={(e) => handleViewDetails(plan, e)}
+                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                        title="View Plan Details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Plan Details */}
@@ -330,7 +358,7 @@ const PlansLotsView = ({ userRole }) => {
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {lot.plan_number}
+                            {lot.plan_number || lot.cadastral_no || `Plan-${lot.plan_id}`}
                           </div>
                           <div className="text-sm text-blue-600">
                             {lot.project_name}

@@ -6,11 +6,11 @@ const Lot = {};
 Lot.create = (lotData, callback) => {
   const sql = `
     INSERT INTO lots 
-    (plan_id, lot_no, extent_ha, extent_perch, land_type, 
+    (plan_id, lot_no, extent_ha, extent_perch, land_type, status,
      advance_tracing_extent_ha, advance_tracing_extent_perch,
      preliminary_plan_extent_ha, preliminary_plan_extent_perch,
      created_by, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
   `;
   
   const params = [
@@ -19,6 +19,7 @@ Lot.create = (lotData, callback) => {
     lotData.extent_ha || null,
     lotData.extent_perch || null,
     lotData.land_type || 'Private',
+    lotData.status || 'active',
     lotData.advance_tracing_extent_ha || null,
     lotData.advance_tracing_extent_perch || null,
     lotData.preliminary_plan_extent_ha || null,
@@ -33,7 +34,7 @@ Lot.create = (lotData, callback) => {
 Lot.getByUserRoleWithOwners = (userId, userRole, callback) => {
   let sql = `
     SELECT l.*, 
-           p.plan_number,
+           p.plan_identifier,
            pr.name as project_name,
            CONCAT(u.first_name, ' ', u.last_name) as created_by_name
     FROM lots l
@@ -64,9 +65,11 @@ Lot.getByUserRoleWithOwners = (userId, userRole, callback) => {
       
     case 'LO': // Land Officer - only lots for assigned projects
     case 'land_officer':
-      whereCondition = `WHERE EXISTS (
+      whereCondition = `WHERE pr.status = 'approved' AND EXISTS (
         SELECT 1 FROM project_assignments pa 
-        WHERE pa.project_id = pr.id AND pa.user_id = ?
+        WHERE pa.project_id = pr.id 
+          AND pa.land_officer_id = ? 
+          AND pa.status = 'active'
       )`;
       params = [userId];
       break;
@@ -80,7 +83,10 @@ Lot.getByUserRoleWithOwners = (userId, userRole, callback) => {
     sql += ' ' + whereCondition;
   }
   
-  sql += ' ORDER BY pr.name, p.plan_number, l.lot_no';
+  sql += ' ORDER BY pr.name, p.plan_identifier, l.lot_no';
+  
+  console.log('getByUserRoleWithOwners SQL:', sql);
+  console.log('getByUserRoleWithOwners params:', params);
   
   db.query(sql, params, (err, lots) => {
     if (err) return callback(err);
@@ -111,7 +117,7 @@ Lot.getByUserRoleWithOwners = (userId, userRole, callback) => {
 Lot.getByUserRole = (userId, userRole, callback) => {
   let sql = `
     SELECT l.*, 
-           p.plan_number,
+           p.plan_identifier,
            pr.name as project_name,
            CONCAT(u.first_name, ' ', u.last_name) as created_by_name
     FROM lots l
@@ -145,7 +151,7 @@ Lot.getByUserRole = (userId, userRole, callback) => {
     case 'land_officer':
       sql = `
         SELECT DISTINCT l.*, 
-               p.plan_number,
+               p.plan_identifier,
                pr.name as project_name,
                CONCAT(u.first_name, ' ', u.last_name) as created_by_name
         FROM lots l
@@ -163,7 +169,7 @@ Lot.getByUserRole = (userId, userRole, callback) => {
       return callback(new Error('Invalid user role'));
   }
   
-  const finalSql = sql + whereCondition + ' ORDER BY pr.name, p.plan_number, l.lot_no ASC';
+  const finalSql = sql + whereCondition + ' ORDER BY pr.name, p.plan_identifier, l.lot_no ASC';
   db.query(finalSql, params, callback);
 };
 
@@ -401,7 +407,7 @@ Lot.findById = (id, callback) => {
 Lot.update = (id, lotData, callback) => {
   const sql = `
     UPDATE lots 
-    SET lot_no = ?, extent_ha = ?, extent_perch = ?, land_type = ?,
+    SET lot_no = ?, extent_ha = ?, extent_perch = ?, land_type = ?, status = ?,
         advance_tracing_extent_ha = ?, advance_tracing_extent_perch = ?,
         preliminary_plan_extent_ha = ?, preliminary_plan_extent_perch = ?,
         updated_by = ?, updated_at = NOW()
@@ -413,6 +419,7 @@ Lot.update = (id, lotData, callback) => {
     lotData.extent_ha || null,
     lotData.extent_perch || null,
     lotData.land_type,
+    lotData.status || 'active',
     lotData.advance_tracing_extent_ha || null,
     lotData.advance_tracing_extent_perch || null,
     lotData.preliminary_plan_extent_ha || null,
@@ -556,7 +563,7 @@ Lot.getAllLotsWithProjectPlanInfo = (callback) => {
   const sql = `
     SELECT 
       l.*, 
-      p.plan_number,
+      p.plan_identifier,
       p.description as plan_description,
       pr.name as project_name,
       pr.status as project_status,
@@ -568,7 +575,7 @@ Lot.getAllLotsWithProjectPlanInfo = (callback) => {
     LEFT JOIN projects pr ON p.project_id = pr.id
     LEFT JOIN users u ON l.created_by = u.id
     LEFT JOIN users pe ON pr.created_by = pe.id
-    ORDER BY pr.name ASC, p.plan_number ASC, l.lot_no ASC
+    ORDER BY pr.name ASC, p.plan_identifier ASC, l.lot_no ASC
   `;
   db.query(sql, [], callback);
 };
@@ -578,7 +585,7 @@ Lot.getLotsForProjectEngineer = (projectEngineerId, callback) => {
   const sql = `
     SELECT 
       l.*, 
-      p.plan_number,
+      p.plan_identifier,
       p.description as plan_description,
       pr.name as project_name,
       pr.status as project_status,
@@ -589,7 +596,7 @@ Lot.getLotsForProjectEngineer = (projectEngineerId, callback) => {
     LEFT JOIN projects pr ON p.project_id = pr.id
     LEFT JOIN users u ON l.created_by = u.id
     WHERE pr.created_by = ?
-    ORDER BY pr.name ASC, p.plan_number ASC, l.lot_no ASC
+    ORDER BY pr.name ASC, p.plan_identifier ASC, l.lot_no ASC
   `;
   db.query(sql, [projectEngineerId], callback);
 };

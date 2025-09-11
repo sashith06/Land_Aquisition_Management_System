@@ -5,7 +5,7 @@ import Breadcrumb from '../../components/Breadcrumb';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import api from '../../api';
 
-const ProjectDetailsPage = () => {
+const FOProjectDetailsPage = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { generateBreadcrumbs } = useBreadcrumbs();
@@ -79,12 +79,6 @@ const ProjectDetailsPage = () => {
         <Breadcrumb items={generateBreadcrumbs()} />
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           <p>{error}</p>
-          <button
-            onClick={() => navigate('/pe-dashboard')}
-            className="mt-2 text-red-600 underline hover:text-red-800"
-          >
-            Return to Dashboard
-          </button>
         </div>
       </div>
     );
@@ -96,12 +90,6 @@ const ProjectDetailsPage = () => {
         <Breadcrumb items={generateBreadcrumbs()} />
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
           <p>Project not found</p>
-          <button
-            onClick={() => navigate('/pe-dashboard')}
-            className="mt-2 text-yellow-600 underline hover:text-yellow-800"
-          >
-            Return to Dashboard
-          </button>
         </div>
       </div>
     );
@@ -114,9 +102,7 @@ const ProjectDetailsPage = () => {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-slate-900">Project Details</h2>
-        </div>
+        <h2 className="text-xl font-semibold text-slate-900">Project Details</h2>
       </div>
 
       {/* Project Header */}
@@ -311,16 +297,9 @@ const ProjectDetailsPage = () => {
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-4 pt-4">
-        <button
-          onClick={() => navigate(`/pe-dashboard/edit-project/${projectId}`)}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
-        >
-          <FileText size={16} />
-          <span>Edit Project</span>
-        </button>
       </div>
     </div>
   );
 };
 
-export default ProjectDetailsPage;
+export default FOProjectDetailsPage;

@@ -105,7 +105,10 @@ const PEDashboardMain = () => {
       alert('Project deleted successfully!');
     } catch (error) {
       console.error('Error deleting project:', error);
-      alert(error.response?.data?.error || 'Failed to delete project. Please try again.');
+      
+      // Show more specific error message
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to delete project. Please try again.';
+      alert(`Error: ${errorMessage}`);
     }
   };
 

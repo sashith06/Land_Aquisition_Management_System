@@ -26,13 +26,6 @@ const Unauthorized = () => {
         </p>
         
         <div className="space-y-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg transition-colors"
-          >
-            Go Back
-          </button>
-          
           <Link
             to="/"
             className="block w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-center"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, ArrowLeft, FileText, Calendar, DollarSign, MapPin, User, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Eye, FileText, Calendar, DollarSign, MapPin, User, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Breadcrumb from '../../components/Breadcrumb';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
@@ -169,13 +169,7 @@ const CEProjectDetailsPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/ce-dashboard/project-requests')}
-            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span>Back to Project Requests</span>
-          </button>
+          <h2 className="text-xl font-semibold text-slate-900">Project Details</h2>
         </div>
         <div className="flex items-center space-x-3">
           <div className={`px-4 py-2 rounded-full text-sm font-medium border ${getStatusColor(project.status)}`}>
@@ -390,14 +384,6 @@ const CEProjectDetailsPage = () => {
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-4 pt-4">
-        <button
-          onClick={() => navigate('/ce-dashboard/project-requests')}
-          className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors flex items-center space-x-2"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Requests</span>
-        </button>
-
         {project.status === 'pending' && (
           <>
             <button

@@ -175,13 +175,6 @@ const LotValuationManagement = () => {
             <h1 className="text-3xl font-bold text-gray-800">Select Plan</h1>
             <p className="text-gray-600 mt-1">Project: {selectedProject.name}</p>
           </div>
-          <button
-            onClick={() => setSelectedProject(null)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Projects</span>
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -229,13 +222,6 @@ const LotValuationManagement = () => {
             Project: {selectedProject.name} | Plan: {selectedPlan.id}
           </p>
         </div>
-        <button
-          onClick={() => setSelectedPlan(null)}
-          className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Plans</span>
-        </button>
       </div>
 
       {/* Search Bar */}

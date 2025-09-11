@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Eye, FileText, Calendar, DollarSign, MapPin, User } from 'lucide-react';
+import { FileText, Calendar, DollarSign, User, AlertTriangle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Breadcrumb from '../../components/Breadcrumb';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import api from '../../api';
 
-const ProjectDetailsPage = () => {
+const LOProjectDetailsPage = () => {
   const navigate = useNavigate();
   const { projectId } = useParams();
   const { generateBreadcrumbs } = useBreadcrumbs();
@@ -13,11 +13,15 @@ const ProjectDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  console.log('LOProjectDetailsPage rendered with projectId:', projectId);
+
   useEffect(() => {
     const loadProject = async () => {
       try {
         setLoading(true);
+        console.log('Loading project details for projectId:', projectId);
         const response = await api.get(`/api/projects/${projectId}`);
+        console.log('Project details response:', response.data);
         setProject(response.data);
         setError('');
       } catch (err) {
@@ -30,10 +34,13 @@ const ProjectDetailsPage = () => {
 
     if (projectId) {
       loadProject();
+    } else {
+      console.log('No projectId provided');
     }
   }, [projectId]);
 
-  const getStatusColor = (status) => {
+  // Status pill style (match CE details look)
+  const getStatusPillClass = (status) => {
     switch (status?.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800 border-green-200';
@@ -46,17 +53,12 @@ const ProjectDetailsPage = () => {
     }
   };
 
-  const getCompensationTypeLabel = (type) => {
-    switch (type) {
-      case 'regulation':
-        return 'Regulation';
-      case 'larc/super larc':
-        return 'LARC / Super LARC';
-      case 'special Committee Decision':
-        return 'Special Committee Decision';
-      default:
-        return type || 'Not specified';
-    }
+  const formatCurrency = (amount) => {
+    if (!amount) return 'Not specified';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
   };
 
   if (loading) {
@@ -80,7 +82,7 @@ const ProjectDetailsPage = () => {
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           <p>{error}</p>
           <button
-            onClick={() => navigate('/pe-dashboard')}
+            onClick={() => navigate('/dashboard')}
             className="mt-2 text-red-600 underline hover:text-red-800"
           >
             Return to Dashboard
@@ -97,7 +99,7 @@ const ProjectDetailsPage = () => {
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
           <p>Project not found</p>
           <button
-            onClick={() => navigate('/pe-dashboard')}
+            onClick={() => navigate('/dashboard')}
             className="mt-2 text-yellow-600 underline hover:text-yellow-800"
           >
             Return to Dashboard
@@ -112,27 +114,19 @@ const ProjectDetailsPage = () => {
       {/* Breadcrumb Navigation */}
       <Breadcrumb items={generateBreadcrumbs()} />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-xl font-semibold text-slate-900">Project Details</h2>
-        </div>
-      </div>
-
-      {/* Project Header */}
+      {/* Header card */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-              {project.name}
-            </h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">{project.name}</h1>
             <div className="flex items-center space-x-4 text-sm text-slate-600">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(project.status)}`}>
-                {project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Unknown'}
-              </span>
               <span className="flex items-center space-x-1">
                 <Calendar size={14} />
-                <span>Created: {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}</span>
+                <span>Submitted: {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <User size={14} />
+                <span>By: {project.creator_name || 'Project Engineer'}</span>
               </span>
             </div>
           </div>
@@ -141,9 +135,21 @@ const ProjectDetailsPage = () => {
             <div className="font-mono text-lg font-semibold text-slate-900">#{project.id}</div>
           </div>
         </div>
+
+        {project.status === 'rejected' && project.rejection_reason && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start space-x-2">
+              <AlertTriangle className="text-red-600 mt-0.5" size={16} />
+              <div>
+                <h4 className="text-sm font-medium text-red-800">Rejection Reason</h4>
+                <p className="text-sm text-red-700 mt-1">{project.rejection_reason}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Project Details Grid */}
+      {/* Details grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Basic Information */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
@@ -151,76 +157,50 @@ const ProjectDetailsPage = () => {
             <FileText className="text-blue-600" size={20} />
             <h2 className="text-xl font-semibold text-slate-900">Basic Information</h2>
           </div>
-
           <div className="space-y-4">
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Project Name</span>
               <span className="text-sm font-semibold text-slate-900">{project.name}</span>
             </div>
-
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Status</span>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(project.status)}`}>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusPillClass(project.status)}`}>
                 {project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Unknown'}
               </span>
             </div>
-
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Compensation Type</span>
-              <span className="text-sm font-semibold text-slate-900">{getCompensationTypeLabel(project.compensation_type)}</span>
+              <span className="text-sm font-semibold text-slate-900">{project.compensation_type || 'Not specified'}</span>
             </div>
-
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Created By</span>
               <span className="text-sm font-semibold text-slate-900">{project.creator_name || 'Project Engineer'}</span>
             </div>
-
             <div className="flex justify-between items-center py-3">
-              <span className="text-sm font-medium text-slate-600">Created Date</span>
-              <span className="text-sm font-semibold text-slate-900">
-                {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}
-              </span>
+              <span className="text-sm font-medium text-slate-600">Submitted Date</span>
+              <span className="text-sm font-semibold text-slate-900">{project.created_at ? new Date(project.created_at).toLocaleDateString() : 'N/A'}</span>
             </div>
           </div>
         </div>
 
-        {/* Financial & Land Information */}
+        {/* Financial & Land Details */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
           <div className="flex items-center space-x-2 mb-6">
             <DollarSign className="text-green-600" size={20} />
             <h2 className="text-xl font-semibold text-slate-900">Financial & Land Details</h2>
           </div>
-
           <div className="space-y-4">
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Estimated Cost</span>
-              <span className="text-sm font-semibold text-green-700">
-                {project.initial_estimated_cost ? `Rs. ${parseFloat(project.initial_estimated_cost).toLocaleString()}` : 'N/A'}
-              </span>
+              <span className="text-sm font-semibold text-green-700">{project.initial_estimated_cost ? formatCurrency(project.initial_estimated_cost) : 'Not specified'}</span>
             </div>
-
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Extent (Hectares)</span>
-              <span className="text-sm font-semibold text-slate-900">
-                {project.initial_extent_ha ? `${project.initial_extent_ha} ha` : 'N/A'}
-              </span>
+              <span className="text-sm font-semibold text-slate-900">{project.initial_extent_ha ? `${project.initial_extent_ha} ha` : 'Not specified'}</span>
             </div>
-
             <div className="flex justify-between items-center py-3 border-b border-slate-100">
               <span className="text-sm font-medium text-slate-600">Extent (Perches)</span>
-              <span className="text-sm font-semibold text-slate-900">
-                {project.initial_extent_perch ? `${project.initial_extent_perch} perches` : 'N/A'}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center py-3">
-              <span className="text-sm font-medium text-slate-600">Land Area Conversion</span>
-              <span className="text-xs text-slate-500">
-                {project.initial_extent_ha && project.initial_extent_perch
-                  ? `${project.initial_extent_ha} ha = ${project.initial_extent_perch} perches`
-                  : 'N/A'
-                }
-              </span>
+              <span className="text-sm font-semibold text-slate-900">{project.initial_extent_perch ? `${project.initial_extent_perch} perches` : 'Not specified'}</span>
             </div>
           </div>
         </div>
@@ -232,65 +212,47 @@ const ProjectDetailsPage = () => {
           <FileText className="text-purple-600" size={20} />
           <h2 className="text-xl font-semibold text-slate-900">Legal Documentation</h2>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-600">Section 2 Order Date</label>
             <div className="flex items-center space-x-2">
               <Calendar size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-900">
-                {project.section_2_order ? new Date(project.section_2_order).toLocaleDateString() : 'Not specified'}
-              </span>
+              <span className="text-sm text-slate-900">{project.section_2_order ? new Date(project.section_2_order).toLocaleDateString() : 'Not specified'}</span>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-600">Section 2 Completion Date</label>
             <div className="flex items-center space-x-2">
               <Calendar size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-900">
-                {project.section_2_com ? new Date(project.section_2_com).toLocaleDateString() : 'Not specified'}
-              </span>
+              <span className="text-sm text-slate-900">{project.section_2_com ? new Date(project.section_2_com).toLocaleDateString() : 'Not specified'}</span>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-600">Advance Tracing No</label>
             <div className="flex items-center space-x-2">
               <FileText size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-900">
-                {project.advance_tracing_no || 'Not specified'}
-              </span>
+              <span className="text-sm text-slate-900">{project.advance_tracing_no || 'Not specified'}</span>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-600">Advance Tracing Date</label>
             <div className="flex items-center space-x-2">
               <Calendar size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-900">
-                {project.advance_tracing_date ? new Date(project.advance_tracing_date).toLocaleDateString() : 'Not specified'}
-              </span>
+              <span className="text-sm text-slate-900">{project.advance_tracing_date ? new Date(project.advance_tracing_date).toLocaleDateString() : 'Not specified'}</span>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-600">Section 5 No</label>
             <div className="flex items-center space-x-2">
               <FileText size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-900">
-                {project.section_5_no || 'Not specified'}
-              </span>
+              <span className="text-sm text-slate-900">{project.section_5_no || 'Not specified'}</span>
             </div>
           </div>
-
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-600">Section 5 Date</label>
             <div className="flex items-center space-x-2">
               <Calendar size={16} className="text-slate-400" />
-              <span className="text-sm text-slate-900">
-                {project.section_5_no_date ? new Date(project.section_5_no_date).toLocaleDateString() : 'Not specified'}
-              </span>
+              <span className="text-sm text-slate-900">{project.section_5_no_date ? new Date(project.section_5_no_date).toLocaleDateString() : 'Not specified'}</span>
             </div>
           </div>
         </div>
@@ -308,19 +270,8 @@ const ProjectDetailsPage = () => {
           </div>
         </div>
       )}
-
-      {/* Action Buttons */}
-      <div className="flex justify-end space-x-4 pt-4">
-        <button
-          onClick={() => navigate(`/pe-dashboard/edit-project/${projectId}`)}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
-        >
-          <FileText size={16} />
-          <span>Edit Project</span>
-        </button>
-      </div>
     </div>
   );
 };
 
-export default ProjectDetailsPage;
+export default LOProjectDetailsPage;
