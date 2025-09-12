@@ -337,19 +337,39 @@ CREATE TABLE `compensations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
--- TABLE: lot_owners (Property owners for each lot)
+-- TABLE: owners (Master table for property owners)
+-- ================================================
+DROP TABLE IF EXISTS `owners`;
+CREATE TABLE `owners` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `nic` varchar(20) NOT NULL,
+  `mobile` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `owner_type` enum('Individual','Company','Government','Trust') DEFAULT 'Individual',
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_by` int NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `nic` (`nic`),
+  KEY `created_by` (`created_by`),
+  KEY `updated_by` (`updated_by`),
+  CONSTRAINT `owners_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `owners_ibfk_2` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: lot_owners (Bridge table between lots and owners)
 -- ================================================
 DROP TABLE IF EXISTS `lot_owners`;
 CREATE TABLE `lot_owners` (
   `id` int NOT NULL AUTO_INCREMENT,
   `lot_id` int NOT NULL,
+  `owner_id` int NOT NULL,
   `plan_id` int NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `nic` varchar(20) NOT NULL,
-  `mobile` varchar(20) DEFAULT NULL,
-  `address` text DEFAULT NULL,
   `ownership_percentage` decimal(5,2) DEFAULT 100.00,
-  `owner_type` enum('Individual','Company','Government','Trust') DEFAULT 'Individual',
   `status` enum('active','inactive','transferred') DEFAULT 'active',
   `created_by` int NOT NULL,
   `updated_by` int DEFAULT NULL,
@@ -357,14 +377,15 @@ CREATE TABLE `lot_owners` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `lot_id` (`lot_id`),
+  KEY `owner_id` (`owner_id`),
   KEY `plan_id` (`plan_id`),
   KEY `created_by` (`created_by`),
   KEY `updated_by` (`updated_by`),
-  KEY `nic` (`nic`),
   CONSTRAINT `lot_owners_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `lot_owners_ibfk_2` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
-  CONSTRAINT `lot_owners_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
-  CONSTRAINT `lot_owners_ibfk_4` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
+  CONSTRAINT `lot_owners_ibfk_2` FOREIGN KEY (`owner_id`) REFERENCES `owners` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lot_owners_ibfk_3` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `lot_owners_ibfk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lot_owners_ibfk_5` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
@@ -551,6 +572,52 @@ DESCRIBE users;
 DESCRIBE projects;
 DESCRIBE plans;
 DESCRIBE lots;
+
+-- ================================================
+-- DATA MIGRATION: Migrate existing lot_owners data to new normalized structure
+-- Run this AFTER creating the new tables and BEFORE using the system
+-- ================================================
+
+-- Step 1: Migrate unique owners from lot_owners to owners table
+INSERT INTO owners (name, nic, mobile, address, owner_type, status, created_by, updated_by, created_at, updated_at)
+SELECT DISTINCT 
+  lo.name,
+  lo.nic,
+  lo.mobile,
+  lo.address,
+  lo.owner_type,
+  'active' as status,
+  lo.created_by,
+  lo.updated_by,
+  lo.created_at,
+  lo.updated_at
+FROM lot_owners lo
+WHERE lo.status = 'active'
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  mobile = VALUES(mobile),
+  address = VALUES(address),
+  owner_type = VALUES(owner_type),
+  updated_by = VALUES(updated_by),
+  updated_at = NOW();
+
+-- Step 2: Create bridge records in lot_owners table
+-- First, backup existing lot_owners data (optional - remove after verification)
+CREATE TABLE lot_owners_backup AS SELECT * FROM lot_owners;
+
+-- Step 3: Update lot_owners to use owner_id instead of embedded data
+UPDATE lot_owners lo
+INNER JOIN owners o ON lo.nic = o.nic AND lo.name = o.name
+SET lo.owner_id = o.id,
+    lo.updated_at = NOW()
+WHERE lo.status = 'active' AND o.status = 'active';
+
+-- Step 4: Verify migration
+SELECT 'Migration completed. Check counts:' as status;
+SELECT 
+  (SELECT COUNT(*) FROM owners) as owners_count,
+  (SELECT COUNT(*) FROM lot_owners WHERE owner_id IS NOT NULL) as bridge_records_count,
+  (SELECT COUNT(*) FROM lot_owners WHERE owner_id IS NULL) as unmigrated_records;
 
 -- ================================================
 -- END OF SETUP

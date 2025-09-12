@@ -240,46 +240,61 @@ Lot.getByPlanId = (planId, callback) => {
   db.query(sql, [planId], callback);
 };
 
-// Create owner directly in lot_owners table (WAMP server structure)
-Lot.createOwner = (ownerData, callback) => {
-  // For WAMP server database, we don't have a separate owners table
-  // Owners are stored directly in lot_owners table
-  // This method is called from controller but we'll handle it in addOwnerToLot
-  callback(null, { insertId: 0, message: 'Use addOwnerToLot for WAMP server database' });
+// Create owner in owners table (normalized structure)
+Lot.createOwner = (ownerData, userId, callback) => {
+  const Owner = require('./ownerModel');
+
+  // First check if owner already exists by NIC
+  Owner.findByNic(ownerData.nic, (err, existingOwners) => {
+    if (err) return callback(err);
+
+    if (existingOwners && existingOwners.length > 0) {
+      // Owner already exists, return existing owner
+      return callback(null, { insertId: existingOwners[0].id, message: 'Owner already exists' });
+    }
+
+    // Create new owner
+    const ownerDataWithUser = { ...ownerData, created_by: userId };
+    Owner.create(ownerDataWithUser, callback);
+  });
 };
 
-// Add owner directly to lot_owners table (WAMP server structure)
+// Add owner to lot (normalized structure with bridge table)
 Lot.addOwnerToLot = (lotId, ownerData, sharePercentage, userId, planId, callback) => {
-  // In WAMP server database, we add owners directly to lot_owners table
-  const sql = `
-    INSERT INTO lot_owners 
-    (lot_id, plan_id, name, nic, mobile, address, ownership_percentage, owner_type, status, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'Individual', 'active', ?)
-    ON DUPLICATE KEY UPDATE 
-    name = VALUES(name),
-    mobile = VALUES(mobile),
-    address = VALUES(address),
-    ownership_percentage = VALUES(ownership_percentage),
-    status = VALUES(status),
-    updated_by = VALUES(created_by)
-  `;
-  
-  const params = [
-    lotId,
-    planId,
-    ownerData.name,
-    ownerData.nic,
-    ownerData.mobile || ownerData.phone || null,
-    ownerData.address || null,
-    sharePercentage || ownerData.share_percentage || 100,
-    userId
-  ];
-  
-  console.log('Adding owner to lot_owners table:', { lotId, planId, ownerData, sharePercentage, userId });
-  console.log('SQL:', sql);
-  console.log('Params:', params);
-  
-  db.query(sql, params, callback);
+  const Owner = require('./ownerModel');
+
+  // First, find or create the owner
+  Lot.createOwner(ownerData, userId, (ownerErr, ownerResult) => {
+    if (ownerErr) return callback(ownerErr);
+
+    const ownerId = ownerResult.insertId;
+
+    // Now create the bridge record in lot_owners table
+    const sql = `
+      INSERT INTO lot_owners
+      (lot_id, owner_id, plan_id, ownership_percentage, status, created_by)
+      VALUES (?, ?, ?, ?, 'active', ?)
+      ON DUPLICATE KEY UPDATE
+      ownership_percentage = VALUES(ownership_percentage),
+      status = VALUES(status),
+      updated_by = VALUES(created_by),
+      updated_at = NOW()
+    `;
+
+    const params = [
+      lotId,
+      ownerId,
+      planId,
+      sharePercentage || ownerData.share_percentage || 100,
+      userId
+    ];
+
+    console.log('Adding owner to lot (bridge table):', { lotId, ownerId, planId, sharePercentage, userId });
+    console.log('SQL:', sql);
+    console.log('Params:', params);
+
+    db.query(sql, params, callback);
+  });
 };
 
 // Remove owner from lot (WAMP server structure)
@@ -288,40 +303,42 @@ Lot.removeOwnerFromLot = (lotId, ownerId, callback) => {
   db.query(sql, [lotId, ownerId], callback);
 };
 
-// Get owners for a specific lot
+// Get owners for a specific lot (normalized structure)
 Lot.getOwnersById = (lotId, callback) => {
   console.log(`=== getOwnersById DEBUG START for lot ${lotId} ===`);
-  
-  // Updated query for WAMP server database structure
-  // lot_owners table contains owner info directly
+
+  // Updated query for normalized database structure
+  // Join lot_owners (bridge) with owners table
   const sql = `
-    SELECT 
-      id,
-      name,
-      nic,
-      mobile as phone,
-      address,
-      ownership_percentage as share_percentage,
-      owner_type,
-      status
-    FROM lot_owners 
-    WHERE lot_id = ? AND status = 'active'
-    ORDER BY name
+    SELECT
+      o.id,
+      o.name,
+      o.nic,
+      o.mobile as phone,
+      o.address,
+      lo.ownership_percentage as share_percentage,
+      o.owner_type,
+      lo.status,
+      lo.id as lot_owner_id
+    FROM lot_owners lo
+    INNER JOIN owners o ON lo.owner_id = o.id
+    WHERE lo.lot_id = ? AND lo.status = 'active' AND o.status = 'active'
+    ORDER BY o.name
   `;
-  
+
   console.log('SQL query:', sql);
   console.log('Params:', [lotId]);
-  
+
   db.query(sql, [lotId], (err, results) => {
     if (err) {
       console.error(`Error in getOwnersById for lot ${lotId}:`, err);
       return callback(err);
     }
-    
+
     console.log(`Owners found for lot ${lotId}:`, results.length);
     console.log(`Owner data for lot ${lotId}:`, JSON.stringify(results, null, 2));
     console.log(`=== getOwnersById DEBUG END for lot ${lotId} ===`);
-    
+
     callback(null, results);
   });
 };
