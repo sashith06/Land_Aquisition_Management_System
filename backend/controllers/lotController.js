@@ -209,7 +209,7 @@ exports.createLot = async (req, res) => {
         owners.forEach((ownerData, index) => {
           console.log(`Processing owner ${index + 1}:`, ownerData);
           
-          // Add owner directly to lot_owners table (WAMP server structure)
+          // Add owner to lot using normalized structure (owners + lot_owners bridge)
           // We need to pass plan_id and user_id for the foreign key constraints
           Lot.addOwnerToLot(lotId, ownerData, ownerData.share_percentage, userId, plan_id, (ownerErr, result) => {
             if (ownerErr && !hasError) {
@@ -388,7 +388,7 @@ exports.getLotById = (req, res) => {
 exports.updateLot = async (req, res) => {
   try {
     const { id } = req.params;
-    const { lot_number, lot_no, extent_ha, extent_perch, land_type, status } = req.body;
+    const { lot_number, lot_no, extent_ha, extent_perch, land_type, status, owners } = req.body;
     
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
@@ -410,6 +410,7 @@ exports.updateLot = async (req, res) => {
       updated_by: decoded.id
     };
 
+    // First update the basic lot information
     Lot.update(id, lotData, (err, result) => {
       if (err) {
         console.error('Error updating lot:', err);
@@ -422,8 +423,116 @@ exports.updateLot = async (req, res) => {
       if (result.affectedRows === 0) {
         return res.status(404).json({ error: 'Lot not found' });
       }
-      
-      res.json({ message: 'Lot updated successfully' });
+
+      // If owners are provided, handle owner updates
+      if (owners && Array.isArray(owners) && owners.length >= 0) {
+        // Get the plan_id for this lot
+        const getLotSql = `SELECT plan_id FROM lots WHERE id = ?`;
+        db.query(getLotSql, [id], (getLotErr, lotResults) => {
+          if (getLotErr) {
+            console.error('Error finding lot for owner update:', getLotErr);
+            return res.status(500).json({ error: 'Failed to update lot owners' });
+          }
+          
+          if (lotResults.length === 0) {
+            return res.status(404).json({ error: 'Lot not found' });
+          }
+          
+          const planId = lotResults[0].plan_id;
+          
+          // Get current owners for this lot
+          Lot.getOwnersById(id, (getOwnersErr, currentOwners) => {
+            if (getOwnersErr) {
+              console.error('Error getting current owners:', getOwnersErr);
+              return res.status(500).json({ error: 'Failed to update lot owners' });
+            }
+
+            // Process owner updates
+            let operationsCompleted = 0;
+            const totalOperations = owners.length + currentOwners.length; // Add new + potentially remove old
+            let hasError = false;
+
+            // Add/update new owners
+            if (owners.length > 0) {
+              owners.forEach((ownerData, index) => {
+                console.log(`Processing owner ${index + 1}/${owners.length}:`, ownerData);
+                
+                // Check if this owner already exists (by NIC)
+                const existingOwner = currentOwners.find(co => co.nic === ownerData.nic);
+                
+                if (existingOwner) {
+                  // Owner exists, update their information
+                  console.log(`Updating existing owner:`, existingOwner);
+                  // For now, we'll just ensure they're still linked (the addOwnerToLot handles updates)
+                  Lot.addOwnerToLot(id, ownerData, ownerData.share_percentage, decoded.id, planId, (updateErr, result) => {
+                    if (updateErr && !hasError) {
+                      hasError = true;
+                      console.error('Error updating owner:', updateErr);
+                      return res.status(500).json({ error: 'Failed to update lot owners' });
+                    }
+                    
+                    operationsCompleted++;
+                    if (operationsCompleted >= totalOperations && !hasError) {
+                      console.log('All owner operations completed successfully');
+                      res.json({ message: 'Lot updated successfully with owners' });
+                    }
+                  });
+                } else {
+                  // New owner, add them
+                  console.log(`Adding new owner:`, ownerData);
+                  Lot.addOwnerToLot(id, ownerData, ownerData.share_percentage, decoded.id, planId, (addErr, result) => {
+                    if (addErr && !hasError) {
+                      hasError = true;
+                      console.error('Error adding new owner:', addErr);
+                      return res.status(500).json({ error: 'Failed to update lot owners' });
+                    }
+                    
+                    operationsCompleted++;
+                    if (operationsCompleted >= totalOperations && !hasError) {
+                      console.log('All owner operations completed successfully');
+                      res.json({ message: 'Lot updated successfully with owners' });
+                    }
+                  });
+                }
+              });
+            }
+
+            // Remove owners that are no longer in the list
+            currentOwners.forEach((currentOwner) => {
+              const stillExists = owners.some(no => no.nic === currentOwner.nic);
+              
+              if (!stillExists) {
+                console.log(`Removing owner no longer in list:`, currentOwner);
+                // Remove from lot_owners table
+                const removeSql = `DELETE FROM lot_owners WHERE lot_id = ? AND owner_id = ?`;
+                db.query(removeSql, [id, currentOwner.id], (removeErr, removeResult) => {
+                  if (removeErr && !hasError) {
+                    hasError = true;
+                    console.error('Error removing owner:', removeErr);
+                    return res.status(500).json({ error: 'Failed to update lot owners' });
+                  }
+                  
+                  operationsCompleted++;
+                  if (operationsCompleted >= totalOperations && !hasError) {
+                    console.log('All owner operations completed successfully');
+                    res.json({ message: 'Lot updated successfully with owners' });
+                  }
+                });
+              } else {
+                operationsCompleted++; // Count this as completed since no action needed
+              }
+            });
+
+            // If no owners to process, return success immediately
+            if (totalOperations === 0) {
+              res.json({ message: 'Lot updated successfully' });
+            }
+          });
+        });
+      } else {
+        // No owners provided, just return success for lot update
+        res.json({ message: 'Lot updated successfully' });
+      }
     });
   } catch (error) {
     console.error('Error in updateLot:', error);
@@ -504,7 +613,7 @@ exports.addOwnerToLot = async (req, res) => {
         email 
       };
       
-      // Add owner directly to lot_owners table (WAMP server structure)
+      // Add owner to lot using normalized structure (owners + lot_owners bridge)
       Lot.addOwnerToLot(lotId, ownerData, share_percentage, decoded.id, planId, (err, result) => {
         if (err) {
           console.error('Error adding owner to lot:', err);
@@ -536,7 +645,7 @@ exports.removeOwnerFromLot = async (req, res) => {
       return res.status(403).json({ error: 'Insufficient permissions to remove owners' });
     }
     
-    // Remove owner from lot_owners table by id (WAMP server structure)
+    // Remove owner association from lot_owners bridge table
     const sql = `DELETE FROM lot_owners WHERE lot_id = ? AND id = ?`;
     db.query(sql, [lotId, ownerId], (err, result) => {
       if (err) {
@@ -556,25 +665,25 @@ exports.removeOwnerFromLot = async (req, res) => {
   }
 };
 
-// Get all owners (for dropdown/search purposes) - from lot_owners table (WAMP server structure)
+// Get all owners (for dropdown/search purposes) - from owners table (normalized structure)
 exports.getAllOwners = async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
-    
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
-    
+
     if (!['land_officer', 'chief_engineer', 'project_engineer', 'financial_officer'].includes(decoded.role)) {
       return res.status(403).json({ error: 'Insufficient permissions to view owners' });
     }
-    
-    // Get unique owners from lot_owners table (WAMP server structure)
+
+    // Get owners from owners table (normalized structure)
     const sql = `
-      SELECT DISTINCT name, nic, mobile as phone, address 
-      FROM lot_owners 
-      WHERE status = 'active' 
+      SELECT id, name, nic, mobile as phone, address, owner_type
+      FROM owners
+      WHERE status = 'active'
       ORDER BY name ASC
     `;
     db.query(sql, (err, owners) => {
@@ -582,7 +691,7 @@ exports.getAllOwners = async (req, res) => {
         console.error('Error fetching owners:', err);
         return res.status(500).json({ error: 'Failed to fetch owners' });
       }
-      
+
       res.json(owners);
     });
   } catch (error) {
