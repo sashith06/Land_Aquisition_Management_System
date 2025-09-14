@@ -73,7 +73,7 @@ exports.register = async (req, res) => {
       // Notify Chief Engineer
       transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: "chiefengineer@gmail.com",
+        to: "umeshsandeepa1@gmail.com",
         subject: "New User Registration Request",
         text: `New user (${email}) requested registration.`,
       });
