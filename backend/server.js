@@ -58,6 +58,10 @@ app.use("/api", valuationRoutes);
 const compensationRoutes = require("./routes/compensationRoutes");
 app.use("/api", compensationRoutes);
 
+const otpRoutes = require("./routes/otpRoutes");
+app.use("/api/otp", otpRoutes);
+
+
 // Initialize database tables
 async function initializeDatabase() {
   try {

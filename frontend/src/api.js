@@ -136,3 +136,20 @@ export const getCompensation = (planId, lotId) =>
 
 export const getCompensationsByPlan = (planId) => 
   api.get(`/api/plans/${planId}/compensations`);
+
+// ================= OTP API =================
+const OTP_API = axios.create({
+  baseURL: "http://localhost:5000/api/otp",
+});
+
+// Add authorization headers if needed (optional for OTP)
+addAuthInterceptors(OTP_API);
+
+// Generate OTP
+export const generateOTP = (emailData) => OTP_API.post("/generate", emailData);
+
+// Reset password with OTP (combined verify + reset)
+export const resetPasswordWithOTP = (resetData) => OTP_API.post("/reset-password", resetData);
+
+// Optional: Cleanup OTPs (cron job or admin use)
+export const cleanupOTPs = () => OTP_API.delete("/cleanup");
