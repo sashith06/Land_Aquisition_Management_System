@@ -61,6 +61,9 @@ app.use("/api", compensationRoutes);
 const otpRoutes = require("./routes/otpRoutes");
 app.use("/api/otp", otpRoutes);
 
+const landownerRoutes = require("./routes/landownerRoutes");
+app.use("/api/landowner", landownerRoutes);
+
 
 // Initialize database tables
 async function initializeDatabase() {

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const BACKEND_URL = 'http://localhost:5000';
 
 const LandownerHero = () => {
+  const navigate = useNavigate();
   const [nic, setNic] = useState('');
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
@@ -36,7 +38,7 @@ const LandownerHero = () => {
     setLoading(true);
     setMessage('');
     try {
-      const res = await axios.post(`${BACKEND_URL}/request-otp`, { nic, mobile });
+      const res = await axios.post(`${BACKEND_URL}/api/landowner/request-otp`, { nic, mobile });
       setOtpSent(true);
       setResendCooldown(60);
       setMessage('OTP sent to your mobile number');
@@ -65,12 +67,14 @@ const LandownerHero = () => {
     setLoading(true);
     setMessage('');
     try {
-      const res = await axios.post(`${BACKEND_URL}/verify-otp`, { nic, mobile, otp });
+      const res = await axios.post(`${BACKEND_URL}/api/landowner/verify-otp`, { nic, mobile, otp });
       setMessage(res.data.message);
 
       // Save token and redirect
-      localStorage.setItem('authToken', res.data.token);
-      window.location.href = '/dashboard';
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('userRole', 'landowner');
+      localStorage.setItem('userData', JSON.stringify(res.data.landowner));
+      navigate('/landowner/dashboard');
     } catch (err) {
       setMessage(err.response?.data?.message || 'Invalid OTP');
     } finally {

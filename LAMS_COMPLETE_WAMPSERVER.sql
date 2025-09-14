@@ -513,6 +513,24 @@ CREATE TABLE `audit_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
+-- TABLE: password_reset_otps (For OTP-based password reset)
+-- ================================================
+DROP TABLE IF EXISTS `password_reset_otps`;
+CREATE TABLE `password_reset_otps` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `otp_code` varchar(255) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `is_used` tinyint(1) DEFAULT 0,
+  `attempts` int DEFAULT 0,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `email` (`email`),
+  KEY `expires_at` (`expires_at`),
+  KEY `is_used` (`is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
 -- TABLE: system_settings (Application configuration)
 -- ================================================
 DROP TABLE IF EXISTS `system_settings`;
@@ -564,7 +582,7 @@ SELECT 'LAMS Database Setup Completed Successfully!' as Status;
 SHOW TABLES;
 
 -- Verify essential system data
-SELECT 'System Administrator Created' as Status FROM users WHERE role = 'admin' LIMIT 1;
+SELECT 'System Administrator Created' as Status FROM users WHERE role = 'CE' LIMIT 1;
 SELECT COUNT(*) as system_settings_count FROM system_settings;
 
 -- Show table structure for key tables
@@ -574,50 +592,12 @@ DESCRIBE plans;
 DESCRIBE lots;
 
 -- ================================================
--- DATA MIGRATION: Migrate existing lot_owners data to new normalized structure
--- Run this AFTER creating the new tables and BEFORE using the system
+-- DATA MIGRATION: NOT REQUIRED FOR FRESH INSTALLATION
+-- This section is only needed when migrating from an existing database
+-- For fresh installations, skip this section as all tables are created new
 -- ================================================
 
--- Step 1: Migrate unique owners from lot_owners to owners table
-INSERT INTO owners (name, nic, mobile, address, owner_type, status, created_by, updated_by, created_at, updated_at)
-SELECT DISTINCT 
-  lo.name,
-  lo.nic,
-  lo.mobile,
-  lo.address,
-  lo.owner_type,
-  'active' as status,
-  lo.created_by,
-  lo.updated_by,
-  lo.created_at,
-  lo.updated_at
-FROM lot_owners lo
-WHERE lo.status = 'active'
-ON DUPLICATE KEY UPDATE
-  name = VALUES(name),
-  mobile = VALUES(mobile),
-  address = VALUES(address),
-  owner_type = VALUES(owner_type),
-  updated_by = VALUES(updated_by),
-  updated_at = NOW();
-
--- Step 2: Create bridge records in lot_owners table
--- First, backup existing lot_owners data (optional - remove after verification)
-CREATE TABLE lot_owners_backup AS SELECT * FROM lot_owners;
-
--- Step 3: Update lot_owners to use owner_id instead of embedded data
-UPDATE lot_owners lo
-INNER JOIN owners o ON lo.nic = o.nic AND lo.name = o.name
-SET lo.owner_id = o.id,
-    lo.updated_at = NOW()
-WHERE lo.status = 'active' AND o.status = 'active';
-
--- Step 4: Verify migration
-SELECT 'Migration completed. Check counts:' as status;
-SELECT 
-  (SELECT COUNT(*) FROM owners) as owners_count,
-  (SELECT COUNT(*) FROM lot_owners WHERE owner_id IS NOT NULL) as bridge_records_count,
-  (SELECT COUNT(*) FROM lot_owners WHERE owner_id IS NULL) as unmigrated_records;
+-- No migration needed for fresh database setup
 
 -- ================================================
 -- END OF SETUP
