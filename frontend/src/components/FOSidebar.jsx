@@ -5,6 +5,7 @@ import {
   MessageSquare,
   FileText,
   DollarSign,
+  GitBranch,
 } from "lucide-react";
 import useMessageCount from "../hooks/useMessageCount";
 
@@ -12,7 +13,7 @@ import useMessageCount from "../hooks/useMessageCount";
 const foNavigationItems = [
   { path: '/fo-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/fo-dashboard/financial-reports', label: 'Financial Reports', icon: 'DollarSign' },
-  { path: '/fo-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+  { path: '/fo-dashboard/project-progress', label: 'Real Time Dashboard', icon: 'GitBranch' },
   { path: '/fo-dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
 
@@ -22,6 +23,7 @@ const iconMap = {
   MessageSquare,
   FileText,
   DollarSign,
+  GitBranch,
 };
 
 const FOSidebar = () => {

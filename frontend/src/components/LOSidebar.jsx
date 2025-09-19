@@ -17,6 +17,7 @@ const loNavigationItems = [
   { path: '/dashboard/create-plan', label: 'Create Plan', icon: 'Plus' },
   { path: '/dashboard/plans', label: 'Plans & Lots', icon: 'MapPin' },
   { path: '/dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+  { path: '/dashboard/dashboard-analytics', label: 'Real-time Analytics', icon: 'BarChart3' },
   { path: '/dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
 

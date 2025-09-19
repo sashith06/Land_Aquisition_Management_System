@@ -6,6 +6,7 @@ import {
   BarChart3,
   MessageSquare,
   FileText,
+  GitBranch,
 } from "lucide-react";
 import { navigationItems } from "../data/mockData";
 import useMessageCount from "../hooks/useMessageCount";
@@ -16,6 +17,7 @@ const iconMap = {
   BarChart3,
   MessageSquare,
   FileText,
+  GitBranch,
 };
 
 const Sidebar = () => {

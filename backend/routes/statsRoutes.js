@@ -8,4 +8,13 @@ router.get('/dashboard', statsController.getDashboardStats);
 // Protected route for detailed statistics (requires authentication)
 router.get('/detailed', statsController.getDetailedStats);
 
+// New route for comprehensive dashboard analytics
+router.get('/analytics', statsController.getDashboardAnalytics);
+
+// Route for real-time project progress data
+router.get('/progress', statsController.getProjectProgressData);
+
+// Route for detailed project hierarchy with filtering
+router.get('/project-hierarchy', statsController.getProjectHierarchy);
+
 module.exports = router;
