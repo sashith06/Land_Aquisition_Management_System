@@ -44,7 +44,7 @@ const PlanList = ({ plans, onPlanSelect, selectedPlan }) => {
                 <Building2 size={20} className="text-gray-600" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-lg text-gray-800">{plan.id}</p>
+                <p className="font-bold text-lg text-gray-800">Plan No - {plan.plan_no || plan.plan_identifier}</p>
                 <p className="text-sm text-gray-500 truncate">{plan.name}</p>
               </div>
             </div>

@@ -100,10 +100,11 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan, showProgress = tr
 
   const formatPlanDisplay = (plan) => {
     // For our actual database structure with plan_number and project_name
-    const planIdentifier = plan.plan_number || plan.cadastral_no || `Plan-${plan.id}`;
+    const planIdentifier = plan.plan_no || plan.plan_identifier || plan.cadastral_no || `Plan-${plan.id}`;
+    const displayId = plan.plan_no || plan.plan_identifier ? `Plan No - ${planIdentifier}` : planIdentifier;
 
     return {
-      id: planIdentifier,
+      id: displayId,
       name: plan.project_name || plan.description || 'No description',
       progress: plan.progress || 0
     };

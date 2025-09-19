@@ -240,7 +240,7 @@ const PlansLotsView = ({ userRole }) => {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="font-semibold text-gray-900">
-                        {plan.plan_number || plan.cadastral_no || `Plan-${plan.id}`}
+                        {plan.plan_number || plan.plan_no || plan.plan_identifier ? `Plan No - ${plan.plan_number || plan.plan_no || plan.plan_identifier}` : `Plan-${plan.id}`}
                       </h3>
                       <p className="text-sm text-blue-600">{plan.project_name}</p>
                     </div>
@@ -358,7 +358,7 @@ const PlansLotsView = ({ userRole }) => {
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {lot.plan_number || lot.cadastral_no || `Plan-${lot.plan_id}`}
+                            {lot.plan_number || lot.plan_no || lot.plan_identifier ? `Plan No - ${lot.plan_number || lot.plan_no || lot.plan_identifier}` : `Plan-${lot.plan_id}`}
                           </div>
                           <div className="text-sm text-blue-600">
                             {lot.project_name}
