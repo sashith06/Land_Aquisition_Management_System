@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { MapPin } from "lucide-react";
 import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
@@ -33,6 +34,7 @@ const LotsPage = () => {
   const [loading, setLoading] = useState(true);
   const [landDetails, setLandDetails] = useState(null);
   const [landDetailsLoading, setLandDetailsLoading] = useState(false);
+  const [showLandDetailsForm, setShowLandDetailsForm] = useState(false);
 
   // Determine user role based on current route
   const getCurrentUserRole = () => {
@@ -146,6 +148,27 @@ const LotsPage = () => {
   // Handle saving land details
   const handleSaveLandDetails = (updatedLandDetails) => {
     setLandDetails(updatedLandDetails);
+    setShowLandDetailsForm(false);
+  };
+
+  // Handle deleting land details
+  const handleDeleteLandDetails = async () => {
+    if (!selectedLot) return;
+    
+    if (!confirm('Are you sure you want to delete the land details for this lot? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const lotId = selectedLot.backend_id || selectedLot.id;
+      await api.delete(`/api/lots/${lotId}/land-details`);
+      
+      setLandDetails(null);
+      alert('Land details deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting land details:', error);
+      alert('Error deleting land details. Please try again.');
+    }
   };
 
   const handleAddOwner = () => setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: ''}]);
@@ -308,7 +331,7 @@ const LotsPage = () => {
             <span>Loading lots...</span>
           </div>
         ) : (
-          `Lots for Plan ${planData?.plan_number || planId}`
+          `Lots for Plan No - ${planData?.plan_no || planData?.plan_identifier || planId}`
         )}
       </h1>
 
@@ -697,12 +720,134 @@ const LotsPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <LandDetailsForm
-                    lotId={selectedLot.backend_id || selectedLot.id}
-                    initialData={landDetails}
-                    onSave={handleSaveLandDetails}
-                    planData={planData}
-                  />
+                  <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-blue-600" />
+                        <h2 className="text-xl font-semibold text-gray-800">Land Details</h2>
+                      </div>
+                      {landDetails && userRole !== 'Financial Officer' && (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setShowLandDetailsForm(true)}
+                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center space-x-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={handleDeleteLandDetails}
+                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center space-x-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {showLandDetailsForm ? (
+                      <LandDetailsForm
+                        lotId={selectedLot.backend_id || selectedLot.id}
+                        initialData={landDetails}
+                        onSave={handleSaveLandDetails}
+                        onCancel={() => setShowLandDetailsForm(false)}
+                        planData={planData}
+                      />
+                    ) : landDetails ? (
+                      <div className="space-y-6">
+                        {/* Type of Land */}
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Type of Land
+                          </label>
+                          <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                            {landDetails.land_type || 'N/A'}
+                          </div>
+                        </div>
+
+                        {/* Advance Tracing No */}
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Advance Tracing No
+                          </label>
+                          <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                            {landDetails.advance_tracing_no || 'N/A'}
+                          </div>
+                        </div>
+
+                        {/* Size of The Lot */}
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <h3 className="text-lg font-medium text-gray-800 mb-4">Size of The Lot</h3>
+                          
+                          {/* Advance Tracing Extent */}
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Advance Tracing Extent
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">(ha)</label>
+                                <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                                  {landDetails.advance_tracing_extent_ha || '0.0000'}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Perch</label>
+                                <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                                  {landDetails.advance_tracing_extent_perch || '0.0000'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Preliminary Plan */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Preliminary Plan
+                            </label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">(ha)</label>
+                                <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                                  {landDetails.preliminary_plan_extent_ha || '0.0000'}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Perch</label>
+                                <div className="bg-white px-3 py-2 border border-gray-300 rounded-lg text-gray-900">
+                                  {landDetails.preliminary_plan_extent_perch || '0.0000'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="mb-4">
+                          <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-gray-600 mb-2">No Land Details Found</h3>
+                          <p className="text-gray-500 mb-6">Land details have not been added for this lot yet.</p>
+                        </div>
+                        {userRole !== 'Financial Officer' && (
+                          <button
+                            onClick={() => setShowLandDetailsForm(true)}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            <span>Add Land Details</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )
               ) : (
                 <div className="text-center text-gray-500 py-8">
