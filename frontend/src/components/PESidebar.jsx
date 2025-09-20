@@ -7,6 +7,7 @@ import {
   FileText,
   FolderPlus,
   UserCheck,
+  GitBranch,
 } from "lucide-react";
 import useMessageCount from "../hooks/useMessageCount";
 
@@ -14,7 +15,7 @@ import useMessageCount from "../hooks/useMessageCount";
 const peNavigationItems = [
   { path: '/pe-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/pe-dashboard/project-assignment', label: 'Assign Projects', icon: 'UserCheck' },
-  { path: '/pe-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+  { path: '/pe-dashboard/project-progress', label: 'Real Time Dashboard', icon: 'GitBranch' },
   { path: '/pe-dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
 
@@ -24,6 +25,7 @@ const iconMap = {
   MessageSquare,
   FileText,
   UserCheck,
+  GitBranch,
 };
 
 const PESidebar = () => {
