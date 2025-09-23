@@ -153,3 +153,8 @@ export const resetPasswordWithOTP = (resetData) => OTP_API.post("/reset-password
 
 // Optional: Cleanup OTPs (cron job or admin use)
 export const cleanupOTPs = () => OTP_API.delete("/cleanup");
+
+// ================= INQUIRIES API =================
+export const getUnreadInquiriesCount = () => api.get('/api/inquiries/unread-count');
+export const getRecentInquiries = (limit = 10) => api.get(`/api/inquiries/recent?limit=${limit}`);
+export const markInquiryAsRead = (inquiryId) => api.put(`/api/inquiries/${inquiryId}/read`);

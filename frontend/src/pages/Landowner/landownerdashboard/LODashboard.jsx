@@ -31,6 +31,10 @@ function LODashboard() {
   const [lotsData, setLotsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [inquiryLoading, setInquiryLoading] = useState(false);
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [myInquiries, setMyInquiries] = useState([]);
+  const [myInquiriesLoading, setMyInquiriesLoading] = useState(false);
 
   useEffect(() => {
     fetchLandownerData();
@@ -72,6 +76,9 @@ function LODashboard() {
         }
       }
 
+      // Fetch my inquiries
+      await fetchMyInquiries();
+
     } catch (err) {
       console.error('Error fetching landowner data:', err);
       setError('Failed to load landowner data');
@@ -100,14 +107,64 @@ function LODashboard() {
     setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
   };
 
-  const handleInquirySubmit = () => {
+  const handleInquirySubmit = async () => {
     if (!inquiryText.trim()) {
       alert("Please enter your inquiry message");
       return;
     }
-    alert(`${inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} inquiry sent for Lot ${currentLot.lotNumber}: ${inquiryText} with ${attachedFiles.length} file(s)`);
-    setInquiryText("");
-    setAttachedFiles([]);
+    if (!selectedLot) {
+      alert("Please select a lot for the inquiry");
+      return;
+    }
+
+    setInquiryLoading(true);
+    setInquiryMessage('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('lot_id', selectedLot.lot.lotId);
+      formData.append('inquiry_text', inquiryText);
+
+      attachedFiles.forEach((file, index) => {
+        formData.append('files', file);
+      });
+
+      const response = await axios.post(`${BACKEND_URL}/api/inquiries/create`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setInquiryMessage('Inquiry submitted successfully!');
+      setInquiryText("");
+      setAttachedFiles([]);
+      
+      // Refresh my inquiries after submitting
+      fetchMyInquiries();
+    } catch (error) {
+      console.error('Error submitting inquiry:', error);
+      setInquiryMessage('Failed to submit inquiry. Please try again.');
+    } finally {
+      setInquiryLoading(false);
+    }
+  };
+
+  // Fetch my inquiries
+  const fetchMyInquiries = async () => {
+    try {
+      setMyInquiriesLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BACKEND_URL}/api/inquiries/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyInquiries(response.data);
+    } catch (error) {
+      console.error('Error fetching my inquiries:', error);
+    } finally {
+      setMyInquiriesLoading(false);
+    }
   };
 
   if (loading) {
@@ -358,6 +415,62 @@ function LODashboard() {
                     </div>
                   </div>
 
+                  {/* My Inquiries Section */}
+                  <div className="mb-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <MessageSquare className="w-5 h-5 text-gray-600" />
+                      <h4 className="text-lg font-semibold text-gray-700">My Inquiries</h4>
+                    </div>
+
+                    {myInquiriesLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                        <span className="text-gray-600 ml-2">Loading inquiries...</span>
+                      </div>
+                    ) : myInquiries.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {myInquiries.map((inquiry) => (
+                          <div key={inquiry.id} className={`p-3 border rounded-lg ${inquiry.is_read ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-800 mb-1">{inquiry.inquiry_text}</p>
+                                <p className="text-xs text-gray-600">{inquiry.lot_info}</p>
+                                <p className="text-xs text-gray-500">Submitted: {new Date(inquiry.created_at).toLocaleString()}</p>
+                              </div>
+                              <span className={`px-2 py-1 text-xs rounded-full ${inquiry.is_read ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {inquiry.is_read ? 'Read' : 'Unread'}
+                              </span>
+                            </div>
+                            {inquiry.attachments && inquiry.attachments.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600 mb-1">Attachments:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {inquiry.attachments.map((att) => (
+                                    <a
+                                      key={att.id}
+                                      href={`http://localhost:5000/${att.file_path}`}
+                                      download={att.file_name}
+                                      className="inline-flex items-center px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded transition-colors"
+                                    >
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      {att.file_name}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No inquiries submitted yet.</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Lot Selection Radio Buttons */}
                   <div className="mb-6">
                     <span className="block text-sm font-medium text-gray-700 mb-3">Select Lot for Inquiry:</span>
@@ -470,10 +583,21 @@ function LODashboard() {
                   <div className="mt-6">
                     <button
                       onClick={handleInquirySubmit}
-                      className="flex items-center justify-center px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl shadow hover:bg-orange-600 transition-all"
+                      disabled={inquiryLoading}
+                      className="flex items-center justify-center px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl shadow hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send className="w-4 h-4 mr-2" /> Send {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry
+                      {inquiryLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Send {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry
                     </button>
+                    {inquiryMessage && (
+                      <p className={`mt-2 text-sm ${inquiryMessage.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                        {inquiryMessage}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

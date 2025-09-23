@@ -33,14 +33,16 @@ const LotsPage = () => {
   const [loading, setLoading] = useState(true);
   const [landDetails, setLandDetails] = useState(null);
   const [landDetailsLoading, setLandDetailsLoading] = useState(false);
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiriesLoading, setInquiriesLoading] = useState(false);
 
   // Determine user role based on current route
   const getCurrentUserRole = () => {
     const currentPath = window.location.pathname;
-    if (currentPath.includes('/fo-dashboard')) return 'Financial Officer';
-    if (currentPath.includes('/pe-dashboard')) return 'Project Engineer';
-    if (currentPath.includes('/ce-dashboard')) return 'Chief Engineer';
-    return 'Land Officer'; // Default role
+    if (currentPath.includes('/fo-dashboard')) return 'financial_officer';
+    if (currentPath.includes('/pe-dashboard')) return 'project_engineer';
+    if (currentPath.includes('/ce-dashboard')) return 'chief_engineer';
+    return 'land_officer'; // Default role
   };
 
   const userRole = getCurrentUserRole();
@@ -143,9 +145,32 @@ const LotsPage = () => {
     }
   }, [activeTab, selectedLot]);
 
+  // Load inquiries when Inquiries tab is selected
+  useEffect(() => {
+    if (activeTab === "Inquiries" && selectedLot) {
+      fetchInquiries();
+    }
+  }, [activeTab, selectedLot]);
+
   // Handle saving land details
   const handleSaveLandDetails = (updatedLandDetails) => {
     setLandDetails(updatedLandDetails);
+  };
+
+  // Fetch inquiries for selected lot
+  const fetchInquiries = async () => {
+    if (!selectedLot) return;
+
+    try {
+      setInquiriesLoading(true);
+      const response = await api.get(`/api/inquiries/lot/${selectedLot.backend_id || selectedLot.id}`);
+      setInquiries(response.data);
+    } catch (error) {
+      console.error('Error fetching inquiries:', error);
+      setInquiries([]);
+    } finally {
+      setInquiriesLoading(false);
+    }
   };
 
   const handleAddOwner = () => setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: ''}]);
@@ -371,7 +396,7 @@ const LotsPage = () => {
             ))}
           </div>
 
-          {userRole !== 'Financial Officer' && (
+          {userRole !== 'financial_officer' && (
             <button
               className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 mt-auto"
               onClick={() => { handleClearForm(); setShowCreateForm(true); }}
@@ -707,6 +732,77 @@ const LotsPage = () => {
               ) : (
                 <div className="text-center text-gray-500 py-8">
                   <p>Please select a lot to view land details</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "Inquiries" && (
+            <div>
+              {selectedLot ? (
+                inquiriesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                      <span className="text-gray-600">Loading inquiries...</span>
+                    </div>
+                  </div>
+                ) : inquiries.length > 0 ? (
+                  <div className="space-y-4">
+                    {inquiries.map((inquiry) => (
+                      <div key={inquiry.id} className={`p-4 border rounded-lg ${inquiry.is_read ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-200 shadow-sm'}`}>
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <p className="text-gray-800 mb-2">{inquiry.inquiry_text}</p>
+                            <p className="text-xs text-gray-500">Created: {new Date(inquiry.created_at).toLocaleString()}</p>
+                          </div>
+                          {!inquiry.is_read && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await api.put(`/api/inquiries/${inquiry.id}/read`);
+                                  setInquiries(inquiries.map(i => i.id === inquiry.id ? { ...i, is_read: 1 } : i));
+                                } catch (error) {
+                                  console.error('Error marking as read:', error);
+                                }
+                              }}
+                              className="ml-4 px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors"
+                            >
+                              Mark as Read
+                            </button>
+                          )}
+                        </div>
+                        {inquiry.attachments && inquiry.attachments.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-sm text-gray-600 mb-2">Attachments:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {inquiry.attachments.map((att) => (
+                                <a
+                                  key={att.id}
+                                  href={`http://localhost:5000/${att.file_path}`}
+                                  download={att.file_name}
+                                  className="inline-flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded transition-colors"
+                                >
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  {att.file_name}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <p>No inquiries found for this lot.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  <p>Please select a lot to view inquiries.</p>
                 </div>
               )}
             </div>

@@ -548,6 +548,37 @@ CREATE TABLE `system_settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
+-- TABLE: inquiries
+-- ================================================
+DROP TABLE IF EXISTS `inquiries`;
+CREATE TABLE `inquiries` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `lot_id` INT NOT NULL,
+    `landowner_id` INT NOT NULL,
+    `inquiry_text` TEXT NOT NULL,
+    `status` ENUM('pending','resolved') DEFAULT 'pending',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY `lot_id` (`lot_id`),
+    KEY `landowner_id` (`landowner_id`),
+    CONSTRAINT `inquiries_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`),
+    CONSTRAINT `inquiries_ibfk_2` FOREIGN KEY (`landowner_id`) REFERENCES `owners` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: inquiry_attachments
+-- ================================================
+DROP TABLE IF EXISTS `inquiry_attachments`;
+CREATE TABLE `inquiry_attachments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `inquiry_id` INT NOT NULL,
+    `file_name` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(255) NOT NULL,
+    `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY `inquiry_id` (`inquiry_id`),
+    CONSTRAINT `inquiry_attachments_ibfk_1` FOREIGN KEY (`inquiry_id`) REFERENCES `inquiries` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
 -- ESSENTIAL DATA - SYSTEM ADMINISTRATOR ONLY
 -- ================================================
 

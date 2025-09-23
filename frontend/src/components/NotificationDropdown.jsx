@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Bell, X, Check, User, FileText, AlertCircle, MessageCircle, Mail } from 'lucide-react';
-import { markNotificationAsRead, markAllNotificationsAsRead } from '../api';
+import { useNavigate } from 'react-router-dom';
+import { markNotificationAsRead, markAllNotificationsAsRead, markInquiryAsRead } from '../api';
 
 const NotificationDropdown = ({ notifications, unreadCount, onRefresh }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -39,6 +41,8 @@ const NotificationDropdown = ({ notifications, unreadCount, onRefresh }) => {
         return <MessageCircle size={16} className="text-orange-500" />;
       case 'MESSAGE_SENT':
         return <Mail size={16} className="text-orange-400" />;
+      case 'inquiry_received':
+        return <MessageCircle size={16} className="text-purple-500" />;
       default:
         return <AlertCircle size={16} className="text-gray-500" />;
     }
@@ -46,7 +50,13 @@ const NotificationDropdown = ({ notifications, unreadCount, onRefresh }) => {
 
   const handleMarkAsRead = async (notificationId) => {
     try {
-      await markNotificationAsRead(notificationId);
+      // Check if this is an inquiry notification (starts with 'inquiry_')
+      if (notificationId.startsWith('inquiry_')) {
+        const inquiryId = notificationId.replace('inquiry_', '');
+        await markInquiryAsRead(inquiryId);
+      } else {
+        await markNotificationAsRead(notificationId);
+      }
       onRefresh(); // Refresh the notifications
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -62,6 +72,28 @@ const NotificationDropdown = ({ notifications, unreadCount, onRefresh }) => {
       console.error('Error marking all notifications as read:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      // If it's an inquiry notification, mark the inquiry as read
+      if (notification.type === 'inquiry_received' && notification.inquiry_id) {
+        await markInquiryAsRead(notification.inquiry_id);
+        // Navigate to lots page where inquiries are displayed
+        navigate('/lots');
+      } else {
+        // For regular notifications, mark as read if not already read
+        if (!notification.is_read) {
+          await markNotificationAsRead(notification.id);
+        }
+      }
+      
+      // Close dropdown and refresh
+      setIsOpen(false);
+      onRefresh();
+    } catch (error) {
+      console.error('Error handling notification click:', error);
     }
   };
 
@@ -125,6 +157,7 @@ const NotificationDropdown = ({ notifications, unreadCount, onRefresh }) => {
                     className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                       !notification.is_read ? 'bg-blue-50' : ''
                     }`}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 mt-1">
