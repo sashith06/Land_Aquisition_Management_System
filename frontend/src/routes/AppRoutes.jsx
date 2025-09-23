@@ -66,6 +66,7 @@ export default function AppRoutes() {
       <Route element={<MainLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/landowner" element={<LandownerLogin />} /> 
+        <Route path="/landowner/dashboard" element={<LODashboard />} />
       </Route>
 
       {/* Full Page Routes (No Layout) */}
@@ -75,7 +76,6 @@ export default function AppRoutes() {
       <Route path="/verify-otp" element={<VerifyOTP />} />
       <Route path="/reset-password/:token" element={<ResetPassword />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="/lodashboard" element={<LODashboard />} />
 
       {/* Chief Engineer Dashboard Routes With CE Layout */}
       <Route path="/ce-dashboard" element={

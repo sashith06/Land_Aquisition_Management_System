@@ -51,6 +51,7 @@ const requireChiefEngineer = authorize('chief_engineer');
 const requireProjectEngineer = authorize('project_engineer');
 const requireFinancialOfficer = authorize('financial_officer');
 const requireLandOfficer = authorize('land_officer');
+const requireLandowner = authorize('landowner');
 
 // Special middleware to ensure only chief engineers can access admin functions
 const requireSystemAdmin = (req, res, next) => {
@@ -82,6 +83,7 @@ module.exports = {
   requireProjectEngineer,
   requireFinancialOfficer,
   requireLandOfficer,
+  requireLandowner,
   requireSystemAdmin,
   requireEngineers,
   requireOfficers,

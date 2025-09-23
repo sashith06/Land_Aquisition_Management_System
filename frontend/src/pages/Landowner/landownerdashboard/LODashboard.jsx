@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Upload,
   Send,
@@ -14,39 +16,80 @@ import {
 import Navigation from "../../../components/Navigation";
 
 const NAVBAR_HEIGHT = "64px"; // define navbar height
+const BACKEND_URL = 'http://localhost:5000';
 
 
 function LODashboard() {
-  const [selectedLot, setSelectedLot] = useState("lot4");
+  const navigate = useNavigate();
+  const [selectedLot, setSelectedLot] = useState(null);
   const [inquiryType, setInquiryType] = useState("general");
   const [inquiryText, setInquiryText] = useState("");
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [bankBookFile, setBankBookFile] = useState(null);
   const [idCardFile, setIdCardFile] = useState(null);
+  const [landownerData, setLandownerData] = useState(null);
+  const [lotsData, setLotsData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [inquiryLoading, setInquiryLoading] = useState(false);
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [myInquiries, setMyInquiries] = useState([]);
+  const [myInquiriesLoading, setMyInquiriesLoading] = useState(false);
 
-  // Lot data
-  const lotData = {
-    lot4: {
-      lotNumber: 4,
-      compensationAmount: "Rs. 1,200,000",
-      interest: "5% per annum",
-      acquisitionDate: "12 Aug 2024",
-      acquisitionAmount: "Rs. 950,000",
-      otherOwners: "None",
-      progress: 75
-    },
-    lot5: {
-      lotNumber: 5,
-      compensationAmount: "Rs. 1,500,000",
-      interest: "5.5% per annum",
-      acquisitionDate: "15 Aug 2024",
-      acquisitionAmount: "Rs. 1,100,000",
-      otherOwners: "Jane Smith",
-      progress: 60
+  useEffect(() => {
+    fetchLandownerData();
+  }, []);
+
+  const fetchLandownerData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/landowner');
+        return;
+      }
+
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      // Fetch landowner profile
+      const profileRes = await axios.get(`${BACKEND_URL}/api/landowner/profile`, config);
+      setLandownerData(profileRes.data.landowner);
+
+      // Fetch landowner lots
+      const lotsRes = await axios.get(`${BACKEND_URL}/api/landowner/lots`, config);
+      setLotsData(lotsRes.data.data);
+
+      // Set first lot as selected if available
+      const projects = Object.keys(lotsRes.data.data);
+      if (projects.length > 0) {
+        const firstProject = projects[0];
+        const plans = Object.keys(lotsRes.data.data[firstProject]);
+        if (plans.length > 0) {
+          const firstPlan = plans[0];
+          const firstLot = lotsRes.data.data[firstProject][firstPlan][0];
+          setSelectedLot({
+            project: firstProject,
+            plan: firstPlan,
+            lot: firstLot
+          });
+        }
+      }
+
+      // Fetch my inquiries
+      await fetchMyInquiries();
+
+    } catch (err) {
+      console.error('Error fetching landowner data:', err);
+      setError('Failed to load landowner data');
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/landowner');
+      }
+    } finally {
+      setLoading(false);
     }
   };
-
-  const currentLot = lotData[selectedLot];
 
   const handleFileUpload = (e) => {
     setAttachedFiles([...attachedFiles, ...Array.from(e.target.files)]);
@@ -64,15 +107,92 @@ function LODashboard() {
     setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
   };
 
-  const handleInquirySubmit = () => {
+  const handleInquirySubmit = async () => {
     if (!inquiryText.trim()) {
       alert("Please enter your inquiry message");
       return;
     }
-    alert(`${inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} inquiry sent for Lot ${currentLot.lotNumber}: ${inquiryText} with ${attachedFiles.length} file(s)`);
-    setInquiryText("");
-    setAttachedFiles([]);
+    if (!selectedLot) {
+      alert("Please select a lot for the inquiry");
+      return;
+    }
+
+    setInquiryLoading(true);
+    setInquiryMessage('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('lot_id', selectedLot.lot.lotId);
+      formData.append('inquiry_text', inquiryText);
+
+      attachedFiles.forEach((file, index) => {
+        formData.append('files', file);
+      });
+
+      const response = await axios.post(`${BACKEND_URL}/api/inquiries/create`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      setInquiryMessage('Inquiry submitted successfully!');
+      setInquiryText("");
+      setAttachedFiles([]);
+      
+      // Refresh my inquiries after submitting
+      fetchMyInquiries();
+    } catch (error) {
+      console.error('Error submitting inquiry:', error);
+      setInquiryMessage('Failed to submit inquiry. Please try again.');
+    } finally {
+      setInquiryLoading(false);
+    }
   };
+
+  // Fetch my inquiries
+  const fetchMyInquiries = async () => {
+    try {
+      setMyInquiriesLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BACKEND_URL}/api/inquiries/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyInquiries(response.data);
+    } catch (error) {
+      console.error('Error fetching my inquiries:', error);
+    } finally {
+      setMyInquiriesLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your land information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={fetchLandownerData}
+            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -89,17 +209,9 @@ function LODashboard() {
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Your
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                {" "}Land
-              </span>
-              
-               {""} in Our
-             
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600">
-                {" "}Process
-              </span>
+              Welcome back, {landownerData?.name || 'Landowner'}
             </h1>
+            <p className="text-gray-600">Track your land acquisition process</p>
           </div>
 
           {/* Main Grid */}
@@ -107,84 +219,98 @@ function LODashboard() {
             {/* LEFT SIDE */}
             <div className="xl:col-span-2 space-y-6">
               {/* Stats Cards */}
-              <div className="grid grid-cols-2 gap-6">
-                <div 
-                  className={`bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer ${
-                    selectedLot === 'lot4' ? 'border-orange-500 bg-orange-50' : 'border-amber-500'
-                  }`}
-                  onClick={() => setSelectedLot('lot4')}
-                >
-                  <h2 className="text-lg font-semibold mb-2 text-gray-900">
-                    Diyagama - Walgama
-                  </h2>
-                  <p className="text-gray-600 text-sm mb-1">Plan 8890</p>
-                  <p className="text-2xl font-bold text-gray-900">Lot No: 4</p>
-                  {selectedLot === 'lot4' && (
-                    <div className="mt-2 text-orange-600 text-sm font-medium">Selected</div>
-                  )}
-                </div>
-
-                <div 
-                  className={`bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer ${
-                    selectedLot === 'lot5' ? 'border-orange-500 bg-orange-50' : 'border-amber-500'
-                  }`}
-                  onClick={() => setSelectedLot('lot5')}
-                >
-                  <h2 className="text-lg font-semibold mb-2 text-gray-900">
-                    Diyagama - Walgama
-                  </h2>
-                  <p className="text-gray-600 text-sm mb-1">Plan 8890</p>
-                  <p className="text-2xl font-bold text-gray-900">Lot No: 5</p>
-                  {selectedLot === 'lot5' && (
-                    <div className="mt-2 text-orange-600 text-sm font-medium">Selected</div>
-                  )}
-                </div>
+              <div className="grid grid-cols-1 gap-6">
+                {Object.entries(lotsData).map(([projectName, plans]) =>
+                  Object.entries(plans).map(([planName, lots]) =>
+                    lots.map((lot, index) => (
+                      <div
+                        key={`${projectName}-${planName}-${lot.lotId}`}
+                        className={`bg-white p-6 rounded-2xl shadow-lg border hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer ${
+                          selectedLot?.lot?.lotId === lot.lotId ? 'border-orange-500 bg-orange-50' : 'border-amber-500'
+                        }`}
+                        onClick={() => setSelectedLot({ project: projectName, plan: planName, lot })}
+                      >
+                        <h2 className="text-lg font-semibold mb-2 text-gray-900">
+                          {projectName}
+                        </h2>
+                        <p className="text-gray-600 text-sm mb-1">{planName}</p>
+                        <p className="text-2xl font-bold text-gray-900">Lot No: {lot.lotNo}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Extent: {lot.extentHa} ha {lot.extentPerch} perch
+                        </p>
+                        {selectedLot?.lot?.lotId === lot.lotId && (
+                          <div className="mt-2 text-orange-600 text-sm font-medium">Selected</div>
+                        )}
+                      </div>
+                    ))
+                  )
+                )}
               </div>
 
               {/* Lot Info & Progress */}
-              <div className="bg-white p-6 rounded-2xl shadow-lg border border-dashed border-gray-300">
-                <h2 className="text-lg font-semibold mb-2 text-gray-900">
-                  Diyagama - Walgama
-                </h2>
-                <p className="text-gray-600 text-sm mb-1">Plan 8890</p>
-                <p className="text-2xl font-bold text-gray-900 mb-4">Lot No: {currentLot.lotNumber}</p>
+              {selectedLot && (
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-dashed border-gray-300">
+                  <h2 className="text-lg font-semibold mb-2 text-gray-900">
+                    {selectedLot.project}
+                  </h2>
+                  <p className="text-gray-600 text-sm mb-1">{selectedLot.plan}</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-4">Lot No: {selectedLot.lot.lotNo}</p>
 
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-6">
-                  <div
-                    className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${currentLot.progress}%` }}
-                  ></div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-6">
+                    <div
+                      className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full transition-all duration-500"
+                      style={{ width: `${selectedLot.lot.compensationStatus === 'completed' ? 100 : selectedLot.lot.compensationStatus === 'in_progress' ? 60 : 25}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-200 hover:shadow-xl transition-all duration-300">
+                    <h1 className="text-lg font-bold text-gray-900 mb-4">
+                      Lot Information
+                    </h1>
+
+                    <ul className="space-y-3 text-sm text-gray-700">
+                      <li className="flex justify-between border-b pb-2">
+                        <span className="font-medium text-gray-600">Lot Number:</span>
+                        <span className="text-gray-900">{selectedLot.lot.lotNo}</span>
+                      </li>
+                      <li className="flex justify-between border-b pb-2">
+                        <span className="font-medium text-gray-600">Extent:</span>
+                        <span className="text-gray-900">{selectedLot.lot.extentHa} ha {selectedLot.lot.extentPerch} perch</span>
+                      </li>
+                      <li className="flex justify-between border-b pb-2">
+                        <span className="font-medium text-gray-600">Land Type:</span>
+                        <span className="text-gray-900">{selectedLot.lot.landType}</span>
+                      </li>
+                      <li className="flex justify-between border-b pb-2">
+                        <span className="font-medium text-gray-600">Ownership:</span>
+                        <span className="text-gray-900">{selectedLot.lot.ownershipPercentage}%</span>
+                      </li>
+                      <li className="flex justify-between border-b pb-2">
+                        <span className="font-medium text-gray-600">Valuation Amount:</span>
+                        <span className="text-gray-900">
+                          {selectedLot.lot.valuationAmount ? `Rs. ${selectedLot.lot.valuationAmount.toLocaleString()}` : 'Pending'}
+                        </span>
+                      </li>
+                      <li className="flex justify-between border-b pb-2">
+                        <span className="font-medium text-gray-600">Compensation Amount:</span>
+                        <span className="text-gray-900">
+                          {selectedLot.lot.compensationAmount ? `Rs. ${selectedLot.lot.compensationAmount.toLocaleString()}` : 'Pending'}
+                        </span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span className="font-medium text-gray-600">Status:</span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          selectedLot.lot.compensationStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                          selectedLot.lot.compensationStatus === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {selectedLot.lot.compensationStatus || 'Pending'}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-200 hover:shadow-xl transition-all duration-300">
-                  <h1 className="text-lg font-bold text-gray-900 mb-4">
-                    Lot Information
-                  </h1>
-
-                  <ul className="space-y-3 text-sm text-gray-700">
-                    <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Compensation Amount:</span>
-                      <span className="text-gray-900">{currentLot.compensationAmount}</span>
-                    </li>
-                    <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Interest:</span>
-                      <span className="text-gray-900">{currentLot.interest}</span>
-                    </li>
-                    <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Acquisition Date:</span>
-                      <span className="text-gray-900">{currentLot.acquisitionDate}</span>
-                    </li>
-                    <li className="flex justify-between border-b pb-2">
-                      <span className="font-medium text-gray-600">Acquisition Amount:</span>
-                      <span className="text-gray-900">{currentLot.acquisitionAmount}</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="font-medium text-gray-600">Other Owners:</span>
-                      <span className="text-gray-900">{currentLot.otherOwners}</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* RIGHT SIDE */}
@@ -209,16 +335,16 @@ function LODashboard() {
                       <User className="h-5 w-5 text-gray-500" />
                       <div>
                         <p className="text-sm text-gray-500">Name</p>
-                        <p className="font-medium text-gray-900">John Doe</p>
+                        <p className="font-medium text-gray-900">{landownerData?.name || 'N/A'}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-xl">
                       <Mail className="h-5 w-5 text-gray-500" />
                       <div>
-                        <p className="text-sm text-gray-500">Email</p>
+                        <p className="text-sm text-gray-500">NIC</p>
                         <p className="font-mono text-gray-900">
-                          john@example.com
+                          {landownerData?.nic || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -228,7 +354,7 @@ function LODashboard() {
                       <div>
                         <p className="text-sm text-gray-500">Mobile</p>
                         <p className="font-normal text-gray-900">
-                          +94 77 123 4567
+                          {landownerData?.mobile || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -289,36 +415,91 @@ function LODashboard() {
                     </div>
                   </div>
 
+                  {/* My Inquiries Section */}
+                  <div className="mb-6">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <MessageSquare className="w-5 h-5 text-gray-600" />
+                      <h4 className="text-lg font-semibold text-gray-700">My Inquiries</h4>
+                    </div>
+
+                    {myInquiriesLoading ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                        <span className="text-gray-600 ml-2">Loading inquiries...</span>
+                      </div>
+                    ) : myInquiries.length > 0 ? (
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {myInquiries.map((inquiry) => (
+                          <div key={inquiry.id} className={`p-3 border rounded-lg ${inquiry.is_read ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-800 mb-1">{inquiry.inquiry_text}</p>
+                                <p className="text-xs text-gray-600">{inquiry.lot_info}</p>
+                                <p className="text-xs text-gray-500">Submitted: {new Date(inquiry.created_at).toLocaleString()}</p>
+                              </div>
+                              <span className={`px-2 py-1 text-xs rounded-full ${inquiry.is_read ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                {inquiry.is_read ? 'Read' : 'Unread'}
+                              </span>
+                            </div>
+                            {inquiry.attachments && inquiry.attachments.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600 mb-1">Attachments:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {inquiry.attachments.map((att) => (
+                                    <a
+                                      key={att.id}
+                                      href={`http://localhost:5000/${att.file_path}`}
+                                      download={att.file_name}
+                                      className="inline-flex items-center px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded transition-colors"
+                                    >
+                                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      {att.file_name}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 py-4">
+                        <p className="text-sm">No inquiries submitted yet.</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Lot Selection Radio Buttons */}
                   <div className="mb-6">
                     <span className="block text-sm font-medium text-gray-700 mb-3">Select Lot for Inquiry:</span>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="selectedLot"
-                          value="lot4"
-                          checked={selectedLot === "lot4"}
-                          onChange={() => setSelectedLot("lot4")}
-                          className="accent-orange-600"
-                        />
-                        <span className="text-sm font-medium">Lot 4</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="selectedLot"
-                          value="lot5"
-                          checked={selectedLot === "lot5"}
-                          onChange={() => setSelectedLot("lot5")}
-                          className="accent-orange-600"
-                        />
-                        <span className="text-sm font-medium">Lot 5</span>
-                      </label>
+                    <div className="space-y-2">
+                      {Object.entries(lotsData).map(([projectName, plans]) =>
+                        Object.entries(plans).map(([planName, lots]) =>
+                          lots.map((lot) => (
+                            <label key={lot.lotId} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="selectedLot"
+                                value={lot.lotId}
+                                checked={selectedLot?.lot?.lotId === lot.lotId}
+                                onChange={() => setSelectedLot({ project: projectName, plan: planName, lot })}
+                                className="accent-orange-600"
+                              />
+                              <span className="text-sm font-medium">
+                                Lot {lot.lotNo} - {projectName} ({planName})
+                              </span>
+                            </label>
+                          ))
+                        )
+                      )}
                     </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      Currently selected: Lot {currentLot.lotNumber} - {currentLot.compensationAmount}
-                    </div>
+                    {selectedLot && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Currently selected: Lot {selectedLot.lot.lotNo} - {selectedLot.lot.extentHa} ha {selectedLot.lot.extentPerch} perch
+                      </div>
+                    )}
                   </div>
 
                   {/* Inquiry Type Radio Buttons */}
@@ -356,14 +537,14 @@ function LODashboard() {
                   {/* Inquiry Textarea */}
                   <div>
                     <label className="block mb-2 font-semibold text-gray-700">
-                      {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry for Lot {currentLot.lotNumber}
+                      {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry for Lot {selectedLot?.lot?.lotNo || 'N/A'}
                     </label>
                     <textarea
                       rows={4}
                       value={inquiryText}
                       onChange={(e) => setInquiryText(e.target.value)}
                       className="w-full border border-gray-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-                      placeholder={`Write your ${inquiryType} inquiry about Lot ${currentLot.lotNumber} here...`}
+                      placeholder={`Write your ${inquiryType} inquiry about Lot ${selectedLot?.lot?.lotNo || 'N/A'} here...`}
                     />
                   </div>
 
@@ -402,10 +583,21 @@ function LODashboard() {
                   <div className="mt-6">
                     <button
                       onClick={handleInquirySubmit}
-                      className="flex items-center justify-center px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl shadow hover:bg-orange-600 transition-all"
+                      disabled={inquiryLoading}
+                      className="flex items-center justify-center px-6 py-3 bg-orange-500 text-white font-semibold rounded-xl shadow hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Send className="w-4 h-4 mr-2" /> Send {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry
+                      {inquiryLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Send {inquiryType.charAt(0).toUpperCase() + inquiryType.slice(1)} Inquiry
                     </button>
+                    {inquiryMessage && (
+                      <p className={`mt-2 text-sm ${inquiryMessage.includes('successfully') ? 'text-green-600' : 'text-red-600'}`}>
+                        {inquiryMessage}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

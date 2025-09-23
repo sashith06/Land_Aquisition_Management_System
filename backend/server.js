@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const AssignmentModel = require("./models/assignmentModel");
+const inquiryRoutes = require('./routes/inquiryRoutes');
 
 const app = express();
 
@@ -15,12 +16,15 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Add request logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
+
+app.use('/uploads', express.static('uploads'));
 
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
@@ -61,6 +65,11 @@ app.use("/api", compensationRoutes);
 const otpRoutes = require("./routes/otpRoutes");
 app.use("/api/otp", otpRoutes);
 
+const landownerRoutes = require("./routes/landownerRoutes");
+app.use("/api/landowner", landownerRoutes);
+
+
+app.use('/api/inquiries', inquiryRoutes);
 
 // Initialize database tables
 async function initializeDatabase() {
@@ -70,6 +79,11 @@ async function initializeDatabase() {
     // Initialize message tables
     const MessageModel = require('./models/messageModel');
     await MessageModel.createTables();
+
+    // Initialize inquiry tables
+    const InquiryModel = require('./models/inquiryModel');
+    await InquiryModel.createTables();
+
     console.log('All database tables initialized successfully');
   } catch (error) {
     console.error('Database initialization error:', error);
