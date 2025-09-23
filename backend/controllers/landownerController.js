@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const transporter = require("../config/emailTransporter");
 const db = require("../config/db");
+const LandownerOTP = require("../models/landownerOtpModel");
 
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
@@ -35,50 +36,63 @@ exports.requestOTP = async (req, res) => {
       return res.status(400).json({ message: "Invalid mobile format (e.g., +947XXXXXXXX)" });
     }
 
-    // Check if landowner exists in database
-    const query = `
-      SELECT o.id, o.name, o.nic, o.mobile
-      FROM owners o
-      WHERE o.nic = ? AND o.mobile = ? AND o.status = 'active'
-    `;
-
-    db.query(query, [nic, mobile], async (err, results) => {
+    // Check cooldown period
+    LandownerOTP.checkCooldown(nic, mobile, OTP_COOLDOWN_MS, async (err, inCooldown, remainingTime) => {
       if (err) {
-        console.error("Database error:", err);
+        console.error("Cooldown check error:", err);
         return res.status(500).json({ message: "Database error" });
       }
 
-      if (results.length === 0) {
-        return res.status(404).json({ message: "Landowner not found or inactive" });
+      if (inCooldown) {
+        return res.status(429).json({ 
+          message: `Please wait ${Math.ceil(remainingTime / 1000)} seconds before requesting another OTP` 
+        });
       }
 
-      const landowner = results[0];
+      // Check if landowner exists in database
+      const query = `
+        SELECT o.id, o.name, o.nic, o.mobile
+        FROM owners o
+        WHERE o.nic = ? AND o.mobile = ? AND o.status = 'active'
+      `;
 
-      // Check cooldown (simplified - in production, you'd store this in DB)
-      const otp = generateNumericOtp();
-      const hashedOTP = await bcrypt.hash(otp, 10);
+      db.query(query, [nic, mobile], async (err, results) => {
+        if (err) {
+          console.error("Database error:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
 
-      // Store OTP in database (you might want to create an otp table for landowners)
-      // For now, we'll return it in response for testing
-      const otpData = {
-        nic,
-        mobile,
-        otp: hashedOTP,
-        created_at: new Date(),
-        expires_at: new Date(Date.now() + OTP_EXPIRY_MS)
-      };
+        if (results.length === 0) {
+          return res.status(404).json({ message: "Landowner not found or inactive" });
+        }
 
-      // In production, save to database
-      // For testing, we'll return the OTP
-      console.log(`OTP for ${nic}: ${otp}`); // Remove in production
+        const landowner = results[0];
 
-      // Send SMS (you'd integrate with SMS service like Twilio)
-      // For now, just log it
-      console.log(`SMS to ${mobile}: ${generateOtpSMS(landowner.name, otp)}`);
+        // Generate OTP and hash it
+        const otp = generateNumericOtp();
+        const hashedOTP = await bcrypt.hash(otp, 10);
+        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
-      res.json({
-        message: "OTP sent to your mobile number",
-        otp: otp // Remove in production - only for testing
+        // Store OTP in database
+        LandownerOTP.create(nic, mobile, hashedOTP, expiresAt, (err, result) => {
+          if (err) {
+            console.error("Error storing OTP:", err);
+            return res.status(500).json({ message: "Failed to generate OTP" });
+          }
+
+          // Clean up old OTPs
+          LandownerOTP.deleteExpiredOrUsed(() => {});
+
+          // In production, send SMS here
+          console.log(`OTP for ${nic}: ${otp}`); // Remove in production
+          console.log(`SMS to ${mobile}: ${generateOtpSMS(landowner.name, otp)}`);
+
+          res.json({
+            message: "OTP sent to your mobile number",
+            // Remove the line below in production - only for testing
+            otp: otp
+          });
+        });
       });
     });
 
@@ -97,50 +111,102 @@ exports.verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "NIC, mobile, and OTP are required" });
     }
 
-    // For testing, we'll accept the OTP directly
-    // In production, you'd verify against stored hashed OTP
+    // Validate OTP format (6 digits)
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: "OTP must be 6 digits" });
+    }
 
-    // Get landowner details
-    const query = `
-      SELECT o.id, o.name, o.nic, o.mobile, o.address
-      FROM owners o
-      WHERE o.nic = ? AND o.mobile = ? AND o.status = 'active'
-    `;
-
-    db.query(query, [nic, mobile], (err, results) => {
+    // Get the latest unused OTP for this landowner
+    LandownerOTP.getLatestUnusedByNicAndMobile(nic, mobile, async (err, otpResults) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({ message: "Database error" });
       }
 
-      if (results.length === 0) {
-        return res.status(404).json({ message: "Landowner not found" });
+      if (otpResults.length === 0) {
+        return res.status(400).json({ message: "No valid OTP found. Please request a new OTP." });
       }
 
-      const landowner = results[0];
+      const otpRecord = otpResults[0];
 
-      // Generate JWT token
-      const token = jwt.sign(
-        {
-          id: landowner.id,
-          nic: landowner.nic,
-          name: landowner.name,
-          role: 'landowner'
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
+      // Check if too many attempts
+      if (otpRecord.attempts >= 3) {
+        // Mark as used to prevent further attempts
+        LandownerOTP.markAsUsed(otpRecord.id, () => {});
+        return res.status(400).json({ message: "Too many invalid attempts. Please request a new OTP." });
+      }
 
-      res.json({
-        message: "Login successful",
-        token,
-        landowner: {
-          id: landowner.id,
-          name: landowner.name,
-          nic: landowner.nic,
-          mobile: landowner.mobile,
-          address: landowner.address
+      // Verify the OTP
+      const isValidOTP = await bcrypt.compare(otp, otpRecord.otp_code);
+
+      if (!isValidOTP) {
+        // Increment attempts
+        LandownerOTP.incrementAttempts(otpRecord.id, () => {});
+        
+        const remainingAttempts = 3 - (otpRecord.attempts + 1);
+        if (remainingAttempts <= 0) {
+          LandownerOTP.markAsUsed(otpRecord.id, () => {});
+          return res.status(400).json({ message: "Invalid OTP. Too many attempts. Please request a new OTP." });
         }
+        
+        return res.status(400).json({ 
+          message: `Invalid OTP. ${remainingAttempts} attempts remaining.` 
+        });
+      }
+
+      // OTP is valid, mark as used
+      LandownerOTP.markAsUsed(otpRecord.id, (err) => {
+        if (err) {
+          console.error("Error marking OTP as used:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
+
+        // Get landowner details
+        const query = `
+          SELECT o.id, o.name, o.nic, o.mobile, o.address
+          FROM owners o
+          WHERE o.nic = ? AND o.mobile = ? AND o.status = 'active'
+        `;
+
+        db.query(query, [nic, mobile], (err, results) => {
+          if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ message: "Database error" });
+          }
+
+          if (results.length === 0) {
+            return res.status(404).json({ message: "Landowner not found" });
+          }
+
+          const landowner = results[0];
+
+          // Generate JWT token
+          const token = jwt.sign(
+            {
+              id: landowner.id,
+              nic: landowner.nic,
+              name: landowner.name,
+              role: 'landowner'
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '24h' }
+          );
+
+          // Clean up old OTPs
+          LandownerOTP.deleteExpiredOrUsed(() => {});
+
+          res.json({
+            message: "Login successful",
+            token,
+            landowner: {
+              id: landowner.id,
+              name: landowner.name,
+              nic: landowner.nic,
+              mobile: landowner.mobile,
+              address: landowner.address
+            }
+          });
+        });
       });
     });
 
