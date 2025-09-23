@@ -2,6 +2,16 @@ const db = require("../config/db");
 
 const Lot = {};
 
+// Utility function to normalize mobile numbers
+function normalizeMobile(mobile) {
+  if (!mobile) return null;
+  mobile = mobile.replace(/\D/g, '');
+  if (mobile.startsWith('0')) mobile = '+94' + mobile.slice(1);
+  else if (mobile.startsWith('94')) mobile = '+' + mobile;
+  else if (!mobile.startsWith('+')) mobile = '+' + mobile;
+  return mobile;
+}
+
 // Create new lot
 Lot.create = (lotData, callback) => {
   const sql = `
@@ -259,41 +269,81 @@ Lot.createOwner = (ownerData, userId, callback) => {
   });
 };
 
+// Create or update owner in owners table (normalized structure)
+Lot.createOrUpdateOwner = (ownerData, userId, callback) => {
+  const Owner = require('./ownerModel');
+
+  Owner.findByNic(ownerData.nic, (err, existingOwners) => {
+    if (err) return callback(err);
+
+    if (existingOwners && existingOwners.length > 0) {
+      const ownerId = existingOwners[0].id;
+
+      // Update existing owner details
+      const updateSql = `
+        UPDATE owners
+        SET name = ?, mobile = ?, address = ?, owner_type = ?, updated_by = ?, updated_at = NOW()
+        WHERE id = ?
+      `;
+      const params = [
+        ownerData.name,
+        ownerData.mobile,
+        ownerData.address,
+        ownerData.owner_type || existingOwners[0].owner_type,
+        userId,
+        ownerId
+      ];
+
+      db.query(updateSql, params, (updateErr, result) => {
+        if (updateErr) return callback(updateErr);
+        callback(null, { insertId: ownerId, message: 'Owner updated' });
+      });
+    } else {
+      // Create new owner
+      const ownerDataWithUser = { ...ownerData, created_by: userId };
+      Owner.create(ownerDataWithUser, callback);
+    }
+  });
+};
+
 // Add owner to lot (normalized structure with bridge table)
 Lot.addOwnerToLot = (lotId, ownerData, sharePercentage, userId, planId, callback) => {
   const Owner = require('./ownerModel');
 
-  // First, find or create the owner
-  Lot.createOwner(ownerData, userId, (ownerErr, ownerResult) => {
+  // 1. Find or create the owner
+  ownerData.mobile = normalizeMobile(ownerData.mobile || ownerData.phone);
+
+  Lot.createOrUpdateOwner(ownerData, userId, (ownerErr, ownerResult) => {
     if (ownerErr) return callback(ownerErr);
 
     const ownerId = ownerResult.insertId;
 
-    // Now create the bridge record in lot_owners table
-    const sql = `
-      INSERT INTO lot_owners
-      (lot_id, owner_id, plan_id, ownership_percentage, status, created_by)
-      VALUES (?, ?, ?, ?, 'active', ?)
-      ON DUPLICATE KEY UPDATE
-      ownership_percentage = VALUES(ownership_percentage),
-      status = VALUES(status),
-      updated_by = VALUES(created_by),
-      updated_at = NOW()
+    // 2. Check if this owner is already assigned to the lot
+    const checkSql = `
+      SELECT id FROM lot_owners
+      WHERE lot_id = ? AND owner_id = ? AND status = 'active'
     `;
+    db.query(checkSql, [lotId, ownerId], (checkErr, existingRows) => {
+      if (checkErr) return callback(checkErr);
 
-    const params = [
-      lotId,
-      ownerId,
-      planId,
-      sharePercentage || ownerData.share_percentage || 100,
-      userId
-    ];
-
-    console.log('Adding owner to lot (bridge table):', { lotId, ownerId, planId, sharePercentage, userId });
-    console.log('SQL:', sql);
-    console.log('Params:', params);
-
-    db.query(sql, params, callback);
+      if (existingRows.length > 0) {
+        // Owner already exists in this lot → update the share percentage
+        const updateSql = `
+          UPDATE lot_owners
+          SET ownership_percentage = ?, updated_by = ?, updated_at = NOW()
+          WHERE lot_id = ? AND owner_id = ?
+        `;
+        db.query(updateSql, [sharePercentage || ownerData.share_percentage || 100, userId, lotId, ownerId], callback);
+      } else {
+        // Owner not in lot → insert new record
+        const insertSql = `
+          INSERT INTO lot_owners
+          (lot_id, owner_id, plan_id, ownership_percentage, status, created_by)
+          VALUES (?, ?, ?, ?, 'active', ?)
+        `;
+        db.query(insertSql, [lotId, ownerId, planId, sharePercentage || ownerData.share_percentage || 100, userId], callback);
+      }
+    });
   });
 };
 
