@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, Save, Edit, Lock } from 'lucide-react';
 import { saveValuation, getValuation } from '../api';
 
-const LotValuationDetails = ({ selectedLot, planId, userRole = 'Financial Officer' }) => {
+const LotValuationDetails = ({ selectedLot, planId, userRole = 'Financial_Officer' }) => {
   const [valuationData, setValuationData] = useState({
     statutorily_amount: '',
     addition_amount: '',
@@ -11,8 +11,8 @@ const LotValuationDetails = ({ selectedLot, planId, userRole = 'Financial Office
     thirty_three_amount: '',
     board_of_review_amount: '',
     total_value: '',
-    assessment_date: '',
-    assessor_name: 'Financial Officer',
+    assessment_date: new Date().toISOString().split('T')[0], // Default to current date
+    assessor_name: 'Financial_Officer',
     notes: '',
     status: 'draft'
   });
@@ -23,7 +23,7 @@ const LotValuationDetails = ({ selectedLot, planId, userRole = 'Financial Office
   const [error, setError] = useState(null);
 
   // Check if user can edit (only Financial Officers)
-  const canEdit = userRole === 'FO' || userRole === 'Financial Officer';
+  const canEdit = userRole === 'FO' || userRole === 'financial_officer';
 
   useEffect(() => {
     if (selectedLot && planId) {
@@ -135,6 +135,7 @@ const LotValuationDetails = ({ selectedLot, planId, userRole = 'Financial Office
     try {
       const payload = {
         ...valuationData,
+        assessment_date: valuationData.assessment_date || new Date().toISOString().split('T')[0], // Ensure we have a date
         status: 'completed'
       };
 

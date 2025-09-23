@@ -31,7 +31,7 @@ Valuation.createOrUpdate = (valuationData, callback) => {
         valuationData.thirty_three_amount || 0,
         valuationData.board_of_review_amount || 0,
         valuationData.total_value || 0,
-        valuationData.assessment_date,
+        valuationData.assessment_date || new Date().toISOString().split('T')[0], // Use current date if not provided
         valuationData.assessor_name,
         valuationData.notes,
         valuationData.status || 'completed',
@@ -60,7 +60,7 @@ Valuation.createOrUpdate = (valuationData, callback) => {
         valuationData.thirty_three_amount || 0,
         valuationData.board_of_review_amount || 0,
         valuationData.total_value || 0,
-        valuationData.assessment_date,
+        valuationData.assessment_date || new Date().toISOString().split('T')[0], // Use current date if not provided
         valuationData.assessor_name,
         valuationData.notes,
         valuationData.status || 'completed',
