@@ -7,6 +7,7 @@ import {
   FileText,
   Users,
   FolderPlus,
+  GitBranch,
 } from "lucide-react";
 import usePendingUsersCount from "../hooks/usePendingUsersCount";
 import usePendingProjectsCount from "../hooks/usePendingProjectsCount";
@@ -19,6 +20,7 @@ const iconMap = {
   FileText,
   Users,
   FolderPlus,
+  GitBranch,
 };
 
 const CESidebar = () => {
@@ -30,7 +32,7 @@ const CESidebar = () => {
   // Chief Engineer specific navigation items with dynamic pending counts
   const ceNavigationItems = [
     { path: '/ce-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-    { path: '/ce-dashboard/analysis', label: 'Analysis', icon: 'BarChart3' },
+    { path: '/ce-dashboard/project-progress', label: 'Real Time Dashboard', icon: 'GitBranch' },
     { 
       path: '/ce-dashboard/messages', 
       label: 'Messages', 

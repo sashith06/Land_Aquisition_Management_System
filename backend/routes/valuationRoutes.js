@@ -1,23 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const valuationController = require("../controllers/valuationController");
-const { verifyToken } = require("../middleware/authMiddleware");
-
-// Middleware to check if user is Financial Officer
-const checkFORole = (req, res, next) => {
-  if (req.user.role !== 'FO') {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied. Only Financial Officers can manage valuations."
-    });
-  }
-  next();
-};
+const { verifyToken, requireFinancialOfficer } = require("../middleware/authMiddleware");
 
 // Create or update valuation for a lot
 router.post("/plans/:plan_id/lots/:lot_id/valuation", 
   verifyToken, 
-  checkFORole, 
+  requireFinancialOfficer,  // ✅ Fixed: Using consistent role middleware
   valuationController.createOrUpdateValuation
 );
 

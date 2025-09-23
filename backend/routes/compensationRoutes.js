@@ -1,23 +1,13 @@
+
 const express = require("express");
 const router = express.Router();
 const compensationController = require("../controllers/compensationController");
-const { verifyToken } = require("../middleware/authMiddleware");
-
-// Middleware to check if user is Financial Officer
-const checkFORole = (req, res, next) => {
-  if (req.user.role !== 'FO') {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied. Only Financial Officers can manage compensations."
-    });
-  }
-  next();
-};
+const { verifyToken, requireFinancialOfficer } = require("../middleware/authMiddleware");
 
 // Create or update compensation for a lot
 router.post("/plans/:plan_id/lots/:lot_id/compensation", 
   verifyToken, 
-  checkFORole, 
+  requireFinancialOfficer,  // ✅ Fixed: Using consistent role middleware
   compensationController.createOrUpdateCompensation
 );
 

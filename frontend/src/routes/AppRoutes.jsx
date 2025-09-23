@@ -15,7 +15,8 @@ import FODashboardLayout from "../layouts/FODashboardLayout";
 import Dashboard from "../pages/Dashboards/Dashboard";
 import PlanDetail from "../pages/PlanDetail";
 import Profile from "../pages/Profile";
-import Analysis from "../pages/Analysis";
+import RealtimeDashboard from "../pages/RealtimeDashboard";
+import ProjectProgress from "../pages/ProjectProgress";
 import Messages from "../pages/Messages";
 import Reports from "../pages/Reports";
 
@@ -87,7 +88,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
-        <Route path="analysis" element={<Analysis />} />
+        <Route path="project-progress" element={<ProjectProgress />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="user-management" element={<UserManagement />} />
@@ -107,7 +108,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId" element={<PlanDetail />} />
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
-        <Route path="analysis" element={<Analysis />} />
+        <Route path="project-progress" element={<ProjectProgress />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="create-project" element={<CreateProject />} />
@@ -130,7 +131,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="project-details/:projectId" element={<FOProjectDetailsPage />} />
         <Route path="financial-details/:projectId" element={<FinancialDetails />} />
-        <Route path="analysis" element={<Analysis />} />
+        <Route path="project-progress" element={<ProjectProgress />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="profile" element={<Profile />} />
@@ -153,7 +154,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="profile" element={<Profile />} />
-        <Route path="analysis" element={<Analysis />} />
+        <Route path="project-progress" element={<ProjectProgress />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
       </Route>
