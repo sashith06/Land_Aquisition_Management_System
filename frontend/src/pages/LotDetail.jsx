@@ -76,7 +76,13 @@ const LotDetail = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Breadcrumb navigation */}
-      <Breadcrumb items={generateBreadcrumbs()} />
+      <Breadcrumb items={generateBreadcrumbs({ 
+        projectId: planData?.project_id, 
+        projectName: planData?.project_name,
+        planId: planId,
+        planName: planData?.plan_identifier || planData?.plan_no,
+        lotId: lotId
+      })} />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">

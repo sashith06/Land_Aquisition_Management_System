@@ -349,7 +349,12 @@ const LotsPage = () => {
   return (
     <div className="p-6">
       {/* Breadcrumb */}
-      <Breadcrumb items={generateBreadcrumbs()} />
+      <Breadcrumb items={generateBreadcrumbs({ 
+        projectId: planData?.project_id, 
+        projectName: planData?.project_name,
+        planId: planId,
+        planName: planData?.plan_identifier || planData?.plan_no
+      })} />
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
         {loading ? (
           <div className="flex items-center space-x-2">
