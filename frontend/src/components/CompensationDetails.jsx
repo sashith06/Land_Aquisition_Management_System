@@ -26,7 +26,7 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
   const [isSaving, setIsSaving] = useState(false);
 
   // Check if user has permission to edit
-  const canEdit = userRole === 'Financial Officer';
+  const canEdit = userRole === 'financial_officer';
 
   useEffect(() => {
     // Load existing compensation data if available

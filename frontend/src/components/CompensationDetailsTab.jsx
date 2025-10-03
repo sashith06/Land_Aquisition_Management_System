@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent } from 'lucide-react';
 import { saveCompensation, getCompensation } from '../api';
 
-const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Officer' }) => {
+const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_officer' }) => {
   const [compensationData, setCompensationData] = useState({});
   const [editingOwner, setEditingOwner] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({});
@@ -13,7 +13,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
   const currentPlanId = planId || window.location.pathname.split('/')[3];
 
   // Check if user has permission to edit
-  const canEdit = userRole === 'Financial Officer' || userRole === 'FO';
+  const canEdit = userRole === 'financial_officer';
 
   // Load compensation data from API
   useEffect(() => {

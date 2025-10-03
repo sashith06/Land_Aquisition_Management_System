@@ -23,7 +23,7 @@ const LotValuationDetails = ({ selectedLot, planId, userRole = 'Financial_Office
   const [error, setError] = useState(null);
 
   // Check if user can edit (only Financial Officers)
-  const canEdit = userRole === 'FO' || userRole === 'financial_officer';
+  const canEdit = userRole === 'financial_officer';
 
   useEffect(() => {
     if (selectedLot && planId) {
