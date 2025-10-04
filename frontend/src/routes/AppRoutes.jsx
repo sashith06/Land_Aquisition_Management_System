@@ -147,7 +147,7 @@ export default function AppRoutes() {
         <Route path="create-plan" element={<CreatePlan />} />
         <Route path="create-plan/:projectId" element={<CreatePlan />} />
         <Route path="edit-plan/:id" element={<CreatePlan />} />
-        <Route path="plan/:id" element={<PlanDetail />} />
+        <Route path="plan/:planId" element={<PlanDetail />} />
         <Route path="project/:projectId/plans" element={<ProjectPlans />} />
         <Route path="project-details/:projectId" element={<LOProjectDetailsPage />} />
         <Route path="assigned-projects" element={<AssignedProjects />} />

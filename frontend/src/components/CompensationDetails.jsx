@@ -15,6 +15,7 @@ const CompensationDetails = ({ lotId, planId, userRole }) => {
     solatiumPayment: '',
     additionalCompensation: '',
     totalCompensation: '',
+    finalCompensationAmount: '',
     paymentStatus: 'pending',
     approvalStatus: 'draft',
     assessmentDate: '',
@@ -400,6 +401,23 @@ const CompensationDetails = ({ lotId, planId, userRole }) => {
                   {formatCurrency(compensationData.totalCompensation)}
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Final Compensation Amount to be Paid (Rs.)
+                </label>
+                <input
+                  type="number"
+                  name="finalCompensationAmount"
+                  value={compensationData.finalCompensationAmount}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="e.g., 2550000"
+                  step="0.01"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the final compensation amount to be paid (may differ from calculated total due to adjustments, approvals, etc.)
+                </p>
+              </div>
             </div>
           </div>
 
@@ -502,6 +520,12 @@ const CompensationDetails = ({ lotId, planId, userRole }) => {
                 <label className="text-sm font-medium text-gray-600">Total Compensation</label>
                 <p className="text-gray-800 font-medium text-lg">
                   {formatCurrency(compensationData.totalCompensation)}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Final Compensation Amount to be Paid</label>
+                <p className="font-medium text-lg text-green-600">
+                  {formatCurrency(compensationData.finalCompensationAmount)}
                 </p>
               </div>
               <div>

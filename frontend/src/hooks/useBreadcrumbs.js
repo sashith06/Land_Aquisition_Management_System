@@ -9,7 +9,7 @@ export const useBreadcrumbs = () => {
 
   const generateBreadcrumbs = (context = {}) => {
     const path = location.pathname;
-    const { projectName, planName, lotName } = context;
+    const { projectName, planName, lotName, projectId, planId } = context;
 
     // Helper function to get dashboard path based on current route
     const getDashboardPath = () => {
@@ -38,22 +38,47 @@ export const useBreadcrumbs = () => {
     }
 
     if (path.includes('/plan/') && path.includes('/lots') && !path.includes('/lots/')) {
-      // Lots page
-      return [
-        ...baseBreadcrumbs,
-        { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}/project/${params.projectId}/plans`) },
-        { label: 'Lots' }
-      ];
+      // Lots page - use project info from context if available
+      if (projectId && projectName) {
+        return [
+          ...baseBreadcrumbs,
+          { 
+            label: 'Plans & Progress', 
+            to: `${dashboardPath}/project/${projectId}/plans`
+          },
+          { label: 'Lots' }
+        ];
+      } else {
+        // Fallback if project info not available
+        return [
+          ...baseBreadcrumbs,
+          { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}`) },
+          { label: 'Lots' }
+        ];
+      }
     }
 
     if (path.includes('/plan/') && path.includes('/lots/')) {
-      // Lot Detail page
-      return [
-        ...baseBreadcrumbs,
-        { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}/project/${params.projectId}/plans`) },
-        { label: 'Lots', to: `${dashboardPath}/plan/${params.planId}/lots` },
-        { label: `Lot ${params.lotId}` }
-      ];
+      // Lot Detail page - use project info from context if available
+      if (projectId && projectName) {
+        return [
+          ...baseBreadcrumbs,
+          { 
+            label: 'Plans & Progress', 
+            to: `${dashboardPath}/project/${projectId}/plans`
+          },
+          { label: 'Lots', to: `${dashboardPath}/plan/${params.planId}/lots` },
+          { label: `Lot ${params.lotId}` }
+        ];
+      } else {
+        // Fallback if project info not available
+        return [
+          ...baseBreadcrumbs,
+          { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}`) },
+          { label: 'Lots', to: `${dashboardPath}/plan/${params.planId}/lots` },
+          { label: `Lot ${params.lotId}` }
+        ];
+      }
     }
 
     if (path.match(/\/plan\/[^\/]+$/)) {

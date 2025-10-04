@@ -88,7 +88,13 @@ const LotDetail = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* Breadcrumb navigation */}
-      <Breadcrumb items={generateBreadcrumbs()} />
+      <Breadcrumb items={generateBreadcrumbs({ 
+        projectId: planData?.project_id, 
+        projectName: planData?.project_name,
+        planId: planId,
+        planName: planData?.plan_identifier || planData?.plan_no,
+        lotId: lotId
+      })} />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -173,7 +179,7 @@ const LotDetail = () => {
               <label className="text-sm font-medium text-gray-600">Compensation Amount</label>
               <p className="text-gray-800 font-medium text-lg">{lotDetails.compensation}</p>
             </div>
-            {userRole !== 'Financial Officer' && (
+            {userRole !== 'financial_officer' && (
               <div className="pt-3">
                 <button className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
                   Update Valuation
@@ -217,7 +223,7 @@ const LotDetail = () => {
                 {lotDetails.paymentStatus === 'pending' ? 'Pending Assessment' : lotDetails.paymentStatus}
               </span>
             </div>
-            {userRole === 'Financial Officer' ? (
+            {userRole === 'financial_officer' ? (
               <div className="pt-3">
                 <p className="text-sm text-blue-600 italic">
                   You can add detailed compensation information below
@@ -254,7 +260,7 @@ const LotDetail = () => {
       </div>
 
       {/* Compensation Details Section - Only visible for Financial Officers */}
-      {userRole === 'Financial Officer' && (
+      {userRole === 'financial_officer' && (
         <div className="mt-8">
           <CompensationDetails 
             lotId={lotId} 

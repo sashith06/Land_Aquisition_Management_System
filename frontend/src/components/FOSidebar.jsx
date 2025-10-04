@@ -12,7 +12,6 @@ import useMessageCount from "../hooks/useMessageCount";
 // Financial Officer specific navigation items
 const foNavigationItems = [
   { path: '/fo-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
-  { path: '/fo-dashboard/financial-reports', label: 'Financial Reports', icon: 'DollarSign' },
   { path: '/fo-dashboard/project-progress', label: 'Real Time Dashboard', icon: 'GitBranch' },
   { path: '/fo-dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
