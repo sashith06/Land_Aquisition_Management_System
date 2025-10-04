@@ -39,8 +39,20 @@ const LotsPage = () => {
  const [showLandDetailsForm, setShowLandDetailsForm] = useState(false);
 
 
-  // Determine user role based on current route
+  // Determine user role - prioritize authenticated role over route-based detection
   const getCurrentUserRole = () => {
+    // First try to get authenticated user role from token
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.role;
+      }
+    } catch (error) {
+      console.error('Error getting authenticated user role:', error);
+    }
+
+    // Fallback to route-based detection
     const currentPath = window.location.pathname;
     if (currentPath.includes('/fo-dashboard')) return 'financial_officer';
     if (currentPath.includes('/pe-dashboard')) return 'project_engineer';

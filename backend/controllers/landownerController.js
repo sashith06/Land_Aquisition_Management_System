@@ -203,7 +203,10 @@ exports.verifyOTP = async (req, res) => {
               name: landowner.name,
               nic: landowner.nic,
               mobile: landowner.mobile,
-              address: landowner.address
+              address: landowner.address,
+              role: 'landowner',
+              firstName: landowner.name.split(' ')[0] || landowner.name,
+              lastName: landowner.name.split(' ').slice(1).join(' ') || ''
             }
           });
         });

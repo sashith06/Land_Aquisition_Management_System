@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent } from 'lucide-react';
+import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent, Lock } from 'lucide-react';
 import { saveCompensation, getCompensation } from '../api';
+import { getUserRole } from './ProtectedRoute';
 
-const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Officer' }) => {
+const CompensationDetailsTab = ({ selectedLot, planId, userRole }) => {
   const [compensationData, setCompensationData] = useState({});
   const [editingOwner, setEditingOwner] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({});
@@ -12,8 +13,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
   // Get planId from URL if not provided
   const currentPlanId = planId || window.location.pathname.split('/')[3];
 
-  // Check if user has permission to edit
-  const canEdit = userRole === 'Financial Officer' || userRole === 'FO';
+  // Get authenticated user role if not provided
+  const authenticatedRole = getUserRole();
+  const effectiveUserRole = userRole || authenticatedRole;
+
+  // Check if user has permission to edit - only Financial Officers can edit compensation
+  const canEdit = effectiveUserRole === 'financial_officer' || effectiveUserRole === 'Financial Officer' || effectiveUserRole === 'FO';
 
   // Load compensation data from API
   useEffect(() => {
@@ -65,6 +70,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
   };
 
   const handleEditCompensation = (owner) => {
+    // Check if user has permission to edit
+    if (!canEdit) {
+      alert('Access Denied: Only Financial Officers can edit compensation details.');
+      return;
+    }
+
     // Use backend_id for consistent key generation
     const editLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${editLotId}_${owner.nic}`;
@@ -80,7 +91,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
       paymentStatus: 'pending',
       approvalStatus: 'pending',
       assessmentDate: new Date().toISOString().split('T')[0],
-      assessorName: userRole,
+      assessorName: effectiveUserRole,
       notes: '',
       bankDetails: {
         accountName: owner.name,
@@ -161,8 +172,15 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
         alert('Error saving compensation details. Please try again.');
       }
     } catch (error) {
-      alert('Error saving compensation details. Please try again.');
       console.error('Save error:', error);
+      
+      if (error.response?.status === 403) {
+        alert('Access Denied: Only Financial Officers can modify compensation details.');
+      } else if (error.response?.status === 401) {
+        alert('Authentication required. Please login again.');
+      } else {
+        alert('Error saving compensation details. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -315,6 +333,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
           </div>
         </div>
 
+        {/* Access Restriction Notice */}
+        {!canEdit && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
+            <div className="flex items-center">
+              <Lock className="w-5 h-5 text-yellow-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  View-Only Mode
+                </p>
+                <p className="text-xs text-yellow-700">
+                  Only Financial Officers can edit compensation details. You can view existing data but cannot make changes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Lot Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div className="bg-white p-3 rounded-lg border border-orange-200">
@@ -431,10 +466,19 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'Financial Off
                         ? 'bg-orange-600 text-white hover:bg-orange-700' 
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
+                    title={canEdit ? '' : 'Only Financial Officers can edit compensation details'}
                   >
-                    <Edit className="w-4 h-4 mr-2" />
-                    {total === '0' ? 'Add Compensation' : 'Edit Compensation'}
+                    {canEdit ? <Edit className="w-4 h-4 mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
+                    {canEdit 
+                      ? (total === '0' ? 'Add Compensation' : 'Edit Compensation')
+                      : 'Access Restricted'
+                    }
                   </button>
+                  {!canEdit && (
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Only Financial Officers can modify compensation details
+                    </p>
+                  )}
                 </div>
               </div>
             );

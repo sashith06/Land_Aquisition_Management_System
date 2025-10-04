@@ -13,13 +13,25 @@ const LotDetail = () => {
   const [planData, setPlanData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Determine user role based on current route
+  // Determine user role - prioritize authenticated role over route-based detection
   const getCurrentUserRole = () => {
+    // First try to get authenticated user role from token
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.role;
+      }
+    } catch (error) {
+      console.error('Error getting authenticated user role:', error);
+    }
+
+    // Fallback to route-based detection
     const currentPath = window.location.pathname;
-    if (currentPath.includes('/fo-dashboard')) return 'Financial Officer';
-    if (currentPath.includes('/pe-dashboard')) return 'Project Engineer';
-    if (currentPath.includes('/ce-dashboard')) return 'Chief Engineer';
-    return 'Land Officer'; // Default role
+    if (currentPath.includes('/fo-dashboard')) return 'financial_officer';
+    if (currentPath.includes('/pe-dashboard')) return 'project_engineer';
+    if (currentPath.includes('/ce-dashboard')) return 'chief_engineer';
+    return 'land_officer'; // Default role
   };
 
   const userRole = getCurrentUserRole();
