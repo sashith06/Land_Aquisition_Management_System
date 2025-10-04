@@ -1,5 +1,5 @@
 import { Bell, ChevronDown, LogOut } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { logout } from '../utils/auth';
 import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin } from '../utils/userUtils';
@@ -9,6 +9,7 @@ import useNotifications from '../hooks/useNotifications';
 
 const Navigation = () => {
   const [open, setOpen] = useState();
+  const location = useLocation();
   
   // Get current user data from localStorage
   const currentUser = getCurrentUser();
@@ -35,6 +36,8 @@ const Navigation = () => {
       return '/pe-dashboard/profile';
     } else if (location.pathname.startsWith('/fo-dashboard')) {
       return '/fo-dashboard/profile';
+    } else if (location.pathname.startsWith('/landowner/dashboard')) {
+      return '/landowner/dashboard'; // Landowner profile is within their dashboard
     }
     return '/dashboard/profile';
   };

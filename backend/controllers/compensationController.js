@@ -12,6 +12,18 @@ const createOrUpdateCompensation = (req, res) => {
   console.log('Request Body:', req.body);
   console.log('=== END DEBUG ===');
   
+  // Check if user has permission to modify compensation details
+  if (!req.user || req.user.role !== 'financial_officer') {
+    console.error('Unauthorized access attempt:', { 
+      userId: req.user?.id, 
+      userRole: req.user?.role 
+    });
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Only Financial Officers can modify compensation details."
+    });
+  }
+  
   // Validate parameters
   const parsedLotId = parseInt(lot_id);
   const parsedPlanId = parseInt(plan_id);

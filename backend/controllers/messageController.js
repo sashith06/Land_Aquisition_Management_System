@@ -90,13 +90,28 @@ class MessageController {
           });
         }
 
+        // Validate and map message_type to valid enum values
+        const validMessageTypes = ['general', 'project_related', 'official'];
+        let validMessageType = 'general'; // Default value
+        
+        if (message_type && validMessageTypes.includes(message_type)) {
+          validMessageType = message_type;
+        } else if (message_type === 'reply') {
+          // If it's a reply, use 'general' as the type
+          validMessageType = 'general';
+        }
+
+        // Validate priority to match database enum
+        const validPriorities = ['low', 'normal', 'high', 'urgent'];
+        const validPriority = (priority && validPriorities.includes(priority)) ? priority : 'normal';
+
         const messageData = {
           sender_id,
           recipient_id: parseInt(recipient_id),
           subject: subject.trim(),
           content: content.trim(),
-          priority: priority || 'normal',
-          message_type: message_type || 'message',
+          priority: validPriority,
+          message_type: validMessageType,
           parent_message_id: parent_message_id ? parseInt(parent_message_id) : null
         };
 
