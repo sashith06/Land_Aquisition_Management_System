@@ -281,7 +281,7 @@ const FinancialDetails = () => {
                 Total Calculated Costs
               </label>
               <div className="text-lg font-semibold text-blue-800">
-                ${calculateTotalCosts().toLocaleString()}
+                Rs. {calculateTotalCosts().toLocaleString()}
               </div>
             </div>
           </div>

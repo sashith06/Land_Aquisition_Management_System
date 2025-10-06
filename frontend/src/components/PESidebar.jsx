@@ -8,6 +8,7 @@ import {
   FolderPlus,
   UserCheck,
   GitBranch,
+  Calculator,
 } from "lucide-react";
 import useMessageCount from "../hooks/useMessageCount";
 
@@ -16,6 +17,7 @@ const peNavigationItems = [
   { path: '/pe-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
   { path: '/pe-dashboard/project-assignment', label: 'Assign Projects', icon: 'UserCheck' },
   { path: '/pe-dashboard/project-progress', label: 'Real Time Dashboard', icon: 'GitBranch' },
+  { path: '/pe-dashboard/cost-prediction', label: 'AI Cost Prediction', icon: 'Calculator' },
   { path: '/pe-dashboard/reports', label: 'Reports', icon: 'FileText' },
 ];
 
@@ -26,6 +28,7 @@ const iconMap = {
   FileText,
   UserCheck,
   GitBranch,
+  Calculator,
 };
 
 const PESidebar = () => {
@@ -34,14 +37,14 @@ const PESidebar = () => {
 
   // Add messages to navigation items with dynamic badge
   const navigationItems = [
-    ...peNavigationItems.slice(0, 3), // Dashboard, Assign Projects, Analysis
+    ...peNavigationItems.slice(0, 4), // Dashboard, Assign Projects, Analysis, Cost Prediction
     { 
       path: '/pe-dashboard/messages', 
       label: 'Messages', 
       icon: 'MessageSquare',
       badge: unreadCount > 0 ? unreadCount : null
     },
-    ...peNavigationItems.slice(3) // Reports
+    ...peNavigationItems.slice(4) // Reports
   ];
 
   const isActive = (path) =>

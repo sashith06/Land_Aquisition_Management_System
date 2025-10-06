@@ -22,9 +22,14 @@ const useNotifications = (pollingInterval = 30000) => { // Poll every 30 seconds
 
       // Fetch unread inquiries count for officers
       if (isOfficer) {
-        const inquiriesResponse = await getUnreadInquiriesCount();
-        const inquiriesCount = inquiriesResponse.data?.count || inquiriesResponse.count || 0;
-        totalCount += inquiriesCount;
+        try {
+          const inquiriesResponse = await getUnreadInquiriesCount();
+          const inquiriesCount = inquiriesResponse.data?.count || inquiriesResponse.count || 0;
+          totalCount += inquiriesCount;
+        } catch (inquiryError) {
+          console.warn('Could not fetch inquiry count (may not have permission):', inquiryError.response?.status);
+          // Don't fail the whole function for inquiry permission issues
+        }
       }
 
       setUnreadCount(totalCount);

@@ -20,12 +20,16 @@ router.put("/reject/:id", verifyToken, requireSystemAdmin, projectController.rej
 
 // ================= GENERAL PROJECT ACCESS =================
 // All authenticated users can view projects
+router.get("/", verifyToken, requireAll, projectController.getAllProjects); // Simple route for getting all projects
 router.get("/stats", verifyToken, requireAll, projectController.getProjectStats);
 router.get("/approved", verifyToken, requireAll, projectController.getApprovedProjects);
 router.get("/all", verifyToken, requireAll, projectController.getAllProjects);
 
 // Role-based project access - get projects based on user role and permissions
 router.get("/user/projects", verifyToken, requireAll, projectController.getProjectsForUser);
+
+// Get project statistics for AI prediction (plans and lots count) - MUST come before /:id route
+router.get("/:id/statistics", verifyToken, requireAll, projectController.getProjectStatistics);
 
 router.get("/:id", verifyToken, requireAll, projectController.getProjectById);
 

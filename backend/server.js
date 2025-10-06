@@ -68,6 +68,8 @@ app.use("/api/otp", otpRoutes);
 const landownerRoutes = require("./routes/landownerRoutes");
 app.use("/api/landowner", landownerRoutes);
 
+const predictionRoutes = require("./routes/predictionRoutes");
+app.use("/api/predictions", predictionRoutes);
 
 app.use('/api/inquiries', inquiryRoutes);
 

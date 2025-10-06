@@ -305,13 +305,27 @@ Plan.getByProjectWithRole = (project_id, userId, userRole, callback) => {
   `;
   
   db.query(accessCheckSql, [project_id, userRole, userRole, userId, userRole, userRole, userId], (accessErr, accessRows) => {
-    if (accessErr) return callback(accessErr);
-    if (accessRows.length === 0) {
-      return callback(new Error('Access denied: You do not have permission to view plans for this project'));
+    if (accessErr) {
+      console.error('Access check error:', accessErr);
+      return callback(accessErr);
     }
     
-    // If access is granted, get the plans
-    Plan.getByProject(project_id, callback);
+    console.log('Access check results:', accessRows);
+    
+    if (accessRows.length === 0) {
+      // If the project doesn't exist at all, return empty array instead of error
+      // This allows prediction to continue even if no plans exist
+      Plan.getByProject(project_id, (planErr, plans) => {
+        if (planErr) {
+          console.log('Project access denied, returning empty plans array');
+          return callback(null, []); // Return empty array instead of error
+        }
+        return callback(null, []); // Return empty plans array for denied access
+      });
+    } else {
+      // If access is granted, get the plans
+      Plan.getByProject(project_id, callback);
+    }
   });
 };
 

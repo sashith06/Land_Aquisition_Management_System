@@ -95,9 +95,9 @@ const ProjectRequests = () => {
 
   const formatCurrency = (amount) => {
     if (!amount) return 'Not specified';
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-LK', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'LKR'
     }).format(amount);
   };
 

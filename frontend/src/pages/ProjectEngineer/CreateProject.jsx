@@ -164,7 +164,7 @@ const CreateProject = () => {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Initial Estimated Cost
+                  Initial Estimated Cost (LKR)
                 </label>
                 <input
                   type="number"
@@ -172,7 +172,7 @@ const CreateProject = () => {
                   value={formData.initial_estimated_cost}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter cost in USD"
+                  placeholder="Enter cost in LKR"
                   step="0.01"
                 />
               </div>

@@ -50,6 +50,7 @@ import LOProjectDetailsPage from "../pages/LandOfficer/LOProjectDetailsPage";
 
 import LotsPage from "../pages/LotsPage";
 import LotDetail from "../pages/LotDetail";
+import CostPredictionPage from "../pages/CostPredictionPage";
 
 import { 
   ChiefEngineerRoute, 
@@ -94,6 +95,7 @@ export default function AppRoutes() {
         <Route path="user-management" element={<UserManagement />} />
         <Route path="project-requests" element={<ProjectRequests />} />
         <Route path="project-details/:projectId" element={<CEProjectDetailsPage />} />
+        <Route path="cost-prediction" element={<CostPredictionPage userRole="chief_engineer" />} />
         {/* No profile route for Chief Engineer (admin) */}
       </Route>
 
@@ -115,6 +117,7 @@ export default function AppRoutes() {
         <Route path="edit-project/:projectId" element={<EditProject />} />
         <Route path="project-details/:projectId" element={<ProjectDetailsPage />} />
         <Route path="project-assignment" element={<ProjectAssignment />} />
+        <Route path="cost-prediction" element={<CostPredictionPage userRole="project_engineer" />} />
         <Route path="profile" element={<Profile />} />
       </Route>
 

@@ -1,5 +1,6 @@
 const Project = require("../models/projectModel");
 const Notification = require("../models/notificationModel");
+const db = require("../config/db");
 
 // ================= CREATE PROJECT =================
 exports.createProject = (req, res) => {
@@ -112,8 +113,17 @@ exports.getProjectById = (req, res) => {
 };
 
 exports.getAllProjects = (req, res) => {
-  Project.getAll((err, rows) => {
-    if (err) return res.status(500).json({ error: err });
+  const userId = req.user?.id;
+  const userRole = req.user?.role;
+  
+  // If no user context, return empty (should not happen with requireAll middleware)
+  if (!userId || !userRole) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  // Use role-based access control
+  Project.getByUserRole(userId, userRole, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 };
@@ -364,6 +374,60 @@ exports.deleteProject = (req, res) => {
         message: "Project and all related data deleted successfully",
         deletedProject: project.name
       });
+    });
+  });
+};
+
+// Get project statistics for AI prediction (plans and lots count)
+exports.getProjectStatistics = (req, res) => {
+  const { project_id } = req.params;
+  const userId = req.user?.id;
+  const userRole = req.user?.role;
+  
+  if (!userId || !userRole) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  // Get project statistics regardless of role restrictions for prediction purposes
+  const statsQuery = `
+    SELECT 
+      p.id as project_id,
+      p.name as project_name,
+      COUNT(DISTINCT pl.id) as plans_count,
+      COUNT(DISTINCT l.id) as lots_count
+    FROM projects p
+    LEFT JOIN plans pl ON p.id = pl.project_id
+    LEFT JOIN lots l ON pl.id = l.plan_id
+    WHERE p.id = ?
+    GROUP BY p.id, p.name
+  `;
+  
+  db.query(statsQuery, [project_id], (err, rows) => {
+    if (err) {
+      console.error('Error fetching project statistics:', err);
+      return res.status(500).json({ error: 'Failed to fetch project statistics' });
+    }
+    
+    if (rows.length === 0) {
+      return res.json({
+        success: true,
+        statistics: {
+          project_id: parseInt(project_id),
+          project_name: 'Unknown',
+          plans_count: 0,
+          lots_count: 0
+        }
+      });
+    }
+    
+    res.json({
+      success: true,
+      statistics: {
+        project_id: rows[0].project_id,
+        project_name: rows[0].project_name,
+        plans_count: rows[0].plans_count || 0,
+        lots_count: rows[0].lots_count || 0
+      }
     });
   });
 };

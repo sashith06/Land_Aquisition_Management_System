@@ -8,6 +8,7 @@ import {
   Users,
   FolderPlus,
   GitBranch,
+  Calculator,
 } from "lucide-react";
 import usePendingUsersCount from "../hooks/usePendingUsersCount";
 import usePendingProjectsCount from "../hooks/usePendingProjectsCount";
@@ -21,6 +22,7 @@ const iconMap = {
   Users,
   FolderPlus,
   GitBranch,
+  Calculator,
 };
 
 const CESidebar = () => {
@@ -40,6 +42,7 @@ const CESidebar = () => {
       badge: unreadCount > 0 ? unreadCount : null
     },
     { path: '/ce-dashboard/reports', label: 'Reports', icon: 'FileText' },
+    { path: '/ce-dashboard/cost-prediction', label: 'AI Cost Prediction', icon: 'Calculator' },
     { 
       path: '/ce-dashboard/user-management', 
       label: 'User Management', 

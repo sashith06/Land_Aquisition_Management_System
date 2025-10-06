@@ -406,7 +406,7 @@ const ProjectAssignment = () => {
                                 )}
                               </div>
                               <p className="text-sm text-gray-600 mt-1">
-                                Cost: ${project.initial_estimated_cost}
+                                Cost: Rs. {project.initial_estimated_cost}
                               </p>
                               <p className="text-xs text-gray-400 mt-1">
                                 Created: {new Date(project.created_at).toLocaleDateString()}

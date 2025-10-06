@@ -234,7 +234,7 @@ const EditProject = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Initial Estimated Cost <span className="text-red-500">*</span>
+                      Initial Estimated Cost (LKR) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -242,7 +242,7 @@ const EditProject = () => {
                       value={formData.estimatedCost}
                       onChange={handleInputChange}
                       className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g., $100 Mn"
+                      placeholder="e.g., Rs. 100 Million"
                       required
                     />
                   </div>
