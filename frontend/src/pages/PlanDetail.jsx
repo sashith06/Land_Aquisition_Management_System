@@ -6,7 +6,7 @@ import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
 import api from "../api";
 
 const PlanDetail = () => {
-  const { id } = useParams();
+  const { planId } = useParams();
   const location = useLocation();
   const { generateBreadcrumbs } = useBreadcrumbs();
   const [planData, setPlanData] = useState(null);
@@ -15,17 +15,17 @@ const PlanDetail = () => {
 
   // Load plan data when component mounts
   useEffect(() => {
-    if (id) {
+    if (planId) {
       loadPlanData();
     }
-  }, [id]);
+  }, [planId]);
 
   const loadPlanData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await api.get(`/api/plans/${id}`);
+      const response = await api.get(`/api/plans/${planId}`);
       setPlanData(response.data);
     } catch (error) {
       console.error('Error loading plan data:', error);

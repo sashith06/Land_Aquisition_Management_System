@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const lotController = require("../controllers/lotController");
-const { verifyToken, requireAll, requireLandOfficer, requireEngineers } = require("../middleware/authMiddleware");
+const { verifyToken, requireAll, requireLandOfficer, requireEngineers, requireFinancialOfficer } = require("../middleware/authMiddleware");
 
-// Function for engineers or land officers
+// Function for engineers or land officers (excludes financial officers)
 const requireEngineersOrLO = (req, res, next) => {
   if (['chief_engineer', 'project_engineer', 'land_officer'].includes(req.user.role)) {
     next();
@@ -36,8 +36,8 @@ router.get("/:id", verifyToken, requireAll, lotController.getLotById);
 // Get lot land details
 router.get("/:id/land-details", verifyToken, requireAll, lotController.getLandDetails);
 
-// Save/Create lot land details
-router.post("/:id/land-details", verifyToken, requireAll, lotController.saveLandDetails);
+// Save/Create lot land details (Engineers and Land Officers only - exclude Financial Officers)
+router.post("/:id/land-details", verifyToken, requireEngineersOrLO, lotController.saveLandDetails);
 
 // Add owner to lot
 router.post("/:lotId/owners", verifyToken, requireEngineersOrLO, lotController.addOwnerToLot);
@@ -45,8 +45,8 @@ router.post("/:lotId/owners", verifyToken, requireEngineersOrLO, lotController.a
 // Update lot (Land Officers only)
 router.put("/:id", verifyToken, requireLandOfficer, lotController.updateLot);
 
-// Update lot land details (Land Officers, Project Engineers, Chief Engineers)
-router.put("/:id/land-details", verifyToken, requireAll, lotController.updateLotLandDetails);
+// Update lot land details (Engineers and Land Officers only - exclude Financial Officers)
+router.put("/:id/land-details", verifyToken, requireEngineersOrLO, lotController.updateLotLandDetails);
 
 // Remove owner from lot
 router.delete("/:lotId/owners/:ownerId", verifyToken, requireEngineersOrLO, lotController.removeOwnerFromLot);

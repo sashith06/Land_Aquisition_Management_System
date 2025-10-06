@@ -6,6 +6,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
   const [compensationData, setCompensationData] = useState({});
   const [editingOwner, setEditingOwner] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({});
+  const [planData, setPlanData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [landDetails, setLandDetails] = useState(null);
@@ -50,14 +51,10 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
       
       // Ensure we have a numeric ID, not a formatted display ID
       if (typeof lotId === 'string' && lotId.startsWith('L')) {
-        // Extract numeric part from formatted ID like "L001" -> "1"
         lotId = parseInt(lotId.substring(1));
       }
       
       console.log('Loading compensation for lot:', lotId, 'plan:', currentPlanId);
-      console.log('selectedLot object:', selectedLot);
-      console.log('selectedLot.backend_id:', selectedLot.backend_id, 'selectedLot.id:', selectedLot.id);
-      console.log('Final URL will be: /api/plans/' + currentPlanId + '/lots/' + lotId + '/compensation');
       
       const response = await getCompensation(currentPlanId, lotId);
       if (response.data.success && response.data.data) {
@@ -83,6 +80,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
   };
 
   const handleEditCompensation = (owner) => {
+    // Check if user has permission to edit
+    if (!canEdit) {
+      alert('Access Denied: Only Financial Officers can edit compensation details.');
+      return;
+    }
+
     // Use backend_id for consistent key generation
     const editLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${editLotId}_${owner.nic}`;
@@ -98,7 +101,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
       paymentStatus: 'pending',
       approvalStatus: 'pending',
       assessmentDate: new Date().toISOString().split('T')[0],
-      assessorName: userRole,
+      assessorName: effectiveUserRole,
       notes: '',
       bankDetails: {
         accountName: owner.name,
@@ -161,7 +164,6 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
       
       // Ensure we have a numeric ID, not a formatted display ID
       if (typeof saveLotId === 'string' && saveLotId.startsWith('L')) {
-        // Extract numeric part from formatted ID like "L001" -> "1"
         saveLotId = parseInt(saveLotId.substring(1));
       }
       
@@ -173,14 +175,20 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
         setCompensationData(newData);
         setEditingOwner(null);
         alert('Compensation details saved successfully!');
-        // Reload data to get latest from server
         await loadCompensationData();
       } else {
         alert('Error saving compensation details. Please try again.');
       }
     } catch (error) {
-      alert('Error saving compensation details. Please try again.');
       console.error('Save error:', error);
+      
+      if (error.response?.status === 403) {
+        alert('Access Denied: Only Financial Officers can modify compensation details.');
+      } else if (error.response?.status === 401) {
+        alert('Authentication required. Please login again.');
+      } else {
+        alert('Error saving compensation details. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -212,7 +220,6 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
     }
   };
 
-  // Payment details handler for the new payment form structure
   const handlePaymentDetailsChange = (section, field, subField, value) => {
     const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
     
@@ -332,6 +339,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
             </div>
           </div>
         </div>
+
+        {/* Access Restriction Notice */}
+        {!canEdit && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
+            <div className="flex items-center">
+              <Lock className="w-5 h-5 text-yellow-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  View-Only Mode
+                </p>
+                <p className="text-xs text-yellow-700">
+                  Only Financial Officers can edit compensation details. You can view existing data but cannot make changes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Lot Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">

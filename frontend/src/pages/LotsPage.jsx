@@ -39,8 +39,20 @@ const LotsPage = () => {
  const [showLandDetailsForm, setShowLandDetailsForm] = useState(false);
 
 
-  // Determine user role based on current route
+  // Determine user role - prioritize authenticated role over route-based detection
   const getCurrentUserRole = () => {
+    // First try to get authenticated user role from token
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.role;
+      }
+    } catch (error) {
+      console.error('Error getting authenticated user role:', error);
+    }
+
+    // Fallback to route-based detection
     const currentPath = window.location.pathname;
     if (currentPath.includes('/fo-dashboard')) return 'financial_officer';
     if (currentPath.includes('/pe-dashboard')) return 'project_engineer';
@@ -225,6 +237,12 @@ const LotsPage = () => {
 
   // Create or Edit Lot
   const handleSubmitLot = async () => {
+    // Financial officers cannot create or edit lots
+    if (userRole === 'financial_officer') {
+      alert('Financial Officers are not allowed to create or edit lots. You can only manage valuation and compensation details.');
+      return;
+    }
+
     if (!lotNumber || lotNumber.trim() === '') {
       alert('Please enter a lot number');
       return;
@@ -314,6 +332,12 @@ const LotsPage = () => {
   };
 
   const handleEditLot = () => {
+    // Financial officers cannot edit lots
+    if (userRole === 'financial_officer') {
+      alert('Financial Officers are not allowed to edit lot details. You can only manage valuation and compensation details.');
+      return;
+    }
+
     if (!selectedLot) return;
     setLotNumber(selectedLot.id);
     setLotStatus(selectedLot.status);
@@ -322,6 +346,12 @@ const LotsPage = () => {
   };
 
   const handleDeleteLot = async () => {
+    // Financial officers cannot delete lots
+    if (userRole === 'financial_officer') {
+      alert('Financial Officers are not allowed to delete lots. You can only manage valuation and compensation details.');
+      return;
+    }
+
     if (!selectedLot) return;
     
     if (!confirm('Are you sure you want to delete this lot? This action cannot be undone.')) {

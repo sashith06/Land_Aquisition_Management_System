@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Save, Edit, Lock } from 'lucide-react';
+import { getUserRole } from './ProtectedRoute';
+import { saveCompensation } from '../api';
 
-const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) => {
+const CompensationDetails = ({ lotId, planId, userRole }) => {
   const [compensationData, setCompensationData] = useState({
     propertyValuation: '',
     compensationAmount: '',
@@ -13,6 +15,7 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
     solatiumPayment: '',
     additionalCompensation: '',
     totalCompensation: '',
+    finalCompensationAmount: '',
     paymentStatus: 'pending',
     approvalStatus: 'draft',
     assessmentDate: '',
@@ -25,8 +28,12 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Check if user has permission to edit
-  const canEdit = userRole === 'Financial Officer';
+  // Get authenticated user role if not provided
+  const authenticatedRole = getUserRole();
+  const effectiveUserRole = userRole || authenticatedRole;
+
+  // Check if user has permission to edit - only Financial Officers can edit compensation
+  const canEdit = effectiveUserRole === 'financial_officer' || effectiveUserRole === 'Financial Officer' || effectiveUserRole === 'FO';
 
   useEffect(() => {
     // Load existing compensation data if available
@@ -89,28 +96,66 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
 
   const handleSave = async () => {
     if (!canEdit) {
-      alert('You do not have permission to edit compensation details.');
+      alert('Access Denied: Only Financial Officers can edit compensation details.');
       return;
     }
 
     setIsSaving(true);
     
     try {
-      // Save compensation data to localStorage
-      const existingData = JSON.parse(localStorage.getItem('compensationData') || '{}');
-      const lotKey = `${planId}_${lotId}`;
-      
-      existingData[lotKey] = {
-        ...compensationData,
-        lastUpdated: new Date().toISOString(),
-        lastUpdatedBy: userRole,
-        approvalStatus: compensationData.approvalStatus || 'draft'
+      // Prepare compensation data for API
+      const compensationPayload = {
+        owner_data: [{
+          ...compensationData,
+          lastUpdated: new Date().toISOString(),
+          lastUpdatedBy: effectiveUserRole,
+          approvalStatus: compensationData.approvalStatus || 'draft'
+        }],
+        compensation_payment: {},
+        interest_payment: {},
+        interest_voucher: {},
+        account_division: {},
+        total_compensation: parseFloat(compensationData.totalCompensation) || 0
       };
-      
-      localStorage.setItem('compensationData', JSON.stringify(existingData));
-      
-      setIsEditing(false);
-      alert('Compensation details saved successfully!');
+
+      // Save to API first
+      try {
+        const response = await saveCompensation(planId, lotId, compensationPayload);
+        if (response.data.success) {
+          // Also save to localStorage as backup
+          const existingData = JSON.parse(localStorage.getItem('compensationData') || '{}');
+          const lotKey = `${planId}_${lotId}`;
+          
+          existingData[lotKey] = compensationPayload.owner_data[0];
+          localStorage.setItem('compensationData', JSON.stringify(existingData));
+          
+          setIsEditing(false);
+          alert('Compensation details saved successfully!');
+        } else {
+          throw new Error('API returned failure status');
+        }
+      } catch (apiError) {
+        console.error('API save error:', apiError);
+        
+        if (apiError.response?.status === 403) {
+          alert('Access Denied: Only Financial Officers can modify compensation details.');
+          return;
+        } else if (apiError.response?.status === 401) {
+          alert('Authentication required. Please login again.');
+          return;
+        }
+        
+        // Fallback to localStorage if API fails
+        console.log('Falling back to localStorage save...');
+        const existingData = JSON.parse(localStorage.getItem('compensationData') || '{}');
+        const lotKey = `${planId}_${lotId}`;
+        
+        existingData[lotKey] = compensationPayload.owner_data[0];
+        localStorage.setItem('compensationData', JSON.stringify(existingData));
+        
+        setIsEditing(false);
+        alert('Compensation details saved locally. API connection failed.');
+      }
     } catch (error) {
       alert('Error saving compensation details. Please try again.');
       console.error('Save error:', error);
@@ -146,6 +191,23 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
 
   return (
     <div className="bg-white p-6 rounded-xl border shadow-sm">
+      {/* Access Restriction Notice */}
+      {!canEdit && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex items-center">
+            <Lock className="w-5 h-5 text-yellow-600 mr-3" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">
+                View-Only Mode
+              </p>
+              <p className="text-xs text-yellow-700">
+                Only Financial Officers can edit compensation details. You can view existing data but cannot make changes.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <DollarSign className="text-green-600" size={24} />
@@ -168,9 +230,10 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
+              title={canEdit ? 'Edit compensation details' : 'Only Financial Officers can edit compensation details'}
             >
-              <Edit size={16} />
-              <span>Edit</span>
+              {canEdit ? <Edit size={16} /> : <Lock size={16} />}
+              <span>{canEdit ? 'Edit' : 'Restricted'}</span>
             </button>
           ) : (
             <>
@@ -338,6 +401,23 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
                   {formatCurrency(compensationData.totalCompensation)}
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Final Compensation Amount to be Paid (Rs.)
+                </label>
+                <input
+                  type="number"
+                  name="finalCompensationAmount"
+                  value={compensationData.finalCompensationAmount}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  placeholder="e.g., 2550000"
+                  step="0.01"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the final compensation amount to be paid (may differ from calculated total due to adjustments, approvals, etc.)
+                </p>
+              </div>
             </div>
           </div>
 
@@ -440,6 +520,12 @@ const CompensationDetails = ({ lotId, planId, userRole = 'Financial Officer' }) 
                 <label className="text-sm font-medium text-gray-600">Total Compensation</label>
                 <p className="text-gray-800 font-medium text-lg">
                   {formatCurrency(compensationData.totalCompensation)}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Final Compensation Amount to be Paid</label>
+                <p className="font-medium text-lg text-green-600">
+                  {formatCurrency(compensationData.finalCompensationAmount)}
                 </p>
               </div>
               <div>
