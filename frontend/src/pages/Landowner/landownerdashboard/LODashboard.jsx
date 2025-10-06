@@ -35,6 +35,8 @@ function LODashboard() {
   const [inquiryMessage, setInquiryMessage] = useState('');
   const [myInquiries, setMyInquiries] = useState([]);
   const [myInquiriesLoading, setMyInquiriesLoading] = useState(false);
+  const [documents, setDocuments] = useState({ id_card: null, bank_book: null });
+  const [documentsLoading, setDocumentsLoading] = useState(false);
 
   useEffect(() => {
     fetchLandownerData();
@@ -79,6 +81,9 @@ function LODashboard() {
       // Fetch my inquiries
       await fetchMyInquiries();
 
+      // Fetch documents
+      await fetchDocuments();
+
     } catch (err) {
       console.error('Error fetching landowner data:', err);
       setError('Failed to load landowner data');
@@ -95,12 +100,56 @@ function LODashboard() {
     setAttachedFiles([...attachedFiles, ...Array.from(e.target.files)]);
   };
 
-  const handleBankBookUpload = (e) => {
-    setBankBookFile(e.target.files[0]);
+  const handleBankBookUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('document_type', 'bank_book');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${BACKEND_URL}/api/landowner/upload-document`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setBankBookFile(file);
+      alert('Bank book uploaded successfully!');
+      fetchDocuments(); // Refresh documents
+    } catch (error) {
+      console.error('Error uploading bank book:', error);
+      alert('Failed to upload bank book. Please try again.');
+    }
   };
 
-  const handleIdCardUpload = (e) => {
-    setIdCardFile(e.target.files[0]);
+  const handleIdCardUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('document_type', 'id_card');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${BACKEND_URL}/api/landowner/upload-document`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setIdCardFile(file);
+      alert('ID card uploaded successfully!');
+      fetchDocuments(); // Refresh documents
+    } catch (error) {
+      console.error('Error uploading ID card:', error);
+      alert('Failed to upload ID card. Please try again.');
+    }
   };
 
   const removeAttachedFile = (index) => {
@@ -164,6 +213,22 @@ function LODashboard() {
       console.error('Error fetching my inquiries:', error);
     } finally {
       setMyInquiriesLoading(false);
+    }
+  };
+
+  // Fetch documents
+  const fetchDocuments = async () => {
+    try {
+      setDocumentsLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${BACKEND_URL}/api/landowner/documents`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDocuments(response.data.documents);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setDocumentsLoading(false);
     }
   };
 
@@ -374,8 +439,44 @@ function LODashboard() {
                         type="file"
                         onChange={handleBankBookUpload}
                         className="w-full text-sm text-gray-700 border rounded p-2"
+                        accept=".jpg,.jpeg,.png,.pdf"
                       />
-                      {bankBookFile && (
+                      {documents.bank_book ? (
+                        <div className="mt-2 flex items-center justify-between bg-green-50 border border-green-200 p-2 rounded">
+                          <div className="flex items-center">
+                            <CreditCard className="h-4 w-4 text-green-600 mr-2" />
+                            <span className="text-green-800">Bank Book Uploaded</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <a
+                              href={`${BACKEND_URL}/${documents.bank_book.file_path}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              View
+                            </a>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem('token');
+                                  await axios.delete(`${BACKEND_URL}/api/landowner/documents/bank_book`, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  fetchDocuments();
+                                  alert('Bank book deleted successfully!');
+                                } catch (error) {
+                                  console.error('Error deleting bank book:', error);
+                                  alert('Failed to delete bank book.');
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : bankBookFile && (
                         <div className="mt-2 flex items-center justify-between bg-gray-100 p-2 rounded">
                           <span>{bankBookFile.name}</span>
                           <button
@@ -400,8 +501,44 @@ function LODashboard() {
                         type="file"
                         onChange={handleIdCardUpload}
                         className="w-full text-sm text-gray-700 border rounded p-2"
+                        accept=".jpg,.jpeg,.png,.pdf"
                       />
-                      {idCardFile && (
+                      {documents.id_card ? (
+                        <div className="mt-2 flex items-center justify-between bg-green-50 border border-green-200 p-2 rounded">
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 text-green-600 mr-2" />
+                            <span className="text-green-800">ID Card Uploaded</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <a
+                              href={`${BACKEND_URL}/${documents.id_card.file_path}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              View
+                            </a>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem('token');
+                                  await axios.delete(`${BACKEND_URL}/api/landowner/documents/id_card`, {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  fetchDocuments();
+                                  alert('ID card deleted successfully!');
+                                } catch (error) {
+                                  console.error('Error deleting ID card:', error);
+                                  alert('Failed to delete ID card.');
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : idCardFile && (
                         <div className="mt-2 flex items-center justify-between bg-gray-100 p-2 rounded">
                           <span>{idCardFile.name}</span>
                           <button

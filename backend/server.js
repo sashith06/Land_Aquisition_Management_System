@@ -29,11 +29,7 @@ app.use('/uploads', express.static('uploads'));
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
-// Add a simple test endpoint
-app.get("/test", (req, res) => {
-  console.log("Test endpoint hit");
-  res.json({ message: "Server is working" });
-});
+
 
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
@@ -70,6 +66,10 @@ app.use("/api/landowner", landownerRoutes);
 
 
 app.use('/api/inquiries', inquiryRoutes);
+
+
+
+
 
 // Initialize database tables
 async function initializeDatabase() {

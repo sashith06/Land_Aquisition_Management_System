@@ -355,8 +355,6 @@ Lot.removeOwnerFromLot = (lotId, ownerId, callback) => {
 
 // Get owners for a specific lot (normalized structure)
 Lot.getOwnersById = (lotId, callback) => {
-  console.log(`=== getOwnersById DEBUG START for lot ${lotId} ===`);
-
   // Updated query for normalized database structure
   // Join lot_owners (bridge) with owners table
   const sql = `
@@ -384,10 +382,6 @@ Lot.getOwnersById = (lotId, callback) => {
       console.error(`Error in getOwnersById for lot ${lotId}:`, err);
       return callback(err);
     }
-
-    console.log(`Owners found for lot ${lotId}:`, results.length);
-    console.log(`Owner data for lot ${lotId}:`, JSON.stringify(results, null, 2));
-    console.log(`=== getOwnersById DEBUG END for lot ${lotId} ===`);
 
     callback(null, results);
   });
