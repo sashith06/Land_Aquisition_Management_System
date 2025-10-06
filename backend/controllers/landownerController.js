@@ -326,3 +326,277 @@ exports.getProfile = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// Upload document (ID card or Bank book)
+exports.uploadDocument = async (req, res) => {
+  try {
+    console.log('Upload request received:', {
+      body: req.body,
+      file: req.file ? {
+        fieldname: req.file.fieldname,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        filename: req.file.filename,
+        path: req.file.path
+      } : null,
+      user: req.user ? { id: req.user.id } : null
+    });
+
+    const { document_type } = req.body;
+    const landownerId = req.user.id;
+
+    if (!document_type || !['id_card', 'bank_book'].includes(document_type)) {
+      console.log('Invalid document type:', document_type);
+      return res.status(400).json({ message: "Invalid document type. Must be 'id_card' or 'bank_book'" });
+    }
+
+    if (!req.file) {
+      console.log('No file uploaded');
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const file = req.file;
+    console.log('File object details:', file);
+
+    // Move file from temp to correct location
+    const fs = require('fs');
+    const path = require('path');
+    
+    const targetDir = document_type === 'id_card' ? 'ID' : 'Bank';
+    const finalDir = path.join('uploads', targetDir);
+    
+    // Ensure target directory exists
+    if (!fs.existsSync(finalDir)) {
+      fs.mkdirSync(finalDir, { recursive: true });
+    }
+    
+    // Generate final filename
+    const ext = path.extname(file.originalname);
+    const finalFilename = `${landownerId}_${document_type}_${Date.now()}${ext}`;
+    const finalPath = path.join(finalDir, finalFilename);
+    
+    // Move file from temp to final location
+    try {
+      fs.renameSync(file.path, finalPath);
+      console.log('File moved from', file.path, 'to', finalPath);
+    } catch (moveError) {
+      console.error('Error moving file:', moveError);
+      return res.status(500).json({ message: "Error moving uploaded file" });
+    }
+
+    // Check if document already exists for this landowner
+    const checkQuery = `
+      SELECT id FROM landowner_documents 
+      WHERE landowner_id = ? AND document_type = ?
+    `;
+    console.log('Executing check query with params:', [landownerId, document_type]);
+    
+    db.query(checkQuery, [landownerId, document_type], (checkErr, checkResults) => {
+      if (checkErr) {
+        console.error("Error checking existing document:", checkErr);
+        return res.status(500).json({ message: "Database error", error: checkErr.message });
+      }
+
+      console.log('Check query results:', checkResults);
+      
+      // Use the final file path
+      const filePath = finalPath;
+      
+      const query = checkResults.length > 0 
+        ? `UPDATE landowner_documents SET 
+           file_name = ?, file_path = ?, file_size = ?, mime_type = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE landowner_id = ? AND document_type = ?`
+        : `INSERT INTO landowner_documents 
+           (landowner_id, document_type, file_name, file_path, file_size, mime_type) 
+           VALUES (?, ?, ?, ?, ?, ?)`;
+
+      const queryParams = checkResults.length > 0
+        ? [finalFilename, filePath, file.size, file.mimetype, landownerId, document_type]
+        : [landownerId, document_type, finalFilename, filePath, file.size, file.mimetype];
+
+      console.log('Executing query:', query);
+      console.log('Query params:', queryParams);
+      
+      db.query(query, queryParams, (err, results) => {
+        if (err) {
+          console.error("Error saving document:", err);
+          return res.status(500).json({ message: "Failed to save document", error: err.message });
+        }
+
+        console.log('Document saved successfully');
+        
+        res.status(200).json({
+          message: `${document_type.replace('_', ' ')} uploaded successfully`,
+          document: {
+            id: checkResults.length > 0 ? checkResults[0].id : results.insertId,
+            document_type,
+            file_name: finalFilename,
+            file_path: filePath,
+            file_size: file.size,
+            mime_type: file.mimetype
+          }
+        });
+      });
+    });
+
+  } catch (error) {
+    console.error("Error in uploadDocument:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get landowner documents
+exports.getDocuments = async (req, res) => {
+  try {
+    const landownerId = req.user.id;
+
+    const query = `
+      SELECT id, document_type, file_name, file_path, file_size, mime_type, uploaded_at, updated_at
+      FROM landowner_documents 
+      WHERE landowner_id = ?
+      ORDER BY document_type, updated_at DESC
+    `;
+
+    db.query(query, [landownerId], (err, results) => {
+      if (err) {
+        console.error("Error fetching documents:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      const documents = {
+        id_card: null,
+        bank_book: null
+      };
+
+      results.forEach(doc => {
+        documents[doc.document_type] = {
+          id: doc.id,
+          file_name: doc.file_name,
+          file_path: doc.file_path,
+          file_size: doc.file_size,
+          mime_type: doc.mime_type,
+          uploaded_at: doc.uploaded_at,
+          updated_at: doc.updated_at
+        };
+      });
+
+      res.status(200).json({
+        message: "Documents retrieved successfully",
+        documents
+      });
+    });
+
+  } catch (error) {
+    console.error("Error in getDocuments:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Delete document
+exports.deleteDocument = async (req, res) => {
+  try {
+    const { document_type } = req.params;
+    const landownerId = req.user.id;
+
+    if (!document_type || !['id_card', 'bank_book'].includes(document_type)) {
+      return res.status(400).json({ message: "Invalid document type" });
+    }
+
+    const query = `
+      DELETE FROM landowner_documents 
+      WHERE landowner_id = ? AND document_type = ?
+    `;
+
+    db.query(query, [landownerId, document_type], (err, results) => {
+      if (err) {
+        console.error("Error deleting document:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      res.status(200).json({
+        message: `${document_type.replace('_', ' ')} deleted successfully`
+      });
+    });
+
+  } catch (error) {
+    console.error("Error in deleteDocument:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get documents by NIC (for officials to view landowner documents)
+exports.getDocumentsByNIC = async (req, res) => {
+  try {
+    const { nic } = req.params;
+
+    if (!nic) {
+      return res.status(400).json({ message: "NIC is required" });
+    }
+
+    console.log(`Fetching documents for NIC: ${nic}`);
+
+    // Enhanced query to handle potential NIC format issues and multiple owner records
+    const query = `
+      SELECT DISTINCT ld.id, ld.document_type, ld.file_name, ld.file_path, ld.file_size, ld.mime_type, ld.uploaded_at, ld.updated_at,
+             o.id as owner_id, o.name as owner_name
+      FROM landowner_documents ld
+      JOIN owners o ON ld.landowner_id = o.id
+      WHERE UPPER(TRIM(o.nic)) = UPPER(TRIM(?))
+        AND o.status = 'active'
+      ORDER BY ld.document_type, ld.updated_at DESC
+    `;
+
+    db.query(query, [nic], (err, results) => {
+      if (err) {
+        console.error("Error fetching documents by NIC:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      console.log(`Found ${results.length} documents for NIC ${nic}:`, results);
+
+      const documents = {
+        id_card: null,
+        bank_book: null
+      };
+
+      // Take the most recent document of each type
+      results.forEach(doc => {
+        if (!documents[doc.document_type] || 
+            new Date(doc.updated_at) > new Date(documents[doc.document_type].updated_at)) {
+          documents[doc.document_type] = {
+            id: doc.id,
+            file_name: doc.file_name,
+            file_path: doc.file_path,
+            file_size: doc.file_size,
+            mime_type: doc.mime_type,
+            uploaded_at: doc.uploaded_at,
+            updated_at: doc.updated_at,
+            owner_id: doc.owner_id,
+            owner_name: doc.owner_name
+          };
+        }
+      });
+
+      console.log(`Returning documents for NIC ${nic}:`, documents);
+
+      res.status(200).json({
+        message: "Documents retrieved successfully",
+        documents,
+        nic,
+        debug: {
+          query_results_count: results.length,
+          found_owner_ids: [...new Set(results.map(r => r.owner_id))]
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error("Error in getDocumentsByNIC:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
