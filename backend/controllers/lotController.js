@@ -200,6 +200,27 @@ exports.createLot = async (req, res) => {
       
       // If owners are provided, add them to the lot
       if (owners && Array.isArray(owners) && owners.length > 0) {
+        // Check for duplicate NICs in the owners array
+        const nicSet = new Set();
+        const duplicateNICs = [];
+        
+        owners.forEach((ownerData, index) => {
+          if (ownerData.nic && ownerData.nic.trim()) {
+            const nic = ownerData.nic.trim().toLowerCase();
+            if (nicSet.has(nic)) {
+              duplicateNICs.push(nic);
+            } else {
+              nicSet.add(nic);
+            }
+          }
+        });
+        
+        if (duplicateNICs.length > 0) {
+          return res.status(400).json({ 
+            error: 'Duplicate owners detected. One lot cannot have the same owner twice. Please check NIC numbers: ' + duplicateNICs.join(', ')
+          });
+        }
+        
         let processedOwners = 0;
         const totalOwners = owners.length;
         let hasError = false;
@@ -410,6 +431,29 @@ exports.updateLot = async (req, res) => {
 
       // If owners are provided, handle owner updates
       if (owners && Array.isArray(owners) && owners.length >= 0) {
+        // Check for duplicate NICs in the owners array
+        if (owners.length > 0) {
+          const nicSet = new Set();
+          const duplicateNICs = [];
+          
+          owners.forEach((ownerData, index) => {
+            if (ownerData.nic && ownerData.nic.trim()) {
+              const nic = ownerData.nic.trim().toLowerCase();
+              if (nicSet.has(nic)) {
+                duplicateNICs.push(nic);
+              } else {
+                nicSet.add(nic);
+              }
+            }
+          });
+          
+          if (duplicateNICs.length > 0) {
+            return res.status(400).json({ 
+              error: 'Duplicate owners detected. One lot cannot have the same owner twice. Please check NIC numbers: ' + duplicateNICs.join(', ')
+            });
+          }
+        }
+        
         // Get the plan_id for this lot
         const getLotSql = `SELECT plan_id FROM lots WHERE id = ?`;
         db.query(getLotSql, [id], (getLotErr, lotResults) => {

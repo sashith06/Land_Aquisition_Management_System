@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, MapPin } from 'lucide-react';
 import api from '../api';
+import { hectaresToPerches, perchesToHectares, HECTARE_TO_PERCH_RATIO } from '../utils/areaConversion';
 
 const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => {
   const [formData, setFormData] = useState({
@@ -52,6 +53,66 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Area conversion using utility functions
+    
+    // Handle advance tracing extent ha to perch conversion
+    if (name === 'advance_tracing_extent_ha' && value !== '') {
+      const hectares = parseFloat(value);
+      if (!isNaN(hectares)) {
+        const perches = hectaresToPerches(hectares);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          advance_tracing_extent_perch: perches
+        }));
+        return;
+      }
+    }
+    
+    // Handle advance tracing extent perch to ha conversion
+    if (name === 'advance_tracing_extent_perch' && value !== '') {
+      const perches = parseFloat(value);
+      if (!isNaN(perches)) {
+        const hectares = perchesToHectares(perches);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          advance_tracing_extent_ha: hectares
+        }));
+        return;
+      }
+    }
+    
+    // Handle preliminary plan extent ha to perch conversion
+    if (name === 'preliminary_plan_extent_ha' && value !== '') {
+      const hectares = parseFloat(value);
+      if (!isNaN(hectares)) {
+        const perches = hectaresToPerches(hectares);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          preliminary_plan_extent_perch: perches
+        }));
+        return;
+      }
+    }
+    
+    // Handle preliminary plan extent perch to ha conversion
+    if (name === 'preliminary_plan_extent_perch' && value !== '') {
+      const perches = parseFloat(value);
+      if (!isNaN(perches)) {
+        const hectares = perchesToHectares(perches);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          preliminary_plan_extent_ha: hectares
+        }));
+        return;
+      }
+    }
+    
+    // Regular input handling for other fields
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -61,7 +122,7 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(''); // Clear any previous errors
 
     try {
       const dataToSend = {
@@ -77,9 +138,11 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => 
       const response = await api.post(`/api/lots/${lotId}/land-details`, dataToSend);
       
       if (onSave) {
-        onSave(response.data);
+        // Pass the landDetails from the response, or the original data if not available
+        onSave(response.data.landDetails || dataToSend);
       }
       
+      // Show success message
       alert('Land details saved successfully!');
     } catch (error) {
       console.error('Error saving land details:', error);
@@ -186,29 +249,46 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => 
             </label>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">(ha)</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  (ha)
+                  {formData.advance_tracing_extent_perch && (
+                    <span className="text-blue-600 font-normal ml-1">(Auto-calculated from perches)</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   step="0.0001"
                   name="advance_tracing_extent_ha"
                   value={formData.advance_tracing_extent_ha}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    formData.advance_tracing_extent_perch ? 'bg-blue-50 border-blue-300' : ''
+                  }`}
                   placeholder="0.0000"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Perch</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Perch
+                  {formData.advance_tracing_extent_ha && (
+                    <span className="text-blue-600 font-normal ml-1">(Auto-calculated from hectares)</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   step="0.0001"
                   name="advance_tracing_extent_perch"
                   value={formData.advance_tracing_extent_perch}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    formData.advance_tracing_extent_ha ? 'bg-blue-50 border-blue-300' : ''
+                  }`}
                   placeholder="0.0000"
                 />
               </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Conversion: 1 hectare = {HECTARE_TO_PERCH_RATIO} perches. Enter value in either field to auto-calculate the other.
             </div>
           </div>
 
@@ -219,29 +299,46 @@ const LandDetailsForm = ({ lotId, initialData, onSave, onCancel, planData }) => 
             </label>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">(ha)</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  (ha)
+                  {formData.preliminary_plan_extent_perch && (
+                    <span className="text-blue-600 font-normal ml-1">(Auto-calculated from perches)</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   step="0.0001"
                   name="preliminary_plan_extent_ha"
                   value={formData.preliminary_plan_extent_ha}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    formData.preliminary_plan_extent_perch ? 'bg-blue-50 border-blue-300' : ''
+                  }`}
                   placeholder="0.0000"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Perch</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Perch
+                  {formData.preliminary_plan_extent_ha && (
+                    <span className="text-blue-600 font-normal ml-1">(Auto-calculated from hectares)</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   step="0.0001"
                   name="preliminary_plan_extent_perch"
                   value={formData.preliminary_plan_extent_perch}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    formData.preliminary_plan_extent_ha ? 'bg-blue-50 border-blue-300' : ''
+                  }`}
                   placeholder="0.0000"
                 />
               </div>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              Conversion: 1 hectare = {HECTARE_TO_PERCH_RATIO} perches. Enter value in either field to auto-calculate the other.
             </div>
           </div>
         </div>
