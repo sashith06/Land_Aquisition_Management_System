@@ -531,6 +531,44 @@ CREATE TABLE `password_reset_otps` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ================================================
+-- TABLE: landowner_otps (For landowner OTP-based login)
+-- ================================================
+DROP TABLE IF EXISTS `landowner_otps`;
+CREATE TABLE `landowner_otps` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nic` varchar(12) NOT NULL,
+  `mobile` varchar(15) NOT NULL,
+  `otp_code` varchar(255) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `is_used` tinyint(1) DEFAULT 0,
+  `attempts` int DEFAULT 0,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `nic` (`nic`),
+  KEY `mobile` (`mobile`),
+  KEY `expires_at` (`expires_at`),
+  KEY `is_used` (`is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: landowner_documents (For ID and Bank Book uploads)
+-- ================================================
+DROP TABLE IF EXISTS `landowner_documents`;
+CREATE TABLE `landowner_documents` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `landowner_id` INT NOT NULL,
+  `document_type` ENUM('id_card', 'bank_book') NOT NULL,
+  `file_name` VARCHAR(255) NOT NULL,
+  `file_path` VARCHAR(500) NOT NULL,
+  `file_size` INT NOT NULL,
+  `mime_type` VARCHAR(100) NOT NULL,
+  `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`landowner_id`) REFERENCES `owners` (`id`) ON DELETE CASCADE,
+  UNIQUE KEY `unique_landowner_document` (`landowner_id`, `document_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
 -- TABLE: system_settings (Application configuration)
 -- ================================================
 DROP TABLE IF EXISTS `system_settings`;

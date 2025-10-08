@@ -18,6 +18,180 @@ const tabs = [
   "Inquiries",
 ];
 
+// Component to show owner details with their individual documents
+const OwnerDetailsWithDocuments = ({ owner, ownerIndex, totalOwners }) => {
+  const [ownerDocuments, setOwnerDocuments] = useState({ id_card: null, bank_book: null });
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+
+  // Fetch documents for this specific owner
+  useEffect(() => {
+    const fetchOwnerDocuments = async () => {
+      if (!owner.nic) return;
+      
+      try {
+        setDocumentsLoading(true);
+        const response = await api.get(`/api/landowner/documents-by-nic/${owner.nic}`);
+        console.log(`Documents for owner ${owner.name} (${owner.nic}):`, response.data);
+        setOwnerDocuments(response.data.documents);
+      } catch (error) {
+        console.error(`Error fetching documents for owner ${owner.name}:`, error);
+        setOwnerDocuments({ id_card: null, bank_book: null });
+      } finally {
+        setDocumentsLoading(false);
+      }
+    };
+
+    fetchOwnerDocuments();
+  }, [owner.nic]);
+
+  return (
+    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl border border-gray-200/50 shadow-sm">
+      {/* Owner Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {totalOwners > 1 ? `Owner ${ownerIndex + 1} - ${owner.name}` : owner.name}
+          </h3>
+        </div>
+      </div>
+
+      {/* Owner Basic Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Name</p>
+          <p className="text-gray-900 font-medium text-lg">{owner.name}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">NIC</p>
+          <p className="text-gray-900 font-medium text-lg">{owner.nic}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Mobile</p>
+          <p className="text-gray-900 font-medium text-lg">{owner.phone || owner.mobile || 'Not provided'}</p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Address</p>
+          <p className="text-gray-900 font-medium text-lg">{owner.address || 'Not provided'}</p>
+        </div>
+      </div>
+
+      {/* Documents Section for this Owner */}
+      <div className="border-t border-gray-200 pt-4">
+        <div className="flex items-center space-x-2 mb-4">
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707v11a2 2 0 01-2 2z" />
+          </svg>
+          <h4 className="text-lg font-semibold text-gray-700">Documents</h4>
+        </div>
+
+        {documentsLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <span className="text-gray-600 ml-2">Loading documents...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* ID Card */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707v11a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h5 className="font-semibold text-gray-900">ID Card</h5>
+              </div>
+              {ownerDocuments.id_card ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 p-3 rounded-lg">
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-green-800 text-sm font-medium">Document Uploaded</span>
+                    </div>
+                    <a
+                      href={`http://localhost:5000/${ownerDocuments.id_card.file_path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      View
+                    </a>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <p>File: {ownerDocuments.id_card.file_name}</p>
+                    <p>Uploaded: {new Date(ownerDocuments.id_card.uploaded_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-gray-600 text-sm">No ID card uploaded</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bank Book */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                </div>
+                <h5 className="font-semibold text-gray-900">Bank Book</h5>
+              </div>
+              {ownerDocuments.bank_book ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 p-3 rounded-lg">
+                    <div className="flex items-center">
+                      <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-green-800 text-sm font-medium">Document Uploaded</span>
+                    </div>
+                    <a
+                      href={`http://localhost:5000/${ownerDocuments.bank_book.file_path}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      View
+                    </a>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <p>File: {ownerDocuments.bank_book.file_name}</p>
+                    <p>Uploaded: {new Date(ownerDocuments.bank_book.uploaded_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-gray-600 text-sm">No bank book uploaded</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const LotsPage = () => {
   const { planId } = useParams();
   const { generateBreadcrumbs } = useBreadcrumbs();
@@ -39,8 +213,21 @@ const LotsPage = () => {
  const [showLandDetailsForm, setShowLandDetailsForm] = useState(false);
 
 
-  // Determine user role based on current route
+
+  // Determine user role - prioritize authenticated role over route-based detection
   const getCurrentUserRole = () => {
+    // First try to get authenticated user role from token
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.role;
+      }
+    } catch (error) {
+      console.error('Error getting authenticated user role:', error);
+    }
+
+    // Fallback to route-based detection
     const currentPath = window.location.pathname;
     if (currentPath.includes('/fo-dashboard')) return 'financial_officer';
     if (currentPath.includes('/pe-dashboard')) return 'project_engineer';
@@ -120,6 +307,8 @@ const LotsPage = () => {
     if (activeTab === "Land Details") {
       loadLandDetails(lot.backend_id || lot.id);
     }
+    
+
   };
 
   // Load land details for selected lot
@@ -155,6 +344,8 @@ const LotsPage = () => {
     }
   }, [activeTab, selectedLot]);
 
+
+
   // Handle saving land details
   const handleSaveLandDetails = (updatedLandDetails) => {
     setLandDetails(updatedLandDetails);
@@ -180,6 +371,8 @@ const LotsPage = () => {
       alert('Error deleting land details. Please try again.');
     }
   };
+
+
 
   // Fetch inquiries for selected lot
   const fetchInquiries = async () => {
@@ -443,7 +636,7 @@ const LotsPage = () => {
             ))}
           </div>
 
-          {userRole !== 'financial_officer' && (
+          {userRole === 'land_officer' && (
             <button
               className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 mt-auto"
               onClick={() => { handleClearForm(); setShowCreateForm(true); }}
@@ -623,7 +816,7 @@ const LotsPage = () => {
                         <p className="text-gray-600">Land Acquisition Details</p>
                       </div>
                     </div>
-                    {userRole !== 'financial_officer' && (
+                    {userRole === 'land_officer' && (
                       <div className="flex gap-3">
                         <button
                           onClick={handleEditLot}
@@ -674,45 +867,15 @@ const LotsPage = () => {
                     </div>
 
                     {selectedLot.owners && selectedLot.owners.length > 0 ? (
-                      <div className="space-y-4">
-                        <div className="flex gap-2 mb-4">
-                          {selectedLot.owners.map((owner, idx) => (
-                            <button
-                              key={idx}
-                              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 ${
-                                selectedLot.selectedOwnerIdx === idx
-                                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105'
-                                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:shadow-md'
-                              }`}
-                              onClick={() => setSelectedLot({ ...selectedLot, selectedOwnerIdx: idx })}
-                            >
-                              Owner {idx + 1}
-                            </button>
-                          ))}
-                        </div>
-
-                        {selectedLot.selectedOwnerIdx !== undefined && selectedLot.owners[selectedLot.selectedOwnerIdx] && (
-                          <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl border border-gray-200/50 shadow-sm">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Name</p>
-                                <p className="text-gray-900 font-medium text-lg">{selectedLot.owners[selectedLot.selectedOwnerIdx].name}</p>
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">NIC</p>
-                                <p className="text-gray-900 font-medium text-lg">{selectedLot.owners[selectedLot.selectedOwnerIdx].nic}</p>
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Mobile</p>
-                                <p className="text-gray-900 font-medium text-lg">{selectedLot.owners[selectedLot.selectedOwnerIdx].phone || selectedLot.owners[selectedLot.selectedOwnerIdx].mobile || 'Not provided'}</p>
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Address</p>
-                                <p className="text-gray-900 font-medium text-lg">{selectedLot.owners[selectedLot.selectedOwnerIdx].address || 'Not provided'}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      <div className="space-y-6">
+                        {selectedLot.owners.map((owner, idx) => (
+                          <OwnerDetailsWithDocuments 
+                            key={`${owner.nic}-${idx}`}
+                            owner={owner}
+                            ownerIndex={idx}
+                            totalOwners={selectedLot.owners.length}
+                          />
+                        ))}
                       </div>
                     ) : (
                       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
@@ -728,6 +891,8 @@ const LotsPage = () => {
                       </div>
                     )}
                   </div>
+
+
                 </div>
               ) : (
                 /* No lot selected */
@@ -775,7 +940,7 @@ const LotsPage = () => {
                         <MapPin className="w-5 h-5 text-blue-600" />
                         <h2 className="text-xl font-semibold text-gray-800">Land Details</h2>
                       </div>
-                      {landDetails && userRole !== 'financial_officer' && (
+                      {landDetails && userRole === 'land_officer' && (
                         <div className="flex gap-3">
                           <button
                             onClick={() => setShowLandDetailsForm(true)}
@@ -883,7 +1048,7 @@ const LotsPage = () => {
                           <h3 className="text-lg font-semibold text-gray-600 mb-2">No Land Details Found</h3>
                           <p className="text-gray-500 mb-6">Land details have not been added for this lot yet.</p>
                         </div>
-                        {userRole !== 'financial_officer' && (
+                        {userRole === 'land_officer' && (
                           <button
                             onClick={() => setShowLandDetailsForm(true)}
                             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"

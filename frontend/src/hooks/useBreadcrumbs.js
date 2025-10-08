@@ -29,22 +29,26 @@ export const useBreadcrumbs = () => {
 
     // Route-specific breadcrumbs
     if (path.includes('/project/') && path.includes('/plans')) {
-      // Project Plans page
+      // Project Plans page - Show: Dashboard > Project Name
+      // Get project name from URL params or context
+      const projectName = context?.projectName || params.projectId;
       return [
         ...baseBreadcrumbs,
-        { label: projectName || 'Project', to: `${dashboardPath}/project/${params.projectId}/plans` },
-        { label: 'Plans' }
+        { label: projectName || 'Project' }
       ];
     }
 
     if (path.includes('/plan/') && path.includes('/lots') && !path.includes('/lots/')) {
-      // Lots page - use project info from context if available
+      // Lots page - Show: Dashboard > Project Name > Lots
       if (projectId && projectName) {
         return [
           ...baseBreadcrumbs,
           { 
-            label: 'Plans & Progress', 
-            to: `${dashboardPath}/project/${projectId}/plans`
+            label: projectName, 
+            to: `${dashboardPath}/project/${projectId}/plans`,
+            onClick: () => navigate(`${dashboardPath}/project/${projectId}/plans`, { 
+              state: { projectName: projectName } 
+            })
           },
           { label: 'Lots' }
         ];
@@ -52,20 +56,23 @@ export const useBreadcrumbs = () => {
         // Fallback if project info not available
         return [
           ...baseBreadcrumbs,
-          { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}`) },
+          { label: 'Project', to: dashboardPath },
           { label: 'Lots' }
         ];
       }
     }
 
     if (path.includes('/plan/') && path.includes('/lots/')) {
-      // Lot Detail page - use project info from context if available
+      // Lot Detail page - Show: Dashboard > Project Name > Lots > Lot X
       if (projectId && projectName) {
         return [
           ...baseBreadcrumbs,
           { 
-            label: 'Plans & Progress', 
-            to: `${dashboardPath}/project/${projectId}/plans`
+            label: projectName, 
+            to: `${dashboardPath}/project/${projectId}/plans`,
+            onClick: () => navigate(`${dashboardPath}/project/${projectId}/plans`, { 
+              state: { projectName: projectName } 
+            })
           },
           { label: 'Lots', to: `${dashboardPath}/plan/${params.planId}/lots` },
           { label: `Lot ${params.lotId}` }
@@ -74,7 +81,7 @@ export const useBreadcrumbs = () => {
         // Fallback if project info not available
         return [
           ...baseBreadcrumbs,
-          { label: 'Plans & Progress', to: '#', onClick: () => navigate(`${dashboardPath}`) },
+          { label: 'Project', to: dashboardPath },
           { label: 'Lots', to: `${dashboardPath}/plan/${params.planId}/lots` },
           { label: `Lot ${params.lotId}` }
         ];
@@ -100,7 +107,7 @@ export const useBreadcrumbs = () => {
       
       return [
         ...baseBreadcrumbs,
-        { label: 'Plans & Progress', to: dashboardPath },
+        { label: 'Plans', to: dashboardPath },
         { label: 'Plan Details' }
       ];
     }

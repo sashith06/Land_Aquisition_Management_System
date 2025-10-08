@@ -72,8 +72,8 @@ const LandownerHero = () => {
 
       // Save token and redirect
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('userRole', 'landowner');
-      localStorage.setItem('userData', JSON.stringify(res.data.landowner));
+      localStorage.setItem('role', 'landowner');
+      localStorage.setItem('user', JSON.stringify(res.data.landowner));
       navigate('/landowner/dashboard');
     } catch (err) {
       setMessage(err.response?.data?.message || 'Invalid OTP');

@@ -238,8 +238,7 @@ const Dashboard = () => {
               <div className="flex justify-between items-center mb-6">
                 <Breadcrumb
                   items={[
-                    { label: isLandOfficerDashboard ? "All Projects" : "Projects & Overview", onClick: handleBackToProjects },
-                    { label: "Plans & Progress" }
+                    { label: isLandOfficerDashboard ? "All Projects" : "Projects & Overview", onClick: handleBackToProjects }
                   ]}
                 />
                 

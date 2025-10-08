@@ -185,7 +185,7 @@ exports.createLot = async (req, res) => {
       created_by: userId
     };
 
-    console.log('Creating lot with data:', lotData, 'and owners:', owners); // Debug log
+
 
     Lot.create(lotData, (err, result) => {
       if (err) {
@@ -253,24 +253,11 @@ exports.createLot = async (req, res) => {
 exports.getLotsByPlan = (req, res) => {
   const { planId } = req.params;
   
-  console.log('=== getLotsByPlan DEBUG START ===');
-  console.log('planId:', planId);
-  
   Lot.getByPlanIdWithOwners(planId, (err, lots) => {
     if (err) {
       console.error('Error fetching lots:', err);
       return res.status(500).json({ error: 'Failed to fetch lots' });
     }
-    
-    console.log('Raw lots from database:', JSON.stringify(lots, null, 2));
-    console.log('Number of lots found:', lots.length);
-    
-    // Log owner information for each lot
-    lots.forEach((lot, index) => {
-      console.log(`Lot ${index + 1} (ID: ${lot.id}, lot_no: ${lot.lot_no}):`);
-      console.log(`  - owners count: ${lot.owners ? lot.owners.length : 'undefined'}`);
-      console.log(`  - owners data: ${JSON.stringify(lot.owners || 'undefined')}`);
-    });
     
     // Sort by lot_no
     lots.sort((a, b) => {
@@ -278,9 +265,6 @@ exports.getLotsByPlan = (req, res) => {
       const numB = parseInt(b.lot_no) || 0;
       return numA - numB;
     });
-    
-    console.log('Sorted lots being returned:', JSON.stringify(lots, null, 2));
-    console.log('=== getLotsByPlan DEBUG END ===');
     
     res.json(lots);
   });

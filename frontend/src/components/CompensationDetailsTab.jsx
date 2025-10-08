@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent } from 'lucide-react';
-import { saveCompensation, getCompensation, getPlanById } from '../api';
+import api, { saveCompensation, getCompensation, getPlanById } from '../api';
 
 const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_officer' }) => {
   const [compensationData, setCompensationData] = useState({});
@@ -9,11 +9,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
   const [planData, setPlanData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [landDetails, setLandDetails] = useState(null);
 
   // Get planId from URL if not provided
   const currentPlanId = planId || window.location.pathname.split('/')[3];
 
-  // Check if user has permission to edit
+  // Check if user has permission to edit - only Financial Officers can add/edit compensation details
   const canEdit = userRole === 'financial_officer';
 
   // Load plan data to get Section 38 gazette date
@@ -27,6 +28,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
   useEffect(() => {
     if (selectedLot && currentPlanId) {
       loadCompensationData();
+      loadLandDetails();
     }
   }, [selectedLot, currentPlanId]);
 
@@ -40,6 +42,22 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
     }
   };
 
+  const loadLandDetails = async () => {
+    if (!selectedLot) return;
+    
+    try {
+      const lotId = selectedLot.backend_id || selectedLot.id;
+      const response = await api.get(`/api/lots/${lotId}/land-details`);
+      setLandDetails(response.data);
+    } catch (error) {
+      if (error.response?.status !== 404) {
+        console.error('Error loading land details:', error);
+      }
+      // If no land details exist (404), that's fine
+      setLandDetails(null);
+    }
+  };
+
   const loadCompensationData = async () => {
     if (!selectedLot || !currentPlanId) return;
     
@@ -50,14 +68,10 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
       
       // Ensure we have a numeric ID, not a formatted display ID
       if (typeof lotId === 'string' && lotId.startsWith('L')) {
-        // Extract numeric part from formatted ID like "L001" -> "1"
         lotId = parseInt(lotId.substring(1));
       }
       
       console.log('Loading compensation for lot:', lotId, 'plan:', currentPlanId);
-      console.log('selectedLot object:', selectedLot);
-      console.log('selectedLot.backend_id:', selectedLot.backend_id, 'selectedLot.id:', selectedLot.id);
-      console.log('Final URL will be: /api/plans/' + currentPlanId + '/lots/' + lotId + '/compensation');
       
       const response = await getCompensation(currentPlanId, lotId);
       if (response.data.success && response.data.data) {
@@ -83,6 +97,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
   };
 
   const handleEditCompensation = (owner) => {
+    // Check if user has permission to edit
+    if (!canEdit) {
+      alert('Access Denied: Only Financial Officers can edit compensation details.');
+      return;
+    }
+
     // Use backend_id for consistent key generation
     const editLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${editLotId}_${owner.nic}`;
@@ -98,7 +118,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
       paymentStatus: 'pending',
       approvalStatus: 'pending',
       assessmentDate: new Date().toISOString().split('T')[0],
-      assessorName: userRole,
+      assessorName: effectiveUserRole,
       notes: '',
       bankDetails: {
         accountName: owner.name,
@@ -161,7 +181,6 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
       
       // Ensure we have a numeric ID, not a formatted display ID
       if (typeof saveLotId === 'string' && saveLotId.startsWith('L')) {
-        // Extract numeric part from formatted ID like "L001" -> "1"
         saveLotId = parseInt(saveLotId.substring(1));
       }
       
@@ -173,14 +192,20 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
         setCompensationData(newData);
         setEditingOwner(null);
         alert('Compensation details saved successfully!');
-        // Reload data to get latest from server
         await loadCompensationData();
       } else {
         alert('Error saving compensation details. Please try again.');
       }
     } catch (error) {
-      alert('Error saving compensation details. Please try again.');
       console.error('Save error:', error);
+      
+      if (error.response?.status === 403) {
+        alert('Access Denied: Only Financial Officers can modify compensation details.');
+      } else if (error.response?.status === 401) {
+        alert('Authentication required. Please login again.');
+      } else {
+        alert('Error saving compensation details. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -212,7 +237,6 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
     }
   };
 
-  // Payment details handler for the new payment form structure
   const handlePaymentDetailsChange = (section, field, subField, value) => {
     const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
     
@@ -333,6 +357,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
           </div>
         </div>
 
+        {/* Access Restriction Notice */}
+        {!canEdit && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
+            <div className="flex items-center">
+              <Lock className="w-5 h-5 text-yellow-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  View-Only Mode
+                </p>
+                <p className="text-xs text-yellow-700">
+                  Only Financial Officers can edit compensation details. You can view existing data but cannot make changes.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Lot Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           <div className="bg-white p-3 rounded-lg border border-orange-200">
@@ -340,14 +381,20 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
             <div className="text-xl font-bold text-orange-600">{selectedLot.owners.length}</div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-orange-200">
-            <div className="text-sm text-gray-600">Lot Size</div>
-            <div className="text-xl font-bold text-slate-600">{selectedLot.size}</div>
+            <div className="text-sm text-gray-600">Lot Size (Perch)</div>
+            <div className="text-xl font-bold text-slate-600">
+              {landDetails?.advance_tracing_extent_perch 
+                ? `${landDetails.advance_tracing_extent_perch} P` 
+                : selectedLot.size || 'N/A'}
+            </div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-orange-200">
             <div className="text-sm text-gray-600">Location</div>
             <div className="text-sm font-medium text-slate-600 flex items-center">
               <MapPin className="w-3 h-3 mr-1" />
-              {selectedLot.location}
+              {selectedLot.owners && selectedLot.owners.length > 0 && selectedLot.owners[0].address
+                ? selectedLot.owners[0].address
+                : selectedLot.location || 'N/A'}
             </div>
           </div>
           <div className="bg-white p-3 rounded-lg border border-orange-200">
@@ -441,6 +488,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
 
                 {/* Action Button */}
                 <div className="pt-4 border-t border-gray-200">
+                  {!canEdit && (
+                    <div className="text-center mb-3">
+                      <p className="text-xs text-gray-500">Only Financial Officers can add/edit compensation details</p>
+                    </div>
+                  )}
                   <button
                     onClick={() => handleEditCompensation(owner)}
                     disabled={!canEdit}
@@ -451,7 +503,10 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
                     }`}
                   >
                     <Edit className="w-4 h-4 mr-2" />
-                    {total === '0' ? 'Add Compensation' : 'Edit Compensation'}
+                    {canEdit 
+                      ? (total === '0' ? 'Add Compensation' : 'Edit Compensation')
+                      : 'View Only (Financial Officer Required)'
+                    }
                   </button>
                 </div>
               </div>
@@ -489,14 +544,37 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
                 </button>
                 <button
                   onClick={handleSaveCompensation}
-                  disabled={isSaving}
-                  className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium disabled:opacity-50"
+                  disabled={isSaving || !canEdit}
+                  className={`flex items-center px-6 py-3 rounded-xl transition-all duration-200 shadow-lg font-medium disabled:opacity-50 ${
+                    canEdit 
+                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700'
+                      : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  }`}
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {isSaving ? 'Saving...' : (canEdit ? 'Save' : 'No Permission')}
                 </button>
               </div>
             </div>
+
+            {/* Permission Notice */}
+            {!canEdit && (
+              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-yellow-800">View-Only Mode</h3>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Only Financial Officers can add or edit compensation details. You are viewing this information in read-only mode.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Owner Information */}
@@ -549,7 +627,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
                       step="0.1"
                       value={editingOwner.compensation.lotShare}
                       onChange={(e) => handleInputChange('lotShare', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      disabled={!canEdit}
+                      readOnly={!canEdit}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
+                        !canEdit ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                   </div>
                   <div>
@@ -558,7 +640,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
                       type="date"
                       value={editingOwner.compensation.assessmentDate}
                       onChange={(e) => handleInputChange('assessmentDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      disabled={!canEdit}
+                      readOnly={!canEdit}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
+                        !canEdit ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                   </div>
                   <div>
@@ -567,7 +653,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
                       type="text"
                       value={editingOwner.compensation.assessorName}
                       onChange={(e) => handleInputChange('assessorName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      disabled={!canEdit}
+                      readOnly={!canEdit}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
+                        !canEdit ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                   </div>
                 </div>
