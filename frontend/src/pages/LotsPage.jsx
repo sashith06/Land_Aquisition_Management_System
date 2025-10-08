@@ -347,9 +347,20 @@ const LotsPage = () => {
 
 
   // Handle saving land details
-  const handleSaveLandDetails = (updatedLandDetails) => {
-    setLandDetails(updatedLandDetails);
-    setShowLandDetailsForm(false);
+  const handleSaveLandDetails = async (updatedLandDetails) => {
+    try {
+      // Close the form first
+      setShowLandDetailsForm(false);
+      
+      // Reload the land details from the server to ensure we have the latest data
+      if (selectedLot) {
+        await loadLandDetails(selectedLot.backend_id || selectedLot.id);
+      }
+    } catch (error) {
+      console.error('Error refreshing land details:', error);
+      // If refresh fails, at least show the updated data we have
+      setLandDetails(updatedLandDetails);
+    }
   };
 
   // Handle deleting land details
@@ -390,6 +401,31 @@ const LotsPage = () => {
     }
   };
 
+  // Check for duplicate NICs in owner fields
+  const checkDuplicateNICs = (owners) => {
+    const nicCounts = {};
+    const duplicates = [];
+    
+    owners.forEach((owner, index) => {
+      if (owner.nic && owner.nic.trim()) {
+        const nic = owner.nic.trim().toLowerCase();
+        if (nicCounts[nic]) {
+          nicCounts[nic].push(index);
+        } else {
+          nicCounts[nic] = [index];
+        }
+      }
+    });
+    
+    Object.keys(nicCounts).forEach(nic => {
+      if (nicCounts[nic].length > 1) {
+        duplicates.push(...nicCounts[nic]);
+      }
+    });
+    
+    return duplicates;
+  };
+
   const handleAddOwner = () => setOwnerFields([...ownerFields, { name: '', nic: '', mobile: '', address: ''}]);
 
   const handleRemoveOwner = (idx) => setOwnerFields(ownerFields.filter((_, i) => i !== idx));
@@ -426,6 +462,14 @@ const LotsPage = () => {
 
     if (!lotNumber || lotNumber.trim() === '') {
       alert('Please enter a lot number');
+      return;
+    }
+
+    // Check for duplicate NICs before submitting
+    const validOwners = ownerFields.filter(owner => owner.name.trim() && owner.nic.trim());
+    const duplicateIndices = checkDuplicateNICs(validOwners);
+    if (duplicateIndices.length > 0) {
+      alert('Error: One lot cannot have the same owner twice. Please check for duplicate NIC numbers and remove duplicates before saving.');
       return;
     }
 
@@ -697,6 +741,21 @@ const LotsPage = () => {
                       </svg>
                       <h4 className="text-lg font-semibold text-gray-700">Add Owners (Optional)</h4>
                     </div>
+                    
+                    {/* Duplicate owners warning */}
+                    {checkDuplicateNICs(ownerFields).length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold mt-0.5">!</div>
+                          <div>
+                            <h5 className="text-red-800 font-semibold mb-1">Duplicate Owner Detected</h5>
+                            <p className="text-red-700 text-sm">
+                              One lot cannot have the same owner twice. Please remove duplicate owners with the same NIC number before saving.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-4">
                       {ownerFields.map((owner, idx) => (
                         <div key={idx} className="bg-white/80 backdrop-blur-sm p-6 rounded-xl border border-gray-200/50 shadow-sm">
@@ -732,11 +791,21 @@ const LotsPage = () => {
                               <label className="block text-sm font-semibold text-gray-700">NIC</label>
                               <input
                                 type="text"
-                                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm"
+                                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm ${
+                                  checkDuplicateNICs(ownerFields).includes(idx) 
+                                    ? 'border-red-500 focus:ring-red-500 bg-red-50' 
+                                    : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                                }`}
                                 placeholder="NIC"
                                 value={owner.nic}
                                 onChange={e => handleOwnerChange(idx, 'nic', e.target.value)}
                               />
+                              {checkDuplicateNICs(ownerFields).includes(idx) && (
+                                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                                  <span className="w-3 h-3 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">!</span>
+                                  This NIC is already used by another owner in this lot. One lot cannot have the same owner twice.
+                                </p>
+                              )}
                             </div>
                             <div className="space-y-2">
                               <label className="block text-sm font-semibold text-gray-700">Mobile</label>
@@ -777,8 +846,14 @@ const LotsPage = () => {
                   <div className="flex gap-4 pt-6 border-t border-gray-200">
                     <button
                       type="button"
-                      className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all duration-200 hover:shadow-lg transform hover:scale-105 flex items-center space-x-2"
+                      className={`px-6 py-3 font-semibold rounded-xl transition-all duration-200 flex items-center space-x-2 ${
+                        checkDuplicateNICs(ownerFields).length > 0
+                          ? 'bg-gray-400 cursor-not-allowed text-white'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white hover:shadow-lg transform hover:scale-105'
+                      }`}
                       onClick={handleSubmitLot}
+                      disabled={checkDuplicateNICs(ownerFields).length > 0}
+                      title={checkDuplicateNICs(ownerFields).length > 0 ? 'Please remove duplicate owners before saving' : ''}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

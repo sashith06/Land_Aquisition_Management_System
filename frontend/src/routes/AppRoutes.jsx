@@ -42,6 +42,8 @@ import FinancialDetails from "../pages/FinancialOfficer/FinancialDetails";
 import FOProjectPlans from "../pages/FinancialOfficer/FOProjectPlans";
 import FOProjectDetailsPage from "../pages/FinancialOfficer/FOProjectDetailsPage";
 
+import LandValuation from "../pages/LandValuation";
+
 import LODashboardMain from "../pages/LandOfficer/LODashboardMain";
 import CreatePlan from "../pages/LandOfficer/CreatePlan";
 import ProjectPlans from "../pages/LandOfficer/ProjectPlans";
@@ -89,6 +91,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="project-progress" element={<ProjectProgress />} />
+        <Route path="land-valuation" element={<LandValuation />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="user-management" element={<UserManagement />} />
@@ -109,6 +112,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="project-progress" element={<ProjectProgress />} />
+        <Route path="land-valuation" element={<LandValuation />} />
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="create-project" element={<CreateProject />} />

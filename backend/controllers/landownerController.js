@@ -231,12 +231,16 @@ exports.getLandownerLots = async (req, res) => {
         l.lot_no,
         l.extent_ha,
         l.extent_perch,
+        l.advance_tracing_extent_ha,
+        l.advance_tracing_extent_perch,
         l.land_type,
         p.plan_identifier,
         pr.name as project_name,
         pr.status as project_status,
         v.total_value as valuation_amount,
-        c.total_compensation as compensation_amount,
+        c.total_compensation as full_compensation_amount,
+        c.compensation_payment as paid_compensation_amount,
+        c.interest_payment as interest_amount,
         c.status as compensation_status
       FROM lot_owners lo
       JOIN lots l ON lo.lot_id = l.id
@@ -273,10 +277,14 @@ exports.getLandownerLots = async (req, res) => {
           lotNo: row.lot_no,
           extentHa: row.extent_ha,
           extentPerch: row.extent_perch,
+          advanceTracingExtentHa: row.advance_tracing_extent_ha,
+          advanceTracingExtentPerch: row.advance_tracing_extent_perch,
           landType: row.land_type,
           ownershipPercentage: row.ownership_percentage,
           valuationAmount: row.valuation_amount,
-          compensationAmount: row.compensation_amount,
+          fullCompensationAmount: row.full_compensation_amount,
+          paidCompensationAmount: row.paid_compensation_amount,
+          interestAmount: row.interest_amount,
           compensationStatus: row.compensation_status,
           projectStatus: row.project_status
         });

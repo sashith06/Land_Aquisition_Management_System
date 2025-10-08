@@ -42,6 +42,20 @@ const CreateProject = () => {
       }
     }
     
+    // Handle perches to hectares conversion
+    if (name === 'initial_extent_perch' && value !== '') {
+      const perches = parseFloat(value);
+      if (!isNaN(perches)) {
+        const hectares = (perches / 395.37).toFixed(4);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          initial_extent_ha: hectares
+        }));
+        return;
+      }
+    }
+    
     // Regular input handling
     setFormData(prev => ({
       ...prev,
@@ -211,20 +225,23 @@ const CreateProject = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Initial Estimated Extent (Perch)
-                  <span className="text-xs text-gray-500 ml-1">(Auto-calculated from hectares)</span>
+                  {formData.initial_extent_ha && (
+                    <span className="text-blue-600 text-xs font-normal ml-1">(Auto-calculated from hectares)</span>
+                  )}
                 </label>
                 <input
                   type="number"
                   name="initial_extent_perch"
                   value={formData.initial_extent_perch}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+                  className={`w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formData.initial_extent_ha ? 'bg-blue-50 border-blue-300' : ''
+                  }`}
                   step="0.01"
-                  placeholder="Perches (calculated automatically)"
-                  readOnly
+                  placeholder="Perches"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Conversion: 1 hectare = 395.37 perches
+                  Conversion: 1 hectare = 395.37 perches. Enter value in either field to auto-calculate the other.
                 </p>
               </div>
             </div>
