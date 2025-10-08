@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent } from 'lucide-react';
-import { saveCompensation, getCompensation } from '../api';
+import { saveCompensation, getCompensation, getPlanById } from '../api';
 
 const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_officer' }) => {
   const [compensationData, setCompensationData] = useState({});
   const [editingOwner, setEditingOwner] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({});
+  const [planData, setPlanData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -15,12 +16,29 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
   // Check if user has permission to edit
   const canEdit = userRole === 'financial_officer';
 
+  // Load plan data to get Section 38 gazette date
+  useEffect(() => {
+    if (currentPlanId) {
+      loadPlanData();
+    }
+  }, [currentPlanId]);
+
   // Load compensation data from API
   useEffect(() => {
     if (selectedLot && currentPlanId) {
       loadCompensationData();
     }
   }, [selectedLot, currentPlanId]);
+
+  const loadPlanData = async () => {
+    try {
+      const response = await getPlanById(currentPlanId);
+      console.log('Plan data response:', response.data); // Debug log
+      setPlanData(response.data);
+    } catch (error) {
+      console.error('Error loading plan data:', error);
+    }
+  };
 
   const loadCompensationData = async () => {
     if (!selectedLot || !currentPlanId) return;
@@ -556,6 +574,54 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
               </div>
             </div>
 
+            {/* Final Compensation Amount Section */}
+            <div className="space-y-6">
+              <div className="bg-green-50/80 backdrop-blur-sm rounded-xl p-6 border border-green-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800">Final Compensation Amount</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Final Compensation Amount to be Paid (Rs.) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingOwner.compensation.finalCompensationAmount || ''}
+                      onChange={(e) => handleInputChange('finalCompensationAmount', e.target.value)}
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      placeholder="e.g., 2550000"
+                      step="0.01"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter the final compensation amount to be paid</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Balance Due (Rs.)
+                    </label>
+                    <div className="w-full px-3 py-2 bg-orange-50 border border-orange-300 rounded-lg text-orange-800 font-medium">
+                      {(() => {
+                        const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                        const totalPaid = 
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
+                        const balanceDue = finalAmount - totalPaid;
+                        return balanceDue >= 0 
+                          ? `Rs. ${balanceDue.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`
+                          : `Rs. 0.00`;
+                      })()}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Automatically calculated: Final Amount - Total Paid</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Compensation Payment Details Form */}
             <div className="space-y-8">
               {/* Compensation Payment Details */}
@@ -768,54 +834,97 @@ const CompensationDetailsTab = ({ selectedLot, planId, userRole = 'financial_off
                 </div>
               </div>
 
-              {/* Interest Voucher Received */}
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
+              {/* Interest to be paid */}
+              <div className="bg-yellow-50/80 backdrop-blur-sm rounded-xl p-6 border border-yellow-200">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center">
                     <Percent className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Interest Voucher Received</h3>
+                  <h3 className="text-xl font-semibold text-gray-800">Interest to be paid</h3>
                 </div>
 
-                <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div className="col-span-2 md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="DD"
-                          maxLength="2"
-                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                          value={getPaymentDetailsValue('interestVoucher', 'received', 'day')}
-                          onChange={(e) => handlePaymentDetailsChange('interestVoucher', 'received', 'day', e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="MM"
-                          maxLength="2"
-                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                          value={getPaymentDetailsValue('interestVoucher', 'received', 'month')}
-                          onChange={(e) => handlePaymentDetailsChange('interestVoucher', 'received', 'month', e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="YY"
-                          maxLength="2"
-                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                          value={getPaymentDetailsValue('interestVoucher', 'received', 'year')}
-                          onChange={(e) => handlePaymentDetailsChange('interestVoucher', 'received', 'year', e.target.value)}
-                        />
+                <div className="space-y-4">
+                  {/* Section 38 Gazette Date Input */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4">Section 38 Gazette Date (Auto-populated from Plan)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Section 38 Gazette Date (from Plan)</label>
+                        <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
+                          {planData?.section_38_gazette_date 
+                            ? new Date(planData.section_38_gazette_date).toLocaleDateString('en-CA') // YYYY-MM-DD format
+                            : 'Not set in plan'
+                          }
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">This date is automatically taken from the plan created by Land Officer</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Interest Rate per Annum</label>
+                        <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
+                          7.00%
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Fixed annual interest rate</p>
                       </div>
                     </div>
-                    <div className="col-span-2 md:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
-                        value={getPaymentDetailsValue('interestVoucher', 'received', 'amount')}
-                        onChange={(e) => handlePaymentDetailsChange('interestVoucher', 'received', 'amount', e.target.value)}
-                      />
+                  </div>
+
+                  {/* Interest Calculation Results */}
+                  <div className="border border-yellow-300 rounded-lg p-4 bg-yellow-50/50">
+                    <h4 className="font-semibold text-gray-800 mb-4">Calculated Interest Amount</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Days Since Gazette</label>
+                        <div className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 font-medium">
+                          {(() => {
+                            const gazetteDate = planData?.section_38_gazette_date;
+                            if (!gazetteDate) return '0';
+                            const startDate = new Date(gazetteDate);
+                            const currentDate = new Date();
+                            const timeDiff = currentDate.getTime() - startDate.getTime();
+                            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                            return daysDiff > 0 ? daysDiff : 0;
+                          })()}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Principal Amount (Rs.)</label>
+                        <div className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 font-medium">
+                          {(() => {
+                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                            return `Rs. ${finalAmount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
+                          })()}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Interest to be paid (Rs.)</label>
+                        <div className="w-full px-3 py-2 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 font-bold text-lg">
+                          {(() => {
+                            const gazetteDate = planData?.section_38_gazette_date;
+                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                            
+                            if (!gazetteDate || !finalAmount) return 'Rs. 0.00';
+                            
+                            const startDate = new Date(gazetteDate);
+                            const currentDate = new Date();
+                            const timeDiff = currentDate.getTime() - startDate.getTime();
+                            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                            
+                            if (daysDiff <= 0) return 'Rs. 0.00';
+                            
+                            // Calculate daily interest: (Principal × Annual Rate × Days) / 365
+                            const annualRate = 0.07; // 7%
+                            const dailyInterest = (finalAmount * annualRate * daysDiff) / 365;
+                            
+                            return `Rs. ${dailyInterest.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
+                          })()}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Calculated daily at 7% per annum from plan gazette date</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
+                      <p className="text-sm text-blue-700">
+                        <strong>Formula:</strong> (Final Compensation Amount × 7% × Days Since Gazette) ÷ 365 days
+                      </p>
                     </div>
                   </div>
                 </div>
