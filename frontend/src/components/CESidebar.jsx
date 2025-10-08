@@ -8,6 +8,7 @@ import {
   Users,
   FolderPlus,
   GitBranch,
+  TrendingUp,
 } from "lucide-react";
 import usePendingUsersCount from "../hooks/usePendingUsersCount";
 import usePendingProjectsCount from "../hooks/usePendingProjectsCount";
@@ -21,6 +22,7 @@ const iconMap = {
   Users,
   FolderPlus,
   GitBranch,
+  TrendingUp,
 };
 
 const CESidebar = () => {
@@ -33,6 +35,7 @@ const CESidebar = () => {
   const ceNavigationItems = [
     { path: '/ce-dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
     { path: '/ce-dashboard/project-progress', label: 'Real Time Dashboard', icon: 'GitBranch' },
+    { path: '/ce-dashboard/land-valuation', label: 'Land Valuation', icon: 'TrendingUp' },
     { 
       path: '/ce-dashboard/messages', 
       label: 'Messages', 
