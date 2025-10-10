@@ -20,7 +20,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Add request logging
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  if (req.url.includes('compensation')) {
+    console.log('🎯 COMPENSATION REQUEST DETECTED:', req.method, req.url);
+    console.log('🎯 Request headers:', req.headers);
+    console.log('🎯 Request body preview:', req.body ? Object.keys(req.body) : 'No body');
+  }
   next();
 });
 
@@ -69,6 +74,9 @@ app.use("/api/land-valuation", landValuationRoutes);
 
 app.use('/api/inquiries', inquiryRoutes);
 
+// Progress routes (plan/lot progress tracking)
+const progressRoutes = require('./routes/progressRoutes');
+app.use('/api', progressRoutes);
 
 
 

@@ -1,6 +1,7 @@
 const Plan = require("../models/planModel");
 const AssignmentModel = require("../models/assignmentModel");
 const jwt = require('jsonwebtoken');
+const progressService = require('../services/progressService');
 
 // Create a new plan - Land Officers only for assigned projects
 exports.createPlan = async (req, res) => {
@@ -126,7 +127,7 @@ exports.getPlansForUser = (req, res) => {
 };
 
 // Get all plans under a project with role-based permissions
-exports.getPlansByProject = (req, res) => {
+exports.getPlansByProject = async (req, res) => {
   const { project_id } = req.params;
   const token = req.header('Authorization')?.replace('Bearer ', '');
   
@@ -147,7 +148,7 @@ exports.getPlansByProject = (req, res) => {
     console.log('User Role:', userRole);
     
     // Use role-based access control
-    Plan.getByProjectWithRole(project_id, userId, userRole, (err, rows) => {
+    Plan.getByProjectWithRole(project_id, userId, userRole, async (err, rows) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: err.message });
@@ -156,40 +157,62 @@ exports.getPlansByProject = (req, res) => {
       console.log('Raw database results:', rows);
       console.log('Number of plans found:', rows.length);
       
-      // Add role-based permissions to each plan
-      const plansWithPermissions = rows.map(plan => {
-        const basePermissions = {
-          ...plan,
-          can_edit: false,
-          can_delete: false,
-          can_add_valuation: false,
-          can_add_compensation: false,
-          can_view_all: true
-        };
+      try {
+        // Add role-based permissions and progress to each plan
+        const plansWithPermissionsAndProgress = await Promise.all(rows.map(async (plan) => {
+          const basePermissions = {
+            ...plan,
+            can_edit: false,
+            can_delete: false,
+            can_add_valuation: false,
+            can_add_compensation: false,
+            can_view_all: true
+          };
 
-        // Set permissions based on user role
-        if (userRole === 'land_officer' || userRole === 'LO') {
-          basePermissions.can_edit = plan.created_by === userId;
-          basePermissions.can_delete = plan.created_by === userId;
-        } else if (userRole === 'financial_officer' || userRole === 'FO') {
-          basePermissions.can_add_valuation = true;
-          basePermissions.can_add_compensation = true;
-        } else if (userRole === 'project_engineer' || userRole === 'PE') {
-          // Project engineers can view all plans but not edit
-          basePermissions.can_view_details = true;
-        } else if (userRole === 'chief_engineer' || userRole === 'CE') {
-          // Chief engineers have full view access
-          basePermissions.can_view_details = true;
-          basePermissions.can_approve = true;
-        }
+          // Set permissions based on user role
+          if (userRole === 'land_officer' || userRole === 'LO') {
+            basePermissions.can_edit = plan.created_by === userId;
+            basePermissions.can_delete = plan.created_by === userId;
+          } else if (userRole === 'financial_officer' || userRole === 'FO') {
+            basePermissions.can_add_valuation = true;
+            basePermissions.can_add_compensation = true;
+          } else if (userRole === 'project_engineer' || userRole === 'PE') {
+            // Project engineers can view all plans but not edit
+            basePermissions.can_view_details = true;
+          } else if (userRole === 'chief_engineer' || userRole === 'CE') {
+            // Chief engineers have full view access
+            basePermissions.can_view_details = true;
+            basePermissions.can_approve = true;
+          }
 
-        return basePermissions;
-      });
-      
-      console.log('Final plans with permissions:', plansWithPermissions);
-      console.log('=== END DEBUG ===');
-      
-      res.json(plansWithPermissions);
+          // Calculate progress for this plan
+          try {
+            console.log(`=== Calculating progress for plan ${plan.id} ===`);
+            const planProgress = await progressService.getPlanProgress(plan.id);
+            console.log(`Plan ${plan.id} progress breakdown:`, {
+              creation_progress: planProgress.creation_progress,
+              lot_average_progress: planProgress.lot_average_progress,
+              overall_percent: planProgress.overall_percent,
+              total_lots: planProgress.lots?.length || 0
+            });
+            basePermissions.progress = planProgress.overall_percent || 0;
+            console.log(`Plan ${plan.id} final progress: ${basePermissions.progress}%`);
+          } catch (progressErr) {
+            console.error(`Error calculating progress for plan ${plan.id}:`, progressErr);
+            basePermissions.progress = 0; // Default to 0 if progress calculation fails
+          }
+
+          return basePermissions;
+        }));
+        
+        console.log('Final plans with permissions and progress:', plansWithPermissionsAndProgress);
+        console.log('=== END DEBUG ===');
+        
+        res.json(plansWithPermissionsAndProgress);
+      } catch (progressError) {
+        console.error('Error calculating plan progress:', progressError);
+        return res.status(500).json({ error: 'Failed to calculate plan progress' });
+      }
     });
   } catch (error) {
     console.error('Token verification error:', error);

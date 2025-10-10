@@ -27,6 +27,11 @@ export default function ProjectPlans() {
       setLoading(true);
       const response = await api.get(`/api/plans/project/${projectId}`);
       console.log('Plans loaded:', response.data);
+      console.log('Plans with progress:', response.data.map(plan => ({ 
+        id: plan.id, 
+        plan_no: plan.plan_no, 
+        progress: plan.progress 
+      })));
       setPlans(response.data);
     } catch (error) {
       console.error('Error loading plans:', error);

@@ -103,10 +103,21 @@ const PlanProgressList = ({ plans, onPlanSelect, selectedPlan, showProgress = tr
     const planIdentifier = plan.plan_no || plan.plan_identifier || plan.cadastral_no || `Plan-${plan.id}`;
     const displayId = plan.plan_no || plan.plan_identifier ? `Plan No - ${planIdentifier}` : planIdentifier;
 
+    console.log(`PlanProgressList: Plan ${plan.id} raw progress:`, plan.progress);
+    console.log(`PlanProgressList: Plan ${plan.id} all fields:`, {
+      id: plan.id,
+      plan_no: plan.plan_no,
+      progress: plan.progress,
+      description: plan.description
+    });
+    
+    const progressValue = plan.progress || 0;
+    console.log(`PlanProgressList: Plan ${plan.id} final progress:`, progressValue);
+
     return {
       id: displayId,
       name: plan.project_name || plan.description || 'No description',
-      progress: plan.progress || 0
+      progress: progressValue
     };
   };
 

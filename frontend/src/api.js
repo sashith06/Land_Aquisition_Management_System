@@ -127,7 +127,7 @@ export const getValuation = (planId, lotId) =>
 export const getValuationsByPlan = (planId) => 
   api.get(`/api/plans/${planId}/valuations`);
 
-// ================= COMPENSATION API =================
+// ================= COMPENSATION API (Standard pattern like valuation) =================
 export const saveCompensation = (planId, lotId, compensationData) => 
   api.post(`/api/plans/${planId}/lots/${lotId}/compensation`, compensationData);
 
@@ -158,3 +158,32 @@ export const cleanupOTPs = () => OTP_API.delete("/cleanup");
 export const getUnreadInquiriesCount = () => api.get('/api/inquiries/unread-count');
 export const getRecentInquiries = (limit = 10) => api.get(`/api/inquiries/recent?limit=${limit}`);
 export const markInquiryAsRead = (inquiryId) => api.put(`/api/inquiries/${inquiryId}/read`);
+
+// ================= PAYMENT DETAILS API (New detailed system) =================
+// Save or update payment details for a specific owner
+export const savePaymentDetails = (planId, lotId, ownerNic, paymentData) => 
+  api.post(`/api/plans/${planId}/lots/${lotId}/owners/${ownerNic}/payment-details`, paymentData);
+
+// Get payment details for a specific owner
+export const getPaymentDetailsByOwner = (planId, lotId, ownerNic) => 
+  api.get(`/api/plans/${planId}/lots/${lotId}/owners/${ownerNic}/payment-details`);
+
+// Update payment details for a specific owner
+export const updatePaymentDetails = (planId, lotId, ownerNic, paymentData) => 
+  api.put(`/api/plans/${planId}/lots/${lotId}/owners/${ownerNic}/payment-details`, paymentData);
+
+// Delete payment details for a specific owner
+export const deletePaymentDetails = (planId, lotId, ownerNic) => 
+  api.delete(`/api/plans/${planId}/lots/${lotId}/owners/${ownerNic}/payment-details`);
+
+// Get all payment details for a specific lot
+export const getPaymentDetailsByLot = (planId, lotId) => 
+  api.get(`/api/plans/${planId}/lots/${lotId}/compensation`);
+
+// Get all payment details for a specific plan
+export const getPaymentDetailsByPlan = (planId) => 
+  api.get(`/api/plans/${planId}/compensations`);
+
+// Get payment summary for a specific plan
+export const getPaymentSummary = (planId) => 
+  api.get(`/api/plans/${planId}/compensations/summary`);

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { navigationItems } from "../data/mockData";
 import useMessageCount from "../hooks/useMessageCount";
+import { checkProgressChartsViewPermission } from "../utils/accessControlTest";
 
 const iconMap = {
   LayoutDashboard,
@@ -23,9 +24,40 @@ const iconMap = {
 const Sidebar = () => {
   const location = useLocation();
   const { unreadCount } = useMessageCount();
+  const [userRole, setUserRole] = useState('');
 
-  // Add message count to navigation items
-  const updatedNavigationItems = navigationItems.map(item => {
+  // Get user role from token
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUserRole(payload.role || '');
+      }
+    } catch (error) {
+      console.error('Error getting user role:', error);
+    }
+  }, []);
+
+  // Filter navigation items based on user role
+  const getFilteredNavigationItems = () => {
+    return navigationItems.filter(item => {
+      // Hide Real Time Dashboard for users who don't have progress chart access
+      if (item.path === '/dashboard/project-progress') {
+        // If userRole is not yet loaded, hide the item by default for security
+        if (!userRole) return false;
+        
+        const hasAccess = checkProgressChartsViewPermission(userRole);
+        // Debug logging (can be removed in production)
+        console.log('Progress Charts Access Check:', { userRole, hasAccess, item: item.label });
+        return hasAccess;
+      }
+      return true;
+    });
+  };
+
+  // Add message count to filtered navigation items
+  const updatedNavigationItems = getFilteredNavigationItems().map(item => {
     if (item.path === '/dashboard/messages') {
       return {
         ...item,
