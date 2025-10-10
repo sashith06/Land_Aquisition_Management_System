@@ -37,7 +37,7 @@ const ProjectProgress = () => {
   
   // Filter states
   const [filters, setFilters] = useState({
-    status: 'all',
+    status: 'pending', // Default to pending (no "all" option)
     dateFrom: '',
     dateTo: '',
     minProgress: '',
@@ -45,13 +45,26 @@ const ProjectProgress = () => {
     projectId: '',
     searchTerm: ''
   });
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // Chart filter states
   const [chartFilters, setChartFilters] = useState({
-    projects: { status: 'all' },
-    plans: { status: 'all', projectId: 'all' },
-    lots: { status: 'all', projectId: 'all', planId: 'all', chartType: 'bar' }
+    projects: { 
+      status: 'all', 
+      progressRange: 'all', 
+      chartType: 'bar' 
+    },
+    plans: { 
+      projectId: 'all', 
+      status: 'all', 
+      chartType: 'bar' 
+    },
+    lots: { 
+      projectId: 'all', 
+      planId: 'all', 
+      status: 'all', 
+      chartType: 'bar' 
+    }
   });
 
   // Fetch project hierarchy data
@@ -60,7 +73,7 @@ const ProjectProgress = () => {
       setLoading(true);
       const params = new URLSearchParams();
       
-      if (filters.status !== 'all') params.append('status', filters.status);
+      if (filters.status) params.append('status', filters.status);
       if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
       if (filters.dateTo) params.append('dateTo', filters.dateTo);
       if (filters.minProgress) params.append('minProgress', filters.minProgress);
@@ -116,7 +129,7 @@ const ProjectProgress = () => {
 
   const resetFilters = () => {
     setFilters({
-      status: 'all',
+      status: 'pending', // Default to pending
       dateFrom: '',
       dateTo: '',
       minProgress: '',
@@ -335,13 +348,11 @@ const ProjectProgress = () => {
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">All Statuses</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
                   <option value="on_hold">On Hold</option>
-                  <option value="rejected">Rejected</option>
                 </select>
               </div>
 
@@ -504,24 +515,45 @@ const ProjectProgress = () => {
               <h3 className="text-lg font-semibold text-gray-900">Project Progress</h3>
               <div className="flex items-center gap-3">
                 <select
-                  value={chartFilters.projects.status}
+                  value={chartFilters.projects.status || 'all'}
                   onChange={(e) => handleChartFilterChange('projects', 'status', e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">All Status</option>
-                  <option value="completed">Completed</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="not_started">Not Started</option>
-                  <option value="pending">Pending</option>
+                  
+                  
                   <option value="approved">Approved</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
                   <option value="on_hold">On Hold</option>
+                </select>
+                <select
+                  value={chartFilters.projects.progressRange || 'all'}
+                  onChange={(e) => handleChartFilterChange('projects', 'progressRange', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Progress</option>
+                  <option value="0-25">0-25%</option>
+                  <option value="26-50">26-50%</option>
+                  <option value="51-75">51-75%</option>
+                  <option value="76-100">76-100%</option>
+                </select>
+                <select
+                  value={chartFilters.projects.chartType || 'bar'}
+                  onChange={(e) => handleChartFilterChange('projects', 'chartType', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="bar">Bar Chart</option>
+                  <option value="doughnut">Doughnut Chart</option>
+                  <option value="line">Line Chart</option>
                 </select>
               </div>
             </div>
             <ProjectProgressChart 
-              data={chartData.projects} 
-              filterBy={chartFilters.projects.status}
               title="Project Completion Progress"
+              height={350}
+              filterBy={chartFilters.projects.status}
+              progressRange={chartFilters.projects.progressRange}
+              chartType={chartFilters.projects.chartType}
             />
           </div>
 
@@ -529,36 +561,13 @@ const ProjectProgress = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Plan Progress</h3>
-              <div className="flex items-center gap-3">
-                <select
-                  value={chartFilters.plans.projectId}
-                  onChange={(e) => handleChartFilterChange('plans', 'projectId', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Projects</option>
-                  {chartData.projects.map(project => (
-                    <option key={project.id} value={project.id}>{project.name}</option>
-                  ))}
-                </select>
-                <select
-                  value={chartFilters.plans.status}
-                  onChange={(e) => handleChartFilterChange('plans', 'status', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="completed">Completed</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="not_started">Not Started</option>
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                </select>
-              </div>
+  
             </div>
             <PlanProgressChart 
-              data={chartData.plans}
-              filterBy={chartFilters.plans.status}
+              height={350}
               projectFilter={chartFilters.plans.projectId}
-              title="Plan Completion Progress"
+              filterBy={chartFilters.plans.status}
+              chartType={chartFilters.plans.chartType}
             />
           </div>
 
@@ -590,15 +599,16 @@ const ProjectProgress = () => {
                     ))}
                 </select>
                 <select
-                  value={chartFilters.lots.status}
+                  value={chartFilters.lots.status || 'all'}
                   onChange={(e) => handleChartFilterChange('lots', 'status', e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">All Status</option>
-                  <option value="completed">Completed</option>
-                  <option value="in_progress">In Progress</option>
+                  
+                  
                   <option value="approved">Approved</option>
-                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="surveyed">Surveyed</option>
                 </select>
                 <select
                   value={chartFilters.lots.chartType}
@@ -607,6 +617,7 @@ const ProjectProgress = () => {
                 >
                   <option value="bar">Bar Chart</option>
                   <option value="doughnut">Doughnut Chart</option>
+                  <option value="line">Line Chart</option>
                 </select>
               </div>
             </div>
@@ -617,6 +628,7 @@ const ProjectProgress = () => {
               planFilter={chartFilters.lots.planId}
               chartType={chartFilters.lots.chartType}
               title="Lot Completion Progress"
+              height={350}
             />
           </div>
         </div>

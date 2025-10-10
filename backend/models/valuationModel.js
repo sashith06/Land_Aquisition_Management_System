@@ -4,13 +4,22 @@ const Valuation = {};
 
 // Create or update valuation details for a lot
 Valuation.createOrUpdate = (valuationData, callback) => {
+  console.log('=== MODEL DEBUG ===');
+  console.log('Valuation data received:', valuationData);
+  console.log('=== END MODEL DEBUG ===');
+  
   // First check if valuation exists
   const checkSql = "SELECT id FROM lot_valuations WHERE lot_id = ? AND plan_id = ?";
   
+  console.log('Executing check query:', checkSql, 'with params:', [valuationData.lot_id, valuationData.plan_id]);
+  
   db.query(checkSql, [valuationData.lot_id, valuationData.plan_id], (err, results) => {
     if (err) {
+      console.error('Error in check query:', err);
       return callback(err);
     }
+    
+    console.log('Check query results:', results);
     
     if (results.length > 0) {
       // Update existing valuation
@@ -34,12 +43,22 @@ Valuation.createOrUpdate = (valuationData, callback) => {
         valuationData.assessment_date || new Date().toISOString().split('T')[0], // Use current date if not provided
         valuationData.assessor_name,
         valuationData.notes,
-        valuationData.status || 'completed',
+        valuationData.status || 'draft',
         valuationData.updated_by,
         results[0].id
       ];
       
-      db.query(updateSql, updateParams, callback);
+      console.log('Executing UPDATE query:', updateSql);
+      console.log('Update params:', updateParams);
+      
+      db.query(updateSql, updateParams, (updateErr, updateResult) => {
+        if (updateErr) {
+          console.error('Update query error:', updateErr);
+        } else {
+          console.log('Update query success:', updateResult);
+        }
+        callback(updateErr, updateResult);
+      });
     } else {
       // Create new valuation
       const insertSql = `
@@ -63,11 +82,21 @@ Valuation.createOrUpdate = (valuationData, callback) => {
         valuationData.assessment_date || new Date().toISOString().split('T')[0], // Use current date if not provided
         valuationData.assessor_name,
         valuationData.notes,
-        valuationData.status || 'completed',
+        valuationData.status || 'draft',
         valuationData.created_by
       ];
       
-      db.query(insertSql, insertParams, callback);
+      console.log('Executing INSERT query:', insertSql);
+      console.log('Insert params:', insertParams);
+      
+      db.query(insertSql, insertParams, (insertErr, insertResult) => {
+        if (insertErr) {
+          console.error('Insert query error:', insertErr);
+        } else {
+          console.log('Insert query success:', insertResult);
+        }
+        callback(insertErr, insertResult);
+      });
     }
   });
 };

@@ -135,7 +135,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="project-details/:projectId" element={<FOProjectDetailsPage />} />
         <Route path="financial-details/:projectId" element={<FinancialDetails />} />
-        <Route path="project-progress" element={<ProjectProgress />} />
+        {/* project-progress route removed - only available to PE and CE */}
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
         <Route path="profile" element={<Profile />} />
@@ -158,7 +158,7 @@ export default function AppRoutes() {
         <Route path="plan/:planId/lots" element={<LotsPage />} />
         <Route path="plan/:planId/lots/:lotId" element={<LotDetail />} />
         <Route path="profile" element={<Profile />} />
-        <Route path="project-progress" element={<ProjectProgress />} />
+        {/* project-progress route removed - only available to PE and CE */}
         <Route path="messages" element={<Messages />} />
         <Route path="reports" element={<Reports />} />
       </Route>

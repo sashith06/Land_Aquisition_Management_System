@@ -10,6 +10,7 @@ const createOrUpdateValuation = (req, res) => {
   console.log('User Role:', req.user?.role);
   console.log('createOrUpdateValuation called with:', { plan_id, lot_id });
   console.log('Request Body:', req.body);
+  console.log('Original status from frontend:', req.body.status);
   console.log('=== END DEBUG ===');
   
   // Validate parameters
@@ -33,43 +34,111 @@ const createOrUpdateValuation = (req, res) => {
     });
   }
 
+  // Helper function to safely parse float values
+  const safeParseFloat = (value, defaultValue = 0) => {
+    if (value === null || value === undefined || value === '') {
+      return defaultValue;
+    }
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? defaultValue : parsed;
+  };
+
+  // Helper function to validate and convert status
+  const validateStatus = (status) => {
+    const validStatuses = ['draft', 'submitted', 'approved', 'rejected'];
+    if (!status || !validStatuses.includes(status)) {
+      return 'draft'; // Default to draft if invalid
+    }
+    return status;
+  };
+
+  // Explicitly define valuation data instead of using spread operator
   const valuationData = {
     plan_id: parsedPlanId,
     lot_id: parsedLotId,
-    ...req.body,
+    statutorily_amount: safeParseFloat(req.body.statutorily_amount),
+    addition_amount: safeParseFloat(req.body.addition_amount),
+    development_amount: safeParseFloat(req.body.development_amount),
+    court_amount: safeParseFloat(req.body.court_amount),
+    thirty_three_amount: safeParseFloat(req.body.thirty_three_amount),
+    board_of_review_amount: safeParseFloat(req.body.board_of_review_amount),
+    assessment_date: req.body.assessment_date || new Date().toISOString().split('T')[0],
+    assessor_name: req.body.assessor_name || null,
+    notes: req.body.notes || null,
+    status: validateStatus(req.body.status),
     created_by: req.user.id,
     updated_by: req.user.id
   };
 
+  console.log('Status validation result:', {
+    original: req.body.status,
+    converted: valuationData.status
+  });
+
   // Calculate total value with better error handling
   try {
     const totalValue = (
-      parseFloat(valuationData.statutorily_amount || 0) +
-      parseFloat(valuationData.addition_amount || 0) +
-      parseFloat(valuationData.development_amount || 0) +
-      parseFloat(valuationData.court_amount || 0) +
-      parseFloat(valuationData.thirty_three_amount || 0) +
-      parseFloat(valuationData.board_of_review_amount || 0)
+      valuationData.statutorily_amount +
+      valuationData.addition_amount +
+      valuationData.development_amount +
+      valuationData.court_amount +
+      valuationData.thirty_three_amount +
+      valuationData.board_of_review_amount
     );
     
     valuationData.total_value = totalValue;
+    
+    console.log('Calculated total value:', totalValue);
+    console.log('Final valuation data to save:', valuationData);
   } catch (error) {
     console.error('Error calculating total value:', error);
     return res.status(400).json({
       success: false,
-      message: "Error calculating total value. Please check numeric inputs."
+      message: "Error calculating total value. Please check numeric inputs.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 
   console.log('Saving valuation data:', valuationData);
 
+  // Validate that we have valid numbers for all amount fields
+  const numericFields = [
+    'statutorily_amount', 'addition_amount', 'development_amount', 
+    'court_amount', 'thirty_three_amount', 'board_of_review_amount', 'total_value'
+  ];
+  
+  for (const field of numericFields) {
+    if (isNaN(valuationData[field])) {
+      console.error(`Invalid numeric value for ${field}:`, valuationData[field]);
+      return res.status(400).json({
+        success: false,
+        message: `Invalid numeric value for ${field}`,
+        field: field,
+        value: valuationData[field]
+      });
+    }
+  }
+
   Valuation.createOrUpdate(valuationData, (err, result) => {
     if (err) {
-      console.error("Error saving valuation:", err);
+      console.error("Error saving valuation - Full error object:", err);
+      console.error("Error message:", err.message);
+      console.error("Error code:", err.code);
+      console.error("Error errno:", err.errno);
+      console.error("Error sqlState:", err.sqlState);
+      console.error("Error sqlMessage:", err.sqlMessage);
+      console.error("Error stack:", err.stack);
+      
       return res.status(500).json({ 
         success: false, 
         message: "Error saving valuation",
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        error: process.env.NODE_ENV === 'development' ? {
+          message: err.message,
+          code: err.code,
+          errno: err.errno,
+          sqlState: err.sqlState,
+          sqlMessage: err.sqlMessage
+        } : undefined
       });
     }
 
@@ -159,8 +228,34 @@ const getValuationsByPlanId = (req, res) => {
   });
 };
 
+// Test database connection and table structure
+const testDatabase = (req, res) => {
+  const db = require("../config/db");
+  
+  // Test table structure
+  const sql = "DESCRIBE lot_valuations";
+  
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Database test error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database test failed",
+        error: err.message
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: "Database connection successful",
+      tableStructure: results
+    });
+  });
+};
+
 module.exports = {
   createOrUpdateValuation,
   getValuationByLotId,
-  getValuationsByPlanId
+  getValuationsByPlanId,
+  testDatabase
 };

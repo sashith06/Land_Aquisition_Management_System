@@ -11,7 +11,8 @@ import {
   RefreshCw,
   AlertCircle,
   Wifi,
-  WifiOff
+  WifiOff,
+  ShieldX
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -20,7 +21,11 @@ import {
   DoughnutChart, 
   MixedChart 
 } from '../components/charts';
+// Progress chart imports - only loaded when needed
+const ProjectProgressChart = React.lazy(() => import('../components/charts/ProjectProgressChart'));
+const PlanProgressChart = React.lazy(() => import('../components/charts/PlanProgressChart'));
 import { useDashboardData } from '../hooks/useDashboardData';
+import { checkProgressChartsViewPermission } from '../utils/accessControlTest';
 
 const RealtimeDashboard = () => {
   const { 
@@ -32,6 +37,27 @@ const RealtimeDashboard = () => {
   } = useDashboardData(30000); // Update every 30 seconds
   
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userRole, setUserRole] = useState('');
+  const [hasAccess, setHasAccess] = useState(false);
+
+  // Get user role and check access
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const role = payload.role || '';
+        console.log('RealtimeDashboard: User role detected:', role);
+        setUserRole(role);
+        const access = checkProgressChartsViewPermission(role);
+        console.log('RealtimeDashboard: Progress charts access:', access);
+        setHasAccess(access);
+      }
+    } catch (error) {
+      console.error('Error getting user role:', error);
+      setHasAccess(false);
+    }
+  }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -133,6 +159,32 @@ const RealtimeDashboard = () => {
     );
   }
 
+  // Access control - only allow project engineers and chief engineers
+  if (!hasAccess) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <ShieldX className="h-8 w-8 text-amber-600" />
+              <h2 className="text-xl font-semibold text-amber-800">Access Restricted</h2>
+            </div>
+            <div className="text-amber-700 mb-4">
+              <p className="mb-2">This page is only available to:</p>
+              <ul className="list-disc list-inside ml-4 space-y-1">
+                <li>Project Engineers</li>
+                <li>Chief Engineers</li>
+              </ul>
+            </div>
+            <p className="text-sm text-amber-600">
+              Your current role: <span className="font-medium">{userRole || 'Unknown'}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -207,6 +259,35 @@ const RealtimeDashboard = () => {
             height={350}
           />
         </div>
+
+        {/* Progress Charts Section - Only for Project Engineers and Chief Engineers */}
+        {hasAccess && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+            {/* Project Progress Chart */}
+            <React.Suspense fallback={
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-[400px] flex items-center justify-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            }>
+              <ProjectProgressChart
+                title="Individual Project Progress"
+                height={400}
+              />
+            </React.Suspense>
+            
+            {/* Plan Progress Chart */}
+            <React.Suspense fallback={
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-[400px] flex items-center justify-center">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            }>
+              <PlanProgressChart
+                title="Plan Progress"
+                height={400}
+              />
+            </React.Suspense>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Project Status Distribution */}

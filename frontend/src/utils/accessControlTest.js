@@ -53,25 +53,40 @@ export const ROLE_PERMISSIONS = {
   FINANCIAL_OFFICER: {
     canEditCompensation: true,
     canViewCompensation: true,
+    canViewProgressCharts: false,
     roleNames: ['financial_officer', 'Financial Officer', 'FO']
   },
   PROJECT_ENGINEER: {
     canEditCompensation: false,
     canViewCompensation: true,
+    canViewProgressCharts: true,
     roleNames: ['project_engineer', 'Project Engineer', 'PE']
   },
   CHIEF_ENGINEER: {
     canEditCompensation: false,
     canViewCompensation: true,
+    canViewProgressCharts: true,
     roleNames: ['chief_engineer', 'Chief Engineer', 'CE']
   },
   LAND_OFFICER: {
     canEditCompensation: false,
     canViewCompensation: true,
+    canViewProgressCharts: false,
     roleNames: ['land_officer', 'Land Officer', 'LO']
   }
 };
 
 export const checkCompensationEditPermission = (userRole) => {
   return ROLE_PERMISSIONS.FINANCIAL_OFFICER.roleNames.includes(userRole);
+};
+
+export const checkProgressChartsViewPermission = (userRole) => {
+  if (!userRole) return false;
+  
+  // Check if user role matches project engineer or chief engineer
+  // Handle both short codes (PE, CE) and full names (project_engineer, chief_engineer)
+  const projectEngineerRoles = [...ROLE_PERMISSIONS.PROJECT_ENGINEER.roleNames, 'PE'];
+  const chiefEngineerRoles = [...ROLE_PERMISSIONS.CHIEF_ENGINEER.roleNames, 'CE'];
+  
+  return projectEngineerRoles.includes(userRole) || chiefEngineerRoles.includes(userRole);
 };

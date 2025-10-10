@@ -64,6 +64,22 @@ const ProjectList = ({ projects, onSelect, selectedProject, showActions = false,
                 </div>
               </div>
 
+              {/* Project Progress */}
+              {project.progress !== undefined && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-gray-600">Project Progress</span>
+                    <span className="font-semibold text-blue-600">{project.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-blue-400 to-indigo-500 h-2 rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${project.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
               {/* Created by Project Engineer */}
               <p className="text-xs text-gray-400 mt-1">
                 Created by: {project.creator_name || 'Project Engineer'}

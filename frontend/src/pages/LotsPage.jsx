@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { MapPin, CheckCircle2, Clock, AlertCircle, TrendingUp, Users, DollarSign, FileText } from "lucide-react";
 import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
@@ -16,6 +16,7 @@ const tabs = [
   "Compensation Details",
   "Land Details",
   "Inquiries",
+  "Progress",
 ];
 
 // Component to show owner details with their individual documents
@@ -211,6 +212,9 @@ const LotsPage = () => {
  const [inquiries, setInquiries] = useState([]);
  const [inquiriesLoading, setInquiriesLoading] = useState(false);
  const [showLandDetailsForm, setShowLandDetailsForm] = useState(false);
+ const [lotProgress, setLotProgress] = useState(null);
+ const [planProgress, setPlanProgress] = useState(null);
+ const [progressLoading, setProgressLoading] = useState(false);
 
 
 
@@ -344,6 +348,13 @@ const LotsPage = () => {
     }
   }, [activeTab, selectedLot]);
 
+  // Load progress when Progress tab is selected
+  useEffect(() => {
+    if (activeTab === "Progress" && selectedLot) {
+      fetchLotProgress();
+    }
+  }, [activeTab, selectedLot]);
+
 
 
   // Handle saving land details
@@ -398,6 +409,42 @@ const LotsPage = () => {
       setInquiries([]);
     } finally {
       setInquiriesLoading(false);
+    }
+  };
+
+  // Fetch plan progress
+  const fetchPlanProgress = async () => {
+    try {
+      const response = await api.get(`/api/progress/plan/${planId}`);
+      setPlanProgress(response.data.data);
+      console.log('Plan Progress Data:', response.data.data);
+    } catch (error) {
+      console.error('Error fetching plan progress:', error);
+      setPlanProgress(null);
+    }
+  };
+
+  // Fetch progress for selected lot
+  const fetchLotProgress = async () => {
+    if (!selectedLot) return;
+
+    try {
+      setProgressLoading(true);
+      // Fetch both plan and lot progress
+      await Promise.all([
+        fetchPlanProgress(),
+        (async () => {
+          const lotId = selectedLot.backend_id || selectedLot.id;
+          const response = await api.get(`/api/progress/plan/${planId}/lot/${lotId}`);
+          setLotProgress(response.data.data);
+        })()
+      ]);
+    } catch (error) {
+      console.error('Error fetching progress:', error);
+      setLotProgress(null);
+      setPlanProgress(null);
+    } finally {
+      setProgressLoading(false);
     }
   };
 
@@ -994,7 +1041,8 @@ const LotsPage = () => {
             <CompensationDetailsTab 
               selectedLot={selectedLot} 
               planId={planId} 
-              userRole={userRole} 
+              userRole={userRole}
+              landDetails={landDetails}
             />
           )}
 
@@ -1212,6 +1260,292 @@ const LotsPage = () => {
               ) : (
                 <div className="text-center text-gray-500 py-8">
                   <p>Please select a lot to view inquiries.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "Progress" && (
+            <div>
+              {selectedLot ? (
+                progressLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                      <span className="text-gray-600">Loading progress data...</span>
+                    </div>
+                  </div>
+                ) : (lotProgress || planProgress) ? (
+                  <div className="space-y-6">
+                    {/* Plan Creation Progress Card */}
+                    {planProgress && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200 shadow-md">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-3 bg-green-500 rounded-lg">
+                              <FileText className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-bold text-gray-900">Plan Creation Progress</h2>
+                              <p className="text-sm text-gray-600">Basic plan information and gazette details</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-green-600">{planProgress.creation_progress}%</div>
+                            <div className="text-sm text-gray-600">of 10% max</div>
+                          </div>
+                        </div>
+
+                        {/* Plan Creation Progress Bar */}
+                        <div className="mb-4">
+                          <div className="w-full bg-white rounded-full h-3 shadow-inner">
+                            <div
+                              className="h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${(planProgress.creation_progress / 10) * 100}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-xs text-gray-600 mt-1">
+                            <span>Plan Creation</span>
+                            <span>{planProgress.creation_progress}/10%</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Breakdown */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <span>Plan No/Cadastral No (2%)</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <span>Section 07 Gazette (3%)</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <span>Section 38 Gazette (3%)</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <span>Divisional Secretary (1%)</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <span>Section 5 Gazette No (1%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Overall Progress Card */}
+                    {lotProgress && (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 shadow-md">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="p-3 bg-blue-500 rounded-lg">
+                              <TrendingUp className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                              <h2 className="text-2xl font-bold text-gray-900">Lot Progress</h2>
+                              <p className="text-sm text-gray-600">Lot {selectedLot.lot_no} - {lotProgress.total_owners || 0} owner(s)</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-4xl font-bold text-blue-600">{lotProgress.overall_percent}%</div>
+                            <div className="text-sm text-gray-600">Complete</div>
+                          </div>
+                        </div>
+
+                      {/* Progress Bar */}
+                      <div className="mb-4">
+                        <div className="w-full bg-white rounded-full h-4 shadow-inner">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-4 rounded-full transition-all duration-500"
+                            style={{ width: `${lotProgress.overall_percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+
+                      {/* Status Message */}
+                      {lotProgress.status_message && (
+                        <div className={`p-4 rounded-lg border ${
+                          lotProgress.status_message === 'All sections complete'
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-yellow-50 border-yellow-200'
+                        }`}>
+                          <div className="flex items-center space-x-2">
+                            {lotProgress.status_message === 'All sections complete' ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <AlertCircle className="w-5 h-5 text-yellow-600" />
+                            )}
+                            <p className={`font-medium ${
+                              lotProgress.status_message === 'All sections complete'
+                                ? 'text-green-800'
+                                : 'text-yellow-800'
+                            }`}>
+                              {lotProgress.status_message}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                        {/* Last Completed Section */}
+                        {lotProgress.last_completed_section && (
+                          <div className="mt-4 flex items-center space-x-2 text-sm text-gray-700">
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <span>Last completed: <strong>{lotProgress.last_completed_section}</strong></span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Sections Progress */}
+                    {lotProgress && (
+                    <div className="space-y-4">
+                      <h3 className="text-xl font-bold text-gray-900 mb-4">Section-wise Progress</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {lotProgress.sections?.map((section, idx) => {
+                          const getStatusColor = (status) => {
+                            switch (status) {
+                              case "complete":
+                                return "border-green-500 bg-green-50";
+                              case "partial":
+                                return "border-yellow-500 bg-yellow-50";
+                              case "not_started":
+                                return "border-red-500 bg-red-50";
+                              case "blocked":
+                                return "border-gray-400 bg-gray-100";
+                              default:
+                                return "border-gray-300 bg-gray-50";
+                            }
+                          };
+
+                          const getStatusIcon = (status) => {
+                            switch (status) {
+                              case "complete":
+                                return <CheckCircle2 className="w-6 h-6 text-green-600" />;
+                              case "partial":
+                                return <Clock className="w-6 h-6 text-yellow-600" />;
+                              case "not_started":
+                                return <AlertCircle className="w-6 h-6 text-red-600" />;
+                              case "blocked":
+                                return <div className="w-6 h-6 text-gray-500 flex items-center justify-center">🔒</div>;
+                              default:
+                                return <AlertCircle className="w-6 h-6 text-gray-600" />;
+                            }
+                          };
+
+                          const getSectionIcon = (sectionName) => {
+                            switch (sectionName) {
+                              case "Owner Details":
+                                return <Users className="w-5 h-5" />;
+                              case "Land Details":
+                                return <MapPin className="w-5 h-5" />;
+                              case "Valuation":
+                                return <TrendingUp className="w-5 h-5" />;
+                              case "Compensation":
+                                return <DollarSign className="w-5 h-5" />;
+                              default:
+                                return <FileText className="w-5 h-5" />;
+                            }
+                          };
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`border-2 rounded-xl p-5 shadow-sm hover:shadow-md transition-all ${getStatusColor(section.status)}`}
+                            >
+                              {/* Section Header */}
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                  <div className={`p-2 rounded-lg ${
+                                    section.status === "complete" ? "bg-green-200" :
+                                    section.status === "partial" ? "bg-yellow-200" :
+                                    section.status === "blocked" ? "bg-gray-200" : "bg-red-200"
+                                  }`}>
+                                    {getSectionIcon(section.name)}
+                                  </div>
+                                  <h4 className="font-bold text-gray-900 text-lg">{section.name}</h4>
+                                </div>
+                                <div>
+                                  {getStatusIcon(section.status)}
+                                </div>
+                              </div>
+
+                              {/* Progress Percentage */}
+                              <div className="mb-3">
+                                <div className="flex items-center justify-between text-sm mb-2">
+                                  <span className="text-gray-700 font-medium">Completion</span>
+                                  <span className="font-bold text-gray-900 text-lg">
+                                    {Math.round(section.completeness * 100)}%
+                                  </span>
+                                </div>
+                                <div className="w-full bg-white rounded-full h-3 shadow-inner">
+                                  <div
+                                    className={`h-3 rounded-full transition-all duration-500 ${
+                                      section.status === "complete"
+                                        ? "bg-gradient-to-r from-green-400 to-green-600"
+                                        : section.status === "partial"
+                                        ? "bg-gradient-to-r from-yellow-400 to-yellow-600"
+                                        : section.status === "blocked"
+                                        ? "bg-gradient-to-r from-gray-400 to-gray-500"
+                                        : "bg-gradient-to-r from-red-400 to-red-600"
+                                    }`}
+                                    style={{ width: `${section.completeness * 100}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              {/* Missing Fields */}
+                              {section.missing && section.missing.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-gray-300">
+                                  <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <AlertCircle className="w-4 h-4 mr-1" />
+                                    Missing Fields:
+                                  </p>
+                                  <ul className="space-y-1">
+                                    {section.missing.map((field, fieldIdx) => (
+                                      <li
+                                        key={fieldIdx}
+                                        className="text-sm text-red-700 flex items-center font-medium"
+                                      >
+                                        <span className="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
+                                        {field}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Complete Badge */}
+                              {section.status === "complete" && section.missing.length === 0 && (
+                                <div className="mt-4 pt-4 border-t border-green-300">
+                                  <div className="flex items-center text-green-700">
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    <span className="text-sm font-semibold">All fields complete</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-12">
+                    <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No Progress Data Available</h3>
+                    <p className="text-gray-600">Unable to load progress information for this lot.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center text-gray-500 py-12">
+                  <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Lot Selected</h3>
+                  <p className="text-gray-600">Please select a lot to view progress tracking.</p>
                 </div>
               )}
             </div>

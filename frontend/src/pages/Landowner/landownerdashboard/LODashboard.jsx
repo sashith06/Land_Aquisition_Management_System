@@ -13,8 +13,15 @@ import {
   Paperclip,
   Phone,
   MapPin,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  Users,
+  DollarSign,
 } from "lucide-react";
 import Navigation from "../../../components/Navigation";
+import api from "../../../api";
 
 const NAVBAR_HEIGHT = "64px"; // define navbar height
 const BACKEND_URL = 'http://localhost:5000';
@@ -38,6 +45,8 @@ function LODashboard() {
   const [myInquiriesLoading, setMyInquiriesLoading] = useState(false);
   const [documents, setDocuments] = useState({ id_card: null, bank_book: null });
   const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [lotProgressData, setLotProgressData] = useState({});
+  const [progressLoading, setProgressLoading] = useState(false);
 
   useEffect(() => {
     fetchLandownerData();
@@ -96,6 +105,19 @@ function LODashboard() {
       setLoading(false);
     }
   };
+
+  // Helper function to get progress data for a specific lot
+  const getLotProgressData = (projectName, planName, lotId) => {
+    const key = `${projectName}-${planName}-${lotId}`;
+    return lotProgressData[key] || null;
+  };
+
+  // Fetch progress data when lots data is available
+  useEffect(() => {
+    if (lotsData && Object.keys(lotsData).length > 0 && !loading) {
+      fetchAllLotsProgress();
+    }
+  }, [lotsData, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFileUpload = (e) => {
     setAttachedFiles([...attachedFiles, ...Array.from(e.target.files)]);
@@ -233,6 +255,57 @@ function LODashboard() {
     }
   };
 
+  // Fetch progress for a specific lot
+  const fetchLotProgress = async (planId, lotId) => {
+    try {
+      const response = await api.get(`/api/progress/plan/${planId}/lot/${lotId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching lot progress:', error);
+      return null;
+    }
+  };
+
+  // Fetch progress for all lots
+  const fetchAllLotsProgress = async () => {
+    if (!lotsData || Object.keys(lotsData).length === 0) return;
+
+    try {
+      setProgressLoading(true);
+      const progressPromises = [];
+
+      // Create promises for all lots
+      Object.entries(lotsData).forEach(([projectName, plans]) => {
+        Object.entries(plans).forEach(([planName, lots]) => {
+          lots.forEach((lot) => {
+            const promise = fetchLotProgress(lot.planId, lot.lotId).then(progressData => ({
+              key: `${projectName}-${planName}-${lot.lotId}`,
+              data: progressData
+            }));
+            progressPromises.push(promise);
+          });
+        });
+      });
+
+      // Wait for all progress data to be fetched
+      const progressResults = await Promise.all(progressPromises);
+      
+      // Create progress data object
+      const progressObj = {};
+      progressResults.forEach(result => {
+        if (result.data) {
+          progressObj[result.key] = result.data;
+        }
+      });
+
+      setLotProgressData(progressObj);
+    } catch (error) {
+      console.error('Error fetching all lots progress:', error);
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -304,6 +377,34 @@ function LODashboard() {
                         <p className="text-sm text-gray-600 mt-2 font-medium">
                           Extent: {lot.advanceTracingExtentHa || lot.extentHa} ha {lot.advanceTracingExtentPerch || lot.extentPerch} perch
                         </p>
+                        
+                        {/* Progress indicator for lot card */}
+                        {(() => {
+                          const progressData = getLotProgressData(projectName, planName, lot.lotId);
+                          if (progressData) {
+                            return (
+                              <div className="mt-3">
+                                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                  <span>Progress</span>
+                                  <span className="font-semibold">{progressData.overall_percent}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                  <div
+                                    className="bg-gradient-to-r from-blue-400 to-indigo-500 h-1.5 rounded-full transition-all duration-300"
+                                    style={{ width: `${progressData.overall_percent}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return progressLoading ? (
+                            <div className="mt-3 flex items-center justify-center">
+                              <div className="animate-spin rounded-full h-3 w-3 border border-gray-300 border-t-blue-500"></div>
+                              <span className="ml-1 text-xs text-gray-500">Loading...</span>
+                            </div>
+                          ) : null;
+                        })()}
+                        
                         {selectedLot?.lot?.lotId === lot.lotId && (
                           <div className="mt-2 text-orange-600 text-sm font-semibold">✓ Selected</div>
                         )}
@@ -322,12 +423,50 @@ function LODashboard() {
                   <p className="text-gray-600 text-sm mb-2 font-medium">{selectedLot.plan}</p>
                   <p className="text-xl font-bold text-gray-900 mb-3 tracking-tight">Lot No: {selectedLot.lot.lotNo}</p>
 
-                  <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                    <div
-                      className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${selectedLot.lot.compensationStatus === 'completed' ? 100 : selectedLot.lot.compensationStatus === 'in_progress' ? 60 : 25}%` }}
-                    ></div>
-                  </div>
+                  {/* Enhanced Progress Section */}
+                  {(() => {
+                    const progressData = getLotProgressData(selectedLot.project, selectedLot.plan, selectedLot.lot.lotId);
+                    if (progressLoading) {
+                      return (
+                        <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                            <span className="ml-2 text-gray-600">Loading progress...</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    if (!progressData) {
+                      return (
+                        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                          <div className="bg-gradient-to-r from-gray-400 to-gray-500 h-2 rounded-full w-0"></div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 mb-4 border border-blue-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                            <h3 className="font-semibold text-gray-900">Progress Status</h3>
+                          </div>
+                          <div className="text-2xl font-bold text-blue-600">{progressData.overall_percent}%</div>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <div className="w-full bg-white rounded-full h-3 mb-3 shadow-inner">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500"
+                            style={{ width: `${progressData.overall_percent}%` }}
+                          ></div>
+                        </div>
+                        
+                        
+                      </div>
+                    );
+                  })()}
 
                   <div className="bg-white p-4 rounded-xl shadow-lg border border-blue-200 hover:shadow-xl transition-all duration-300">
                     <h1 className="text-lg font-bold text-gray-900 mb-4 tracking-tight">

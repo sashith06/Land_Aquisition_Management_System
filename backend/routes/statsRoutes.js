@@ -17,4 +17,7 @@ router.get('/progress', statsController.getProjectProgressData);
 // Route for detailed project hierarchy with filtering
 router.get('/project-hierarchy', statsController.getProjectHierarchy);
 
+// Route for comprehensive progress analytics using new progress system
+router.get('/progress-analytics', statsController.getProgressAnalytics);
+
 module.exports = router;

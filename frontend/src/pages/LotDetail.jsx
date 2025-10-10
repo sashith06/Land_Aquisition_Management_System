@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import { useBreadcrumbs } from "../hooks/useBreadcrumbs";
 import Breadcrumb from "../components/Breadcrumb";
-import CompensationDetails from "../components/CompensationDetails";
+import CompensationDetailsTab from "../components/CompensationDetailsTab";
 
 const LotDetail = () => {
   const { planId, lotId } = useParams();
@@ -259,16 +259,18 @@ const LotDetail = () => {
         </div>
       </div>
 
-      {/* Compensation Details Section - Only visible for Financial Officers */}
-      {userRole === 'financial_officer' && (
-        <div className="mt-8">
-          <CompensationDetails 
-            lotId={lotId} 
-            planId={planId} 
-            userRole={userRole} 
-          />
-        </div>
-      )}
+      {/* Compensation Details Section - Role-based access handled by component */}
+      <div className="mt-8">
+        <CompensationDetailsTab 
+          selectedLot={{
+            id: lotId,
+            lot_number: lotId,
+            ...lotDetails
+          }} 
+          planId={planId}
+          landDetails={null}
+        />
+      </div>
 
       {/* Additional Information */}
       <div className="mt-8 bg-white p-6 rounded-xl border shadow-sm">

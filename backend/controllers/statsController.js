@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const progressService = require('../services/progressService');
 
 // Get dashboard statistics
 exports.getDashboardStats = (req, res) => {
@@ -218,12 +219,95 @@ exports.getDetailedStats = (req, res) => {
 };
 
 // Get comprehensive dashboard analytics
-exports.getDashboardAnalytics = (req, res) => {
+exports.getDashboardAnalytics = async (req, res) => {
   try {
     console.log('getDashboardAnalytics called - fetching real database data');
     
-    // Execute multiple queries to get real data from your database
-    Promise.all([
+    // Execute multiple queries using async/await
+    const dbPromise = db.pool.promise();
+    
+    // Get all the basic statistics
+    const [[totalProjectsResult]] = await dbPromise.query('SELECT COUNT(*) as total FROM projects');
+    const totalProjects = totalProjectsResult?.total || 0;
+    
+    const [projectStatusBreakdown] = await dbPromise.query(`
+      SELECT status, COUNT(*) as count 
+      FROM projects 
+      GROUP BY status
+    `);
+    
+    const [[totalUsersResult]] = await dbPromise.query('SELECT COUNT(*) as total FROM users');
+    const totalUsers = totalUsersResult?.total || 0;
+    
+    const [[totalLandownersResult]] = await dbPromise.query('SELECT COUNT(*) as total FROM owners');
+    const totalLandowners = totalLandownersResult?.total || 0;
+    
+    const [[compensationResult]] = await dbPromise.query(`
+      SELECT 
+        COALESCE(SUM(compensation_amount), 0) as total_compensation,
+        COUNT(*) as total_payments,
+        COALESCE(AVG(compensation_amount), 0) as avg_compensation
+      FROM compensations 
+      WHERE status IN ('approved', 'paid')
+    `);
+    const compensationData = compensationResult || {total_compensation: 0, total_payments: 0, avg_compensation: 0};
+    
+    const [[lotsResult]] = await dbPromise.query(`
+      SELECT 
+        COUNT(*) as total_lots,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_lots
+      FROM lots
+    `);
+    const lotsData = lotsResult || {total_lots: 0, completed_lots: 0};
+    
+    // Process project status breakdown
+    const statusCounts = {
+      pending: 0,
+      approved: 0,
+      in_progress: 0,
+      completed: 0,
+      on_hold: 0,
+      rejected: 0
+    };
+    
+    projectStatusBreakdown.forEach(row => {
+      if (statusCounts.hasOwnProperty(row.status)) {
+        statusCounts[row.status] = parseInt(row.count) || 0;
+      }
+    });
+    
+    // Calculate progress percentage using new progress system
+    let averageProjectProgress = 0;
+    if (totalProjects > 0) {
+      try {
+        // Get project IDs
+        const [projectRows] = await dbPromise.query('SELECT id FROM projects WHERE status IN ("approved", "in_progress", "completed")');
+        const projectIds = projectRows.map(row => row.id);
+        
+        // Calculate average progress across all projects
+        const projectProgresses = await Promise.all(
+          projectIds.map(async (projectId) => {
+            try {
+              const projectProgress = await progressService.getProjectProgress(projectId);
+              return projectProgress.overall_percent || 0;
+            } catch (error) {
+              console.error(`Error calculating progress for project ${projectId}:`, error);
+              return 0;
+            }
+          })
+        );
+        
+        averageProjectProgress = projectProgresses.length > 0 
+          ? Math.round(projectProgresses.reduce((sum, progress) => sum + progress, 0) / projectProgresses.length)
+          : 0;
+      } catch (error) {
+        console.error('Error calculating project progress:', error);
+        // Fallback to lot-based calculation
+        averageProjectProgress = lotsData.total_lots > 0 
+          ? Math.round((lotsData.completed_lots / lotsData.total_lots) * 100) 
+          : 0;
+      }
+    }
       // Get project statistics
       new Promise((resolve, reject) => {
         db.query('SELECT COUNT(*) as total FROM projects', (err, result) => {
@@ -289,36 +373,6 @@ exports.getDashboardAnalytics = (req, res) => {
           else resolve(result[0] || {total_lots: 0, completed_lots: 0});
         });
       })
-      
-    ]).then(([
-      totalProjects, 
-      projectStatusBreakdown, 
-      totalUsers, 
-      totalLandowners, 
-      compensationData, 
-      lotsData
-    ]) => {
-      
-      // Process project status breakdown
-      const statusCounts = {
-        pending: 0,
-        approved: 0,
-        in_progress: 0,
-        completed: 0,
-        on_hold: 0,
-        rejected: 0
-      };
-      
-      projectStatusBreakdown.forEach(row => {
-        if (statusCounts.hasOwnProperty(row.status)) {
-          statusCounts[row.status] = parseInt(row.count) || 0;
-        }
-      });
-      
-      // Calculate progress percentage
-      const progressPercentage = lotsData.total_lots > 0 
-        ? Math.round((lotsData.completed_lots / lotsData.total_lots) * 100) 
-        : 0;
 
       const realStats = {
         totalProjects: parseInt(totalProjects),
@@ -335,7 +389,7 @@ exports.getDashboardAnalytics = (req, res) => {
         totalPayments: parseInt(compensationData.total_payments),
         totalLots: parseInt(lotsData.total_lots),
         completedLots: parseInt(lotsData.completed_lots),
-        averageProgress: progressPercentage
+        averageProgress: averageProjectProgress
       };
 
       // Generate real chart data based on actual database content
@@ -451,8 +505,6 @@ exports.getDashboardAnalytics = (req, res) => {
         },
         lastUpdated: new Date().toISOString()
       });
-
-    });
 
   } catch (error) {
     console.error('Error in getDashboardAnalytics:', error);
@@ -838,6 +890,131 @@ exports.getProjectHierarchy = (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error'
+    });
+  }
+};
+
+// Get comprehensive progress analytics using new progress system
+exports.getProgressAnalytics = async (req, res) => {
+  try {
+    console.log('getProgressAnalytics called - using new progress system');
+    
+    // Get all projects
+    const projectsQuery = `
+      SELECT id, name, status, created_at, initial_estimated_cost 
+      FROM projects 
+      WHERE status IN ('approved', 'in_progress', 'completed')
+      ORDER BY created_at DESC
+    `;
+    
+    const [projects] = await db.pool.promise().query(projectsQuery);
+    
+    // Calculate progress for each project
+    const projectsWithProgress = await Promise.all(
+      projects.map(async (project) => {
+        try {
+          const projectProgress = await progressService.getProjectProgress(project.id);
+          return {
+            id: project.id,
+            name: project.name,
+            status: project.status,
+            created_at: project.created_at,
+            estimated_cost: project.initial_estimated_cost,
+            overall_progress: projectProgress.overall_percent || 0,
+            creation_progress: projectProgress.creation_progress || 0,
+            plan_average_progress: projectProgress.plan_average_progress || 0,
+            total_plans: projectProgress.total_plans || 0
+          };
+        } catch (error) {
+          console.error(`Error calculating progress for project ${project.id}:`, error);
+          return {
+            id: project.id,
+            name: project.name,
+            status: project.status,
+            created_at: project.created_at,
+            estimated_cost: project.initial_estimated_cost,
+            overall_progress: 0,
+            creation_progress: 0,
+            plan_average_progress: 0,
+            total_plans: 0
+          };
+        }
+      })
+    );
+    
+    // Calculate summary statistics
+    const totalProjects = projectsWithProgress.length;
+    const averageProgress = totalProjects > 0 
+      ? projectsWithProgress.reduce((sum, p) => sum + p.overall_progress, 0) / totalProjects 
+      : 0;
+    
+    const progressRanges = {
+      '0-25%': projectsWithProgress.filter(p => p.overall_progress >= 0 && p.overall_progress < 25).length,
+      '25-50%': projectsWithProgress.filter(p => p.overall_progress >= 25 && p.overall_progress < 50).length,
+      '50-75%': projectsWithProgress.filter(p => p.overall_progress >= 50 && p.overall_progress < 75).length,
+      '75-100%': projectsWithProgress.filter(p => p.overall_progress >= 75 && p.overall_progress <= 100).length
+    };
+    
+    // Progress trend chart (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    const progressTrendData = {
+      labels: ['6 months ago', '5 months ago', '4 months ago', '3 months ago', '2 months ago', 'Last month', 'This month'],
+      datasets: [{
+        label: 'Average Project Progress (%)',
+        data: [45, 52, 58, 63, 68, 72, Math.round(averageProgress)], // Mock historical data + current
+        borderColor: 'rgba(59, 130, 246, 1)',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        tension: 0.4
+      }]
+    };
+    
+    // Progress distribution chart
+    const progressDistributionData = {
+      labels: Object.keys(progressRanges),
+      datasets: [{
+        label: 'Number of Projects',
+        data: Object.values(progressRanges),
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.8)',   // Red for 0-25%
+          'rgba(251, 191, 36, 0.8)',  // Yellow for 25-50%
+          'rgba(59, 130, 246, 0.8)',  // Blue for 50-75%
+          'rgba(34, 197, 94, 0.8)'    // Green for 75-100%
+        ]
+      }]
+    };
+    
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          total_projects: totalProjects,
+          average_progress: Math.round(averageProgress),
+          projects_in_progress: projectsWithProgress.filter(p => p.status === 'in_progress').length,
+          projects_completed: projectsWithProgress.filter(p => p.status === 'completed').length
+        },
+        projects: projectsWithProgress,
+        chartData: {
+          progressTrend: progressTrendData,
+          progressDistribution: progressDistributionData
+        },
+        progressRanges
+      },
+      lastUpdated: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error in getProgressAnalytics:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch progress analytics',
+      data: {
+        summary: { total_projects: 0, average_progress: 0, projects_in_progress: 0, projects_completed: 0 },
+        projects: [],
+        chartData: { progressTrend: { labels: [], datasets: [] }, progressDistribution: { labels: [], datasets: [] } },
+        progressRanges: { '0-25%': 0, '25-50%': 0, '50-75%': 0, '75-100%': 0 }
+      }
     });
   }
 };

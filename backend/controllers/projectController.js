@@ -1,5 +1,6 @@
 const Project = require("../models/projectModel");
 const Notification = require("../models/notificationModel");
+const progressService = require('../services/progressService');
 
 // ================= CREATE PROJECT =================
 exports.createProject = (req, res) => {
@@ -118,37 +119,118 @@ exports.getAllProjects = (req, res) => {
   });
 };
 
-exports.getApprovedProjects = (req, res) => {
+exports.getApprovedProjects = async (req, res) => {
   const userId = req.user.id;
   const userRole = req.user.role;
   
-  // Use role-based access control instead of just getting all approved projects
-  if (userRole === 'FO' || userRole === 'financial_officer') {
-    // Financial officers only need approved projects
-    Project.getApproved((err, rows) => {
-      if (err) return res.status(500).json({ error: err });
-      res.json(rows);
-    });
-  } else {
-    // For other roles, use role-based filtering
-    Project.getByUserRole(userId, userRole, (err, rows) => {
-      if (err) return res.status(500).json({ error: err });
-      // Filter to only approved projects
-      const approvedProjects = rows.filter(project => project.status === 'approved');
-      res.json(approvedProjects);
-    });
+  try {
+    // Use role-based access control instead of just getting all approved projects
+    if (userRole === 'FO' || userRole === 'financial_officer') {
+      // Financial officers only need approved projects
+      Project.getApproved(async (err, rows) => {
+        if (err) return res.status(500).json({ error: err });
+        
+        try {
+          // Add progress to each project
+          const projectsWithProgress = await Promise.all(rows.map(async (project) => {
+            try {
+              const projectProgress = await progressService.getProjectProgress(project.id);
+              return {
+                ...project,
+                progress: projectProgress.overall_percent || 0
+              };
+            } catch (progressErr) {
+              console.error(`Error calculating progress for project ${project.id}:`, progressErr);
+              return { ...project, progress: 0 };
+            }
+          }));
+          
+          res.json(projectsWithProgress);
+        } catch (progressError) {
+          console.error('Error calculating project progress:', progressError);
+          res.json(rows); // Return projects without progress if calculation fails
+        }
+      });
+    } else {
+      // For other roles, use role-based filtering
+      Project.getByUserRole(userId, userRole, async (err, rows) => {
+        if (err) return res.status(500).json({ error: err });
+        
+        try {
+          // Filter to only approved projects
+          const approvedProjects = rows.filter(project => project.status === 'approved');
+          
+          // Add progress to each project
+          const projectsWithProgress = await Promise.all(approvedProjects.map(async (project) => {
+            try {
+              const projectProgress = await progressService.getProjectProgress(project.id);
+              return {
+                ...project,
+                progress: projectProgress.overall_percent || 0
+              };
+            } catch (progressErr) {
+              console.error(`Error calculating progress for project ${project.id}:`, progressErr);
+              return { ...project, progress: 0 };
+            }
+          }));
+          
+          res.json(projectsWithProgress);
+        } catch (progressError) {
+          console.error('Error calculating project progress:', progressError);
+          res.json(approvedProjects); // Return projects without progress if calculation fails
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error in getApprovedProjects:', error);
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.getMyProjects = (req, res) => {
+exports.getMyProjects = async (req, res) => {
   const userId = req.user.id;
   const userRole = req.user.role;
   
-  // Use role-based access control
-  Project.getByUserRole(userId, userRole, (err, rows) => {
-    if (err) return res.status(500).json({ error: err });
-    res.json(rows);
-  });
+  try {
+    // Use role-based access control
+    Project.getByUserRole(userId, userRole, async (err, rows) => {
+      if (err) return res.status(500).json({ error: err });
+      
+      try {
+        // Add progress to each project
+        const projectsWithProgress = await Promise.all(rows.map(async (project) => {
+          try {
+            const projectProgress = await progressService.getProjectProgress(project.id);
+            return {
+              ...project,
+              progress: projectProgress.overall_percent || 0,
+              creation_progress: projectProgress.creation_progress || 0,
+              plan_average_progress: projectProgress.plan_average_progress || 0,
+              total_plans: projectProgress.total_plans || 0
+            };
+          } catch (progressErr) {
+            console.error(`Error calculating progress for project ${project.id}:`, progressErr);
+            return {
+              ...project,
+              progress: 0,
+              creation_progress: 0,
+              plan_average_progress: 0,
+              total_plans: 0
+            };
+          }
+        }));
+        
+        console.log('Projects with progress:', projectsWithProgress.map(p => ({ id: p.id, name: p.name, progress: p.progress })));
+        res.json(projectsWithProgress);
+      } catch (progressError) {
+        console.error('Error calculating project progress:', progressError);
+        res.json(rows); // Return projects without progress if calculation fails
+      }
+    });
+  } catch (error) {
+    console.error('Error in getMyProjects:', error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
 // Get approved projects created by the current project engineer for assignment
