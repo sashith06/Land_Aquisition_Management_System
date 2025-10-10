@@ -727,7 +727,7 @@ const LotsPage = () => {
             ))}
           </div>
 
-          {userRole !== 'financial_officer' && (
+          {userRole === 'land_officer' && (
             <button
               className="bg-slate-600 text-white px-4 py-2 rounded-lg hover:bg-slate-700 mt-auto"
               onClick={() => { handleClearForm(); setShowCreateForm(true); }}
@@ -938,7 +938,7 @@ const LotsPage = () => {
                         <p className="text-gray-600">Land Acquisition Details</p>
                       </div>
                     </div>
-                    {userRole !== 'financial_officer' && (
+                    {userRole === 'land_officer' && (
                       <div className="flex gap-3">
                         <button
                           onClick={handleEditLot}
@@ -1063,7 +1063,7 @@ const LotsPage = () => {
                         <MapPin className="w-5 h-5 text-blue-600" />
                         <h2 className="text-xl font-semibold text-gray-800">Land Details</h2>
                       </div>
-                      {landDetails && userRole !== 'financial_officer' && (
+                      {landDetails && userRole === 'land_officer' && (
                         <div className="flex gap-3">
                           <button
                             onClick={() => setShowLandDetailsForm(true)}
@@ -1171,7 +1171,7 @@ const LotsPage = () => {
                           <h3 className="text-lg font-semibold text-gray-600 mb-2">No Land Details Found</h3>
                           <p className="text-gray-500 mb-6">Land details have not been added for this lot yet.</p>
                         </div>
-                        {userRole !== 'financial_officer' && (
+                        {userRole === 'land_officer' && (
                           <button
                             onClick={() => setShowLandDetailsForm(true)}
                             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 mx-auto"
