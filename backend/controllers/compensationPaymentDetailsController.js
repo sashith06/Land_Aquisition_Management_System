@@ -295,14 +295,117 @@ const createOrUpdateCompensation = (req, res) => {
   console.log('createOrUpdateCompensation called with:', { plan_id, lot_id });
   console.log('Request Body:', req.body);
   console.log('=== END DEBUG ===');
+  console.log('🚀 Starting permission and format checks...');
   
-  // Convert old format to new format
+  // Check if user has permission to modify compensation details
+  if (!req.user || !['financial_officer', 'FO'].includes(req.user.role)) {
+    console.error('Unauthorized access attempt:', { 
+      userId: req.user?.id, 
+      userRole: req.user?.role 
+    });
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. Only Financial Officers can modify compensation details."
+    });
+  }
+
+  console.log('✅ Permission check passed, proceeding to format detection...');
+
+  // Handle both old and new data formats
+  let processData;
+  
+  // Check if it's the new direct format (single owner data)
+  console.log('🔍 Checking format - owner_nic:', req.body.owner_nic, 'owner_name:', req.body.owner_name);
+  console.log('🔍 Condition evaluation:', !!(req.body.owner_nic && req.body.owner_name));
+  
+  if (req.body.owner_nic && req.body.owner_name) {
+    console.log('✅ Processing new direct format');
+    
+    // Validate parameters
+    const parsedPlanId = parseInt(plan_id);
+    const parsedLotId = parseInt(lot_id);
+    
+    if (isNaN(parsedPlanId) || isNaN(parsedLotId)) {
+      console.error('Invalid plan_id or lot_id:', { plan_id, lot_id, parsedPlanId, parsedLotId });
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid plan_id or lot_id. Must be numbers." 
+      });
+    }
+
+    // Validate required user information
+    if (!req.user || !req.user.id) {
+      console.error('Missing user information in request');
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required"
+      });
+    }
+
+    const paymentData = {
+      plan_id: parsedPlanId,
+      lot_id: parsedLotId,
+      owner_nic: req.body.owner_nic,
+      owner_name: req.body.owner_name,
+      final_compensation_amount: req.body.final_compensation_amount || 0,
+      
+      // Compensation payment details
+      compensation_full_payment_date: req.body.compensation_full_payment_date || null,
+      compensation_full_payment_cheque_no: req.body.compensation_full_payment_cheque_no || null,
+      compensation_full_payment_deducted_amount: req.body.compensation_full_payment_deducted_amount || 0,
+      compensation_full_payment_paid_amount: req.body.compensation_full_payment_paid_amount || 0,
+      
+      compensation_part_payment_01_date: req.body.compensation_part_payment_01_date || null,
+      compensation_part_payment_01_cheque_no: req.body.compensation_part_payment_01_cheque_no || null,
+      compensation_part_payment_01_deducted_amount: req.body.compensation_part_payment_01_deducted_amount || 0,
+      compensation_part_payment_01_paid_amount: req.body.compensation_part_payment_01_paid_amount || 0,
+      
+      compensation_part_payment_02_date: req.body.compensation_part_payment_02_date || null,
+      compensation_part_payment_02_cheque_no: req.body.compensation_part_payment_02_cheque_no || null,
+      compensation_part_payment_02_deducted_amount: req.body.compensation_part_payment_02_deducted_amount || 0,
+      compensation_part_payment_02_paid_amount: req.body.compensation_part_payment_02_paid_amount || 0,
+      
+      created_by: req.user.id.toString(),
+      updated_by: req.user.id.toString()
+    };
+
+    console.log('Saving direct format payment data:', paymentData);
+
+    CompensationPaymentDetails.createOrUpdate(paymentData, (err, result) => {
+      if (err) {
+        console.error("Error saving compensation details:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Error saving compensation details",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
+
+      console.log('Compensation details saved successfully:', result);
+      res.status(200).json({
+        success: true,
+        message: "Compensation details saved successfully",
+        data: {
+          id: result.insertId || result.affectedRows
+        }
+      });
+    });
+    
+    return; // Exit early for new format
+  }
+  
+  // Handle old format with owner_data and compensation_payment arrays
+  console.log('❌ New format not detected, trying old format...');
   const { owner_data, compensation_payment } = req.body;
   
+  console.log('🔍 owner_data:', owner_data, 'type:', typeof owner_data, 'isArray:', Array.isArray(owner_data));
+  console.log('🔍 compensation_payment:', compensation_payment, 'type:', typeof compensation_payment);
+  
   if (!owner_data || !Array.isArray(owner_data)) {
+    console.log('❌ Invalid owner_data format - sending 400 error');
     return res.status(400).json({
       success: false,
-      message: "Invalid owner_data format"
+      message: "Invalid data format. Expected either direct format with owner_nic/owner_name or old format with owner_data array."
     });
   }
 
@@ -318,8 +421,8 @@ const createOrUpdateCompensation = (req, res) => {
       lot_id: parseInt(lot_id),
       owner_nic: owner.nic,
       owner_name: owner.name,
-      created_by: req.user.id,
-      updated_by: req.user.id
+      created_by: req.user.id.toString(),
+      updated_by: req.user.id.toString()
     };
     
     console.log('Raw owner data received:', owner);

@@ -12,9 +12,9 @@ import LandDetailsForm from "../components/LandDetailsForm";
 
 const tabs = [
   "Owner Details",
+  "Land Details",
   "Valuation Details",
   "Compensation Details",
-  "Land Details",
   "Inquiries",
   "Progress",
 ];
