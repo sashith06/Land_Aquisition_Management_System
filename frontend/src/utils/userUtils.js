@@ -48,3 +48,8 @@ export const isAdmin = () => {
   const user = getCurrentUser();
   return user?.role === 'Chief Engineer' || user?.is_admin === true;
 };
+
+export const isLandowner = () => {
+  const role = localStorage.getItem('role');
+  return role === 'landowner';
+};

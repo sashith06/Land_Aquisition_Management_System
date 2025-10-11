@@ -2,7 +2,7 @@ import { Bell, ChevronDown, LogOut } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { logout } from '../utils/auth';
-import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin } from '../utils/userUtils';
+import { getCurrentUser, getCurrentUserFullName, getUserAvatar, isAdmin, isLandowner } from '../utils/userUtils';
 import Logo from './Logo';
 import NotificationDropdown from './NotificationDropdown';
 import useNotifications from '../hooks/useNotifications';
@@ -16,6 +16,7 @@ const Navigation = () => {
   const userName = getCurrentUserFullName();
   const userAvatar = getUserAvatar();
   const isUserAdmin = isAdmin();
+  const isUserLandowner = isLandowner();
   
   // Use notifications hook for real-time updates
   const { 
@@ -26,18 +27,16 @@ const Navigation = () => {
   } = useNotifications();
 
   // Determine the correct profile path based on current location
-  // Remove profile option for Chief Engineer (admin)
+  // Remove profile option for Chief Engineer (admin) and landowners
   const getProfilePath = () => {
-    if (isUserAdmin) {
-      return null; // No profile for Chief Engineer/Admin
+    if (isUserAdmin || isUserLandowner) {
+      return null; // No profile for Chief Engineer/Admin and Landowners
     }
     
     if (location.pathname.startsWith('/pe-dashboard')) {
       return '/pe-dashboard/profile';
     } else if (location.pathname.startsWith('/fo-dashboard')) {
       return '/fo-dashboard/profile';
-    } else if (location.pathname.startsWith('/landowner/dashboard')) {
-      return '/landowner/dashboard'; // Landowner profile is within their dashboard
     }
     return '/dashboard/profile';
   };
@@ -88,8 +87,8 @@ const Navigation = () => {
 
             {open && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                {/* Only show profile option if not admin */}
-                {!isUserAdmin && getProfilePath() && (
+                {/* Only show profile option if not admin and not landowner */}
+                {!isUserAdmin && !isUserLandowner && getProfilePath() && (
                   <>
                     <Link
                       to={getProfilePath()}

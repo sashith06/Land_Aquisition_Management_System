@@ -26,17 +26,18 @@ Plan.create = (plan, userId, callback) => {
     plan.total_extent || null,
     plan.status || 'pending',
     userId,
-    plan.estimated_cost || null,
-    plan.estimated_extent || null,
-    plan.advance_tracing_no || null,
+    // Convert empty strings to null for numeric fields
+    (plan.estimated_cost === '' ? null : plan.estimated_cost) || null,
+    (plan.estimated_extent === '' ? null : plan.estimated_extent) || null,
+    plan.advance_tracing_no || plan.advance_trading_no || null,
     plan.divisional_secretary || null,
-    plan.current_extent_value || null,
+    (plan.current_extent_value === '' ? null : plan.current_extent_value) || null,
     plan.section_07_gazette_no || null,
-    plan.section_07_gazette_date || null,
+    (plan.section_07_gazette_date === '' ? null : plan.section_07_gazette_date) || null,
     plan.section_38_gazette_no || null,
-    plan.section_38_gazette_date || null,
+    (plan.section_38_gazette_date === '' ? null : plan.section_38_gazette_date) || null,
     plan.section_5_gazette_no || null,
-    plan.pending_cost_estimate || null
+    (plan.pending_cost_estimate === '' ? null : plan.pending_cost_estimate) || null
   ];
 
   console.log('Executing SQL with simplified schema...');
@@ -118,11 +119,32 @@ Plan.update = (id, plan, userId, callback) => {
 
   console.log('Allowed fields:', allowedFields);
 
+  // Define fields that should convert empty strings to null (numeric and date fields)
+  const emptyStringToNullFields = [
+    'estimated_cost', 'estimated_extent', 'current_extent_value', 'pending_cost_estimate',
+    'section_07_gazette_date', 'section_38_gazette_date'
+  ];
+
   for (const [key, value] of Object.entries(plan)) {
     console.log(`Processing field: ${key} = ${value} (allowed: ${allowedFields.includes(key)})`);
-    if (value !== undefined && allowedFields.includes(key)) {
-      fields.push(`${key} = ?`);
-      values.push(value);
+    
+    // Handle field name mapping for advance_trading_no -> advance_tracing_no
+    let dbField = key;
+    if (key === 'advance_trading_no') {
+      dbField = 'advance_tracing_no';
+    }
+    
+    if (value !== undefined && (allowedFields.includes(key) || allowedFields.includes(dbField))) {
+      // Convert empty strings to null for numeric and date fields
+      let processedValue = value;
+      if (emptyStringToNullFields.includes(dbField) && value === '') {
+        console.log(`Converting empty string to null for field: ${dbField}`);
+        processedValue = null;
+      }
+      
+      console.log(`Adding field to update: ${dbField} = ${processedValue}`);
+      fields.push(`${dbField} = ?`);
+      values.push(processedValue);
     }
   }
 

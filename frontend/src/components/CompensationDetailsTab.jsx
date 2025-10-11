@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, MapPin, Phone, Percent, Check, Eye, Lock } from 'lucide-react';
-import { saveCompensation, getCompensation, getPlanById } from '../api';
+import api, { saveCompensation, getCompensation, getPlanById } from '../api';
 import { getUserRole } from './ProtectedRoute';
 
 const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDetails }) => {
@@ -238,7 +238,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   // Payment details handler for the new payment form structure
   const handlePaymentDetailsChange = (section, field, subField, value) => {
-    const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
+    // Use consistent key format with backend_id like in save function
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     
     setPaymentDetails(prev => {
       const updated = { ...prev };
@@ -258,7 +260,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   const getPaymentDetailsValue = (section, field, subField = null) => {
     if (!editingOwner) return '';
-    const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
+    // Use consistent key format with backend_id like in save function
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     const data = paymentDetails[key];
     if (!data || !data[section] || !data[section][field]) return '';
     return subField ? (data[section][field][subField] || '') : data[section][field];
@@ -267,7 +271,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   // Helper function to check if payment details are filled
   const isPaymentFilled = (section, field) => {
     if (!editingOwner) return false;
-    const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
+    // Use consistent key format with backend_id like in save function
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     const data = paymentDetails[key];
     if (!data || !data[section] || !data[section][field]) return false;
     
@@ -279,7 +285,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   // Helper function to check if account division date is filled
   const isAccountDivisionFilled = () => {
     if (!editingOwner) return false;
-    const key = `${currentPlanId}_${selectedLot.id}_${editingOwner.nic}`;
+    // Use consistent key format with backend_id like in save function
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     const data = paymentDetails[key];
     if (!data || !data.accountDivision || !data.accountDivision.sentDate) return false;
     return data.accountDivision.sentDate.date;
@@ -345,7 +353,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   // Get total payment done for an owner
   const getOwnerTotalPaymentDone = (owner) => {
-    const key = `${currentPlanId}_${selectedLot.id}_${owner.nic}`;
+    // Use consistent key format with backend_id like in save function
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${owner.nic}`;
     const data = paymentDetails[key];
     if (!data) return 0;
     
@@ -654,7 +664,8 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         </div>
       </div>
 
-      {/* Compensation Management Modal */}
+
+               {/* Compensation Management Modal */}
       {editingOwner && (
         <div className="fixed inset-0 bg-white bg-opacity-20 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white bg-opacity-95 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-6xl max-h-[90vh] overflow-y-auto border border-white border-opacity-30"
@@ -679,40 +690,19 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                   onClick={() => setEditingOwner(null)}
                   className="px-6 py-3 text-gray-700 bg-gray-50 bg-opacity-80 backdrop-blur rounded-xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 font-medium"
                 >
-                  {canEdit ? 'Cancel' : 'Close'}
+                  Cancel
                 </button>
-                {canEdit && (
-                  <button
-                    onClick={handleSaveCompensation}
-                    disabled={isSaving}
-                    className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium disabled:opacity-50"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {isSaving ? 'Saving...' : 'Save'}
-                  </button>
-                )}
+                <button
+                  onClick={handleSaveCompensation}
+                  disabled={isSaving}
+                  className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </div>
 
-            {/* Access Control Notice for Non-Financial Officers */}
-            {!canEdit && (
-              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-                <div className="flex items-center">
-                  <Eye className="w-5 h-5 text-blue-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">
-                      View-Only Mode
-                    </p>
-                    <p className="text-xs text-blue-700">
-                      You can view all compensation details but cannot make changes. Only Financial Officers can edit compensation data.
-                      <br/>Current role: <strong>{actualUserRole || 'Not detected'}</strong>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className={`${!canEdit ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Owner Information */}
               <div className="bg-gradient-to-br from-slate-50 to-slate-100 backdrop-blur-sm p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -740,8 +730,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                 </h3>
                 <div className="space-y-2 text-sm">
                   <div><strong>Lot ID:</strong> {selectedLot.id}</div>
-                  <div><strong>Size:</strong> {selectedLot.size}</div>
-                  <div><strong>Location:</strong> {selectedLot.location}</div>
+                  <div><strong>Size:</strong> {landDetails.preliminary_plan_extent_ha}</div>
                   <div><strong>Total Owners:</strong> {selectedLot.owners.length}</div>
                 </div>
               </div>
@@ -764,10 +753,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       step="0.1"
                       value={editingOwner.compensation.lotShare}
                       onChange={(e) => handleInputChange('lotShare', e.target.value)}
-                      disabled={!canEdit}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                        !canEdit ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
-                      }`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
                   <div>
@@ -776,10 +762,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       type="date"
                       value={editingOwner.compensation.assessmentDate}
                       onChange={(e) => handleInputChange('assessmentDate', e.target.value)}
-                      disabled={!canEdit}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                        !canEdit ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
-                      }`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
                   <div>
@@ -788,19 +771,735 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       type="text"
                       value={editingOwner.compensation.assessorName}
                       onChange={(e) => handleInputChange('assessorName', e.target.value)}
-                      disabled={!canEdit}
-                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                        !canEdit ? 'bg-gray-100 cursor-not-allowed text-gray-600' : ''
-                      }`}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Final Compensation Amount Section */}
+            <div className="space-y-6">
+              <div className="bg-green-50/80 backdrop-blur-sm rounded-xl p-6 border border-green-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800">Final Compensation Amount</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Final Compensation Amount to be Paid (Rs.) *
+                    </label>
+                    <input
+                      type="number"
+                      value={editingOwner.compensation.finalCompensationAmount || ''}
+                      onChange={(e) => handleInputChange('finalCompensationAmount', e.target.value)}
+                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      placeholder="e.g., 2550000"
+                      step="0.01"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Enter the final compensation amount to be paid</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Balance Due (Rs.)
+                    </label>
+                    <div className="relative">
+                      <div className={`w-full px-3 py-2 border rounded-lg font-medium flex items-center justify-between ${(() => {
+                        const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                        const totalPaid = 
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
+                        const balanceDue = finalAmount - totalPaid;
+                        return balanceDue <= 0 
+                          ? 'bg-green-50 border-green-300 text-green-800' 
+                          : 'bg-orange-50 border-orange-300 text-orange-800';
+                      })()}`}>
+                        <span>
+                          {(() => {
+                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                            const totalPaid = 
+                              parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
+                              parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
+                              parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
+                            const balanceDue = finalAmount - totalPaid;
+                            return balanceDue >= 0 
+                              ? `Rs. ${balanceDue.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`
+                              : `Rs. 0.00`;
+                          })()}
+                        </span>
+                        {(() => {
+                          const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                          const totalPaid = 
+                            parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
+                            parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
+                            parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
+                          const balanceDue = finalAmount - totalPaid;
+                          if (balanceDue <= 0 && finalAmount > 0) {
+                            return (
+                              <div className="flex items-center space-x-2">
+                                <Check size={20} className="text-green-600" />
+                                <span className="text-sm font-bold text-green-600">FULLY PAID</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {(() => {
+                        const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                        const totalPaid = 
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
+                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
+                        const balanceDue = finalAmount - totalPaid;
+                        return balanceDue <= 0 && finalAmount > 0
+                          ? 'Compensation fully paid ✓'
+                          : 'Automatically calculated: Final Amount - Total Paid';
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Compensation Payment Details Form */}
+            <div className="space-y-8">
+              {/* Compensation Payment Details */}
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800">Compensation Payment Details</h3>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Full Payment */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm">1</span>
+                      Full Payment
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="DD"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'day')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'day', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="MM"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'month')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'month', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="YY"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'year')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'year', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'chequeNo')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'chequeNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'deductedAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'deductedAmount', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'paidAmount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Part Payment 01 */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm">2</span>
+                      Part Payment 01
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="DD"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'day', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="MM"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'month', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="YY"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'year', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'chequeNo')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'chequeNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'deductedAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'deductedAmount', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'paidAmount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Part Payment 02 */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm">3</span>
+                      Part Payment 02
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="DD"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'day')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'day', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="MM"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'month')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'month', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="YY"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'year')}
+                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'year', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'chequeNo')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'chequeNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'deductedAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'deductedAmount', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'paidAmount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interest to be paid */}
+              <div className="bg-yellow-50/80 backdrop-blur-sm rounded-xl p-6 border border-yellow-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                    <Percent className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800">Interest to be paid</h3>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Section 38 Gazette Date Input */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4">Section 38 Gazette Date (Auto-populated from Plan)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Section 38 Gazette Date (from Plan)</label>
+                        <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
+                          {planData?.section_38_gazette_date 
+                            ? new Date(planData.section_38_gazette_date).toLocaleDateString('en-CA') // YYYY-MM-DD format
+                            : 'Not set in plan'
+                          }
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">This date is automatically taken from the plan created by Land Officer</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Interest Rate per Annum</label>
+                        <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
+                          7.00%
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Fixed annual interest rate</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Interest Calculation Results */}
+                  <div className="border border-yellow-300 rounded-lg p-4 bg-yellow-50/50">
+                    <h4 className="font-semibold text-gray-800 mb-4">Calculated Interest Amount</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Days Since Gazette</label>
+                        <div className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 font-medium">
+                          {(() => {
+                            const gazetteDate = planData?.section_38_gazette_date;
+                            if (!gazetteDate) return '0';
+                            const startDate = new Date(gazetteDate);
+                            const currentDate = new Date();
+                            const timeDiff = currentDate.getTime() - startDate.getTime();
+                            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                            return daysDiff > 0 ? daysDiff : 0;
+                          })()}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Principal Amount (Rs.)</label>
+                        <div className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 font-medium">
+                          {(() => {
+                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                            return `Rs. ${finalAmount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
+                          })()}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Interest to be paid (Rs.)</label>
+                        <div className="w-full px-3 py-2 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 font-bold text-lg">
+                          {(() => {
+                            const gazetteDate = planData?.section_38_gazette_date;
+                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
+                            
+                            if (!gazetteDate || !finalAmount) return 'Rs. 0.00';
+                            
+                            const startDate = new Date(gazetteDate);
+                            const currentDate = new Date();
+                            const timeDiff = currentDate.getTime() - startDate.getTime();
+                            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                            
+                            if (daysDiff <= 0) return 'Rs. 0.00';
+                            
+                            // Calculate daily interest: (Principal × Annual Rate × Days) / 365
+                            const annualRate = 0.07; // 7%
+                            const dailyInterest = (finalAmount * annualRate * daysDiff) / 365;
+                            
+                            return `Rs. ${dailyInterest.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
+                          })()}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Calculated daily at 7% per annum from plan gazette date</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
+                      <p className="text-sm text-blue-700">
+                        <strong>Formula:</strong> (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Daily Interest = (Principal × Annual Interest Rate ÷ 365) × Number of Days
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interest Payment Details */}
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <Percent className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800">Interest Payment Details</h3>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Full Payment */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm">1</span>
+                      Full Payment
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="DD"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'day')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'day', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="MM"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'month')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'month', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="YY"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'year')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'year', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'chequeNo')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'chequeNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'deductedAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'deductedAmount', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'paidAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'paidAmount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Part Payment 01 */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-teal-500 text-white rounded-full flex items-center justify-center text-sm">2</span>
+                      Part Payment 01
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="DD"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'day')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'day', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="MM"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'month')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'month', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="YY"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'year')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'year', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'chequeNo')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'chequeNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'deductedAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'deductedAmount', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'paidAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'paidAmount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Part Payment 02 */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <span className="w-6 h-6 bg-cyan-500 text-white rounded-full flex items-center justify-center text-sm">3</span>
+                      Part Payment 02
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="col-span-2 md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="DD"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'day')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'day', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="MM"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'month')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'month', e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            placeholder="YY"
+                            maxLength="2"
+                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                            value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'year')}
+                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'year', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'chequeNo')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'chequeNo', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'deductedAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'deductedAmount', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'paidAmount')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'paidAmount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sent To Account Division */}
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
+                    <Building className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-800">Sent To Account Division</h3>
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                    <div className="col-span-2 md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="DD"
+                          maxLength="2"
+                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'day')}
+                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'day', e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          placeholder="MM"
+                          maxLength="2"
+                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'month')}
+                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'month', e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          placeholder="YY"
+                          maxLength="2"
+                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
+                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'year')}
+                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'year', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'chequeNo')}
+                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'chequeNo', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'deductedAmount')}
+                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'deductedAmount', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
+                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'paidAmount')}
+                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'paidAmount', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Section */}
+            <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 shadow-sm">
+              <h3 className="text-xl font-semibold text-orange-800 mb-4 flex items-center">
+                <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center mr-3">
+                  <DollarSign className="w-4 h-4 text-white" />
+                </div>
+                Payment Summary
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-sm text-orange-700">Owner Information</div>
+                  <div className="text-lg font-bold text-orange-800">{editingOwner.name}</div>
+                  <div className="text-sm text-orange-600">NIC: {editingOwner.nic}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-orange-700">Lot Details</div>
+                  <div className="text-lg font-bold text-orange-800">Lot {selectedLot.id}</div>
+                  <div className="text-sm text-orange-600">Plan {currentPlanId}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-orange-700">Last Updated</div>
+                  <div className="text-lg font-bold text-orange-800">{new Date().toLocaleDateString()}</div>
+                  <div className="text-sm text-orange-600">Payment Records</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+
+
+
+       
+          
+          
+        
+      
 
       {/* Rest of the component remains the same... */}
       {/* Individual Owner Compensation Cards and Modal */}
