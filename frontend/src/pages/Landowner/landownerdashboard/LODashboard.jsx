@@ -501,19 +501,28 @@ function LODashboard() {
                       <li className="flex justify-between items-center border-b pb-2">
                         <span className="font-semibold text-gray-600 text-xs">Full Compensation:</span>
                         <span className="text-gray-900 font-bold text-sm">
-                          {selectedLot.lot.fullCompensationAmount ? `Rs. ${selectedLot.lot.fullCompensationAmount.toLocaleString()}` : 'Pending'}
+                          {(selectedLot.lot.fullCompensationAmount !== null && selectedLot.lot.fullCompensationAmount !== undefined) 
+                            ? `Rs. ${Number(selectedLot.lot.fullCompensationAmount).toLocaleString()}` 
+                            : 'Pending'
+                          }
                         </span>
                       </li>
                       <li className="flex justify-between items-center border-b pb-2">
                         <span className="font-semibold text-gray-600 text-xs">Paid Compensation:</span>
                         <span className="text-gray-900 font-bold text-sm">
-                          {selectedLot.lot.paidCompensationAmount ? `Rs. ${selectedLot.lot.paidCompensationAmount.toLocaleString()}` : 'Pending'}
+                          {(selectedLot.lot.paidCompensationAmount !== null && selectedLot.lot.paidCompensationAmount !== undefined) 
+                            ? `Rs. ${Number(selectedLot.lot.paidCompensationAmount).toLocaleString()}` 
+                            : 'Rs. 0'
+                          }
                         </span>
                       </li>
                       <li className="flex justify-between items-center border-b pb-2">
                         <span className="font-semibold text-gray-600 text-xs">Interest:</span>
                         <span className="text-gray-900 font-bold text-sm">
-                          {selectedLot.lot.interestAmount ? `Rs. ${selectedLot.lot.interestAmount.toLocaleString()}` : 'Pending'}
+                          {(selectedLot.lot.interestAmount !== null && selectedLot.lot.interestAmount !== undefined) 
+                            ? `Rs. ${Number(selectedLot.lot.interestAmount).toLocaleString()}` 
+                            : 'Rs. 0'
+                          }
                         </span>
                       </li>
                       <li className="flex justify-between">

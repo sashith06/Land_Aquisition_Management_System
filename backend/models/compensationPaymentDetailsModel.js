@@ -53,7 +53,8 @@ class CompensationPaymentDetails {
       interest_part_payment_02_paid_amount,
       
       // Account Division Details (optional)
-      account_division_sent_date,
+      send_account_division_date,
+      calculated_interest_amount,
       
       // Metadata
       created_by,
@@ -102,7 +103,8 @@ class CompensationPaymentDetails {
             interest_part_payment_02_cheque_no = ?,
             interest_part_payment_02_deducted_amount = ?,
             interest_part_payment_02_paid_amount = ?,
-            account_division_sent_date = ?,
+            send_account_division_date = ?,
+            calculated_interest_amount = ?,
             updated_by = ?,
             updated_at = NOW()
           WHERE id = ?
@@ -135,7 +137,8 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
-          account_division_sent_date || null,
+          send_account_division_date || null,
+          calculated_interest_amount || 0,
           updated_by,
           checkResult[0].id
         ];
@@ -169,8 +172,8 @@ class CompensationPaymentDetails {
             interest_part_payment_01_deducted_amount, interest_part_payment_01_paid_amount,
             interest_part_payment_02_date, interest_part_payment_02_cheque_no,
             interest_part_payment_02_deducted_amount, interest_part_payment_02_paid_amount,
-            account_division_sent_date, created_by, updated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            send_account_division_date, calculated_interest_amount, created_by, updated_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertValues = [
@@ -203,7 +206,8 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
-          account_division_sent_date || null,
+          send_account_division_date || null,
+          calculated_interest_amount || 0,
           created_by,
           updated_by
         ];

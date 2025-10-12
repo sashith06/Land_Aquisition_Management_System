@@ -45,6 +45,13 @@ router.get("/plans/:plan_id/compensations",
   compensationPaymentDetailsController.getPaymentDetailsByPlan
 );
 
+// Calculate interest for a compensation record (FINANCIAL OFFICERS ONLY)
+router.post("/plans/:plan_id/lots/:lot_id/owners/:owner_nic/calculate-interest",
+  verifyToken,
+  requireFinancialOfficer,
+  compensationPaymentDetailsController.calculateInterest
+);
+
 // Additional routes for detailed payment tracking (FINANCIAL OFFICERS ONLY FOR EDITING)
 // Create or update payment details for a specific owner
 router.post("/plans/:plan_id/lots/:lot_id/owners/:owner_nic/payment-details", 

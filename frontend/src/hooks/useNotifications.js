@@ -9,7 +9,11 @@ const useNotifications = (pollingInterval = 30000) => { // Poll every 30 seconds
   const [error, setError] = useState(null);
 
   const currentUser = getCurrentUser();
-  const isOfficer = currentUser?.role === 'land_officer' || currentUser?.role === 'project_engineer' || currentUser?.role === 'chief_engineer';
+  const isOfficer = currentUser?.role === 'land_officer' || 
+                   currentUser?.role === 'project_engineer' || 
+                   currentUser?.role === 'chief_engineer' || 
+                   currentUser?.role === 'financial_officer';
+  const isLandowner = currentUser?.role === 'landowner';
 
   const fetchUnreadCount = async () => {
     try {
@@ -20,8 +24,8 @@ const useNotifications = (pollingInterval = 30000) => { // Poll every 30 seconds
       const notificationsCount = notificationsResponse.data?.count || notificationsResponse.count || 0;
       totalCount += notificationsCount;
 
-      // Fetch unread inquiries count for officers
-      if (isOfficer) {
+      // Fetch unread inquiries count for officers only (not landowners)
+      if (isOfficer && !isLandowner) {
         const inquiriesResponse = await getUnreadInquiriesCount();
         const inquiriesCount = inquiriesResponse.data?.count || inquiriesResponse.count || 0;
         totalCount += inquiriesCount;
@@ -44,8 +48,8 @@ const useNotifications = (pollingInterval = 30000) => { // Poll every 30 seconds
       const notificationsResponse = await getNotifications(limit);
       let allNotifications = notificationsResponse.data || notificationsResponse || [];
       
-      // Fetch recent inquiries for officers and combine them
-      if (isOfficer) {
+      // Fetch recent inquiries for officers only (not landowners)
+      if (isOfficer && !isLandowner) {
         try {
           const inquiriesResponse = await getRecentInquiries(limit * 2); // Fetch more to combine properly
           const inquiries = inquiriesResponse.data || inquiriesResponse || [];
