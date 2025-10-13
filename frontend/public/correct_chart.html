@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Correct Chart Calculation</title>
+</head>
+<body>
+    <h1>Expected Chart Results</h1>
+    <div id="result"></div>
+
+    <script>
+        // Use the user's correct database values
+        const stepCounts = {
+            'Owner Details': 4,    // All 4 lots have owner details (from owners table)
+            'Land Details': 3,     // 3 lots have land details 
+            'Valuation': 3,        // 3 lots have valuation (corrected from user feedback)
+            'Compensation': 2,     // 2 lots have compensation (from compensation_payment_details table)
+            'Completed': 2         // 2 lots are completed
+        };
+        
+        document.getElementById('result').innerHTML = `
+            <h2>✅ CORRECT Expected Results (Based on Real Database):</h2>
+            <ul>
+                <li><strong>Owner Details:</strong> ${stepCounts['Owner Details']} lots</li>
+                <li><strong>Land Details:</strong> ${stepCounts['Land Details']} lots</li>
+                <li><strong>Valuation:</strong> ${stepCounts['Valuation']} lots</li>
+                <li><strong>Compensation:</strong> ${stepCounts['Compensation']} lots</li>
+                <li><strong>Completed:</strong> ${stepCounts['Completed']} lots</li>
+            </ul>
+            <h3>Database Reality Check:</h3>
+            <p><strong>✅ Completed: 2 lots</strong> - Lots 1 & 2 have full owner+land+valuation+compensation data</p>
+            <p><strong>✅ Land Details: 1 lot</strong> - Lot 5 has owner details done, working on land details</p>
+            <p><strong>✅ Valuation: 1 lot</strong> - Lot 3 has land details done, working on valuation</p>
+            <p><strong>✅ Owner Details: 0 lots</strong> - All lots have owner details completed</p>
+            <p><strong>✅ Compensation: 0 lots</strong> - No lots are in compensation stage</p>
+            <h3>Individual Lot Analysis:</h3>
+            ${lots.map(lot => {
+                let step = 'Owner Details';
+                if (lot.last_completed_section) {
+                    if (lot.last_completed_section === 'Compensation' && lot.overall_percent >= 100) {
+                        step = 'Completed';
+                    } else if (lot.last_completed_section === 'Compensation') {
+                        step = 'Compensation';
+                    } else if (lot.last_completed_section === 'Valuation') {
+                        step = 'Compensation';
+                    } else if (lot.last_completed_section === 'Land Details') {
+                        step = 'Valuation';
+                    } else if (lot.last_completed_section === 'Owner Details') {
+                        step = 'Land Details';
+                    }
+                }
+                return `<p><strong>Lot ${lot.lot_no}</strong>: ${lot.overall_percent}% complete, last section "${lot.last_completed_section}" → Currently in <strong>${step}</strong> stage</p>`;
+            }).join('')}
+        `;
+    </script>
+</body>
+</html>

@@ -248,7 +248,7 @@ exports.getPlanById = (req, res) => {
 };
 
 // Get plans created by current user (for Land Officers)
-exports.getMyPlans = (req, res) => {
+exports.getMyPlans = async (req, res) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
@@ -258,18 +258,39 @@ exports.getMyPlans = (req, res) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
     const userId = decoded.id;
     
-    Plan.getByCreator(userId, (err, rows) => {
+    Plan.getByCreator(userId, async (err, rows) => {
       if (err) return res.status(500).json({ error: err });
       
-      // Add full edit permissions for own plans
-      const plansWithPermissions = rows.map(plan => ({
-        ...plan,
-        can_edit: true,
-        can_delete: true,
-        is_own_plan: true
+      // Import progress service to get real-time progress
+      const progressService = require('../services/progressService');
+      
+      // Add progress data and permissions for each plan
+      const plansWithProgress = await Promise.all(rows.map(async (plan) => {
+        try {
+          // Get real-time progress for this plan
+          const progressData = await progressService.getPlanProgress(plan.id);
+          
+          return {
+            ...plan,
+            can_edit: true,
+            can_delete: true,
+            is_own_plan: true,
+            progress: Math.round(progressData.overall_percent || 0) // Round to integer for display
+          };
+        } catch (progressErr) {
+          console.error(`Error calculating progress for plan ${plan.id}:`, progressErr);
+          // Return plan without progress if calculation fails
+          return {
+            ...plan,
+            can_edit: true,
+            can_delete: true,
+            is_own_plan: true,
+            progress: 0
+          };
+        }
       }));
       
-      res.json(plansWithPermissions);
+      res.json(plansWithProgress);
     });
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

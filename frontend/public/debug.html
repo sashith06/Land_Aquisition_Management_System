@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Lot Progress</title>
+</head>
+<body>
+    <h1>Debug Lot Progress</h1>
+    <div id="result"></div>
+
+    <script>
+        async function testLotProgress() {
+            try {
+                // Mock the API response data from our test
+                const apiData = {
+                    "lots": [
+                        {"id":3,"plan_id":4,"project_id":5,"project_name":"Diyagama-Homagama","plan_identifier":"01","lot_no":1,"progress":100,"overall_percent":100,"last_completed_section":"Compensation","status":"active","extent_ha":0,"extent_perch":0,"land_type":"Private"},
+                        {"id":4,"plan_id":4,"project_id":5,"project_name":"Diyagama-Homagama","plan_identifier":"01","lot_no":2,"progress":100,"overall_percent":100,"last_completed_section":"Compensation","status":"active","extent_ha":0,"extent_perch":0,"land_type":"State"},
+                        {"id":6,"plan_id":4,"project_id":5,"project_name":"Diyagama-Homagama","plan_identifier":"01","lot_no":5,"progress":33,"overall_percent":33,"last_completed_section":"Owner Details","status":"active","extent_ha":0,"extent_perch":0,"land_type":"Private"},
+                        {"id":5,"plan_id":7,"project_id":5,"project_name":"Diyagama-Homagama","plan_identifier":"232","lot_no":3,"progress":50,"overall_percent":50,"last_completed_section":"Land Details","status":"pending","extent_ha":0,"extent_perch":0,"land_type":"State"}
+                    ]
+                };
+
+                let lots = apiData.lots || [];
+                
+                const stepCounts = {
+                    'Owner Details': 0,
+                    'Land Details': 0,
+                    'Valuation': 0,
+                    'Compensation': 0,
+                    'Completed': 0
+                };
+                
+                lots.forEach(lot => {
+                    let step = 'Owner Details';
+                    
+                    if (lot.last_completed_section) {
+                        if (lot.last_completed_section === 'Compensation' && lot.overall_percent >= 100) {
+                            step = 'Completed';
+                        } else if (lot.last_completed_section === 'Compensation') {
+                            step = 'Compensation';
+                        } else if (lot.last_completed_section === 'Valuation') {
+                            step = 'Compensation';
+                        } else if (lot.last_completed_section === 'Land Details') {
+                            step = 'Valuation';
+                        } else if (lot.last_completed_section === 'Owner Details') {
+                            step = 'Land Details';
+                        }
+                    } else {
+                        if (lot.overall_percent >= 100) {
+                            step = 'Completed';
+                        } else if (lot.overall_percent >= 75) {
+                            step = 'Compensation';
+                        } else if (lot.overall_percent >= 50) {
+                            step = 'Valuation';
+                        } else if (lot.overall_percent >= 25) {
+                            step = 'Land Details';
+                        } else {
+                            step = 'Owner Details';
+                        }
+                    }
+                    
+                    stepCounts[step]++;
+                    console.log(`Lot ${lot.lot_no} (ID:${lot.id}): ${lot.overall_percent}%, "${lot.last_completed_section}" → ${step}`);
+                });
+                
+                console.log('Step counts:', stepCounts);
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <h2>Expected Results:</h2>
+                    <pre>${JSON.stringify(stepCounts, null, 2)}</pre>
+                    <h3>Lot Details:</h3>
+                    ${lots.map(lot => {
+                        let step = 'Owner Details';
+                        if (lot.last_completed_section) {
+                            if (lot.last_completed_section === 'Compensation' && lot.overall_percent >= 100) {
+                                step = 'Completed';
+                            } else if (lot.last_completed_section === 'Compensation') {
+                                step = 'Compensation';
+                            } else if (lot.last_completed_section === 'Valuation') {
+                                step = 'Compensation';
+                            } else if (lot.last_completed_section === 'Land Details') {
+                                step = 'Valuation';
+                            } else if (lot.last_completed_section === 'Owner Details') {
+                                step = 'Land Details';
+                            }
+                        }
+                        return `<p>Lot ${lot.lot_no} (ID:${lot.id}): ${lot.overall_percent}%, "${lot.last_completed_section}" → <strong>${step}</strong></p>`;
+                    }).join('')}
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+        
+        testLotProgress();
+    </script>
+</body>
+</html>

@@ -25,13 +25,22 @@ function sectionStatus(completeness) {
 function buildStatusMessage(sections) {
   // Find first section that is not complete
   for (const s of sections) {
+    if (s.status === "blocked") {
+      const missingText = s.missing && s.missing.length
+        ? ` – ${s.missing.join(", ")}`
+        : "";
+      return {
+        stoppedAt: s.name,
+        message: `Blocked at ${s.name}${missingText}`
+      };
+    }
     if (s.status !== "complete") {
       const missingText = s.missing && s.missing.length
         ? ` – Missing: ${s.missing.join(", ")}`
         : "";
       return {
         stoppedAt: s.name,
-        message: `Stopped at ${s.name}${missingText}`
+        message: `In Progress: ${s.name}${missingText}`
       };
     }
   }
@@ -39,16 +48,27 @@ function buildStatusMessage(sections) {
 }
 
 async function getLotProgress(planId, lotId) {
-  // 1) Owners
+  console.log(`\n=== DEBUG: Calculating progress for Plan ${planId}, Lot ${lotId} ===`);
+  console.log(`QUERY PARAMETERS: planId=${planId}, lotId=${lotId}`);
+  
+  // 1) Owners - Get detailed owner information including status
   const ownersSql = `
     SELECT 
-      COUNT(*) AS total_owners
+      COUNT(*) AS total_owners,
+      SUM(CASE WHEN o.status = 'active' AND lo.status = 'active' THEN 1 ELSE 0 END) AS active_owners,
+      SUM(CASE WHEN o.status = 'inactive' OR lo.status = 'inactive' THEN 1 ELSE 0 END) AS inactive_owners,
+      SUM(CASE WHEN lo.status = 'transferred' THEN 1 ELSE 0 END) AS transferred_owners
     FROM lot_owners lo
     INNER JOIN owners o ON lo.owner_id = o.id
-    WHERE lo.lot_id = ? AND lo.status = 'active' AND o.status = 'active'
+    WHERE lo.lot_id = ?
   `;
   const [ownerRows] = await db.query(ownersSql, [lotId]);
-  const totalOwners = ownerRows?.[0]?.total_owners || 0;
+  const ownerStats = ownerRows?.[0] || { total_owners: 0, active_owners: 0, inactive_owners: 0, transferred_owners: 0 };
+  const totalOwners = parseInt(ownerStats.total_owners) || 0;
+  const activeOwners = parseInt(ownerStats.active_owners) || 0;
+  
+  console.log(`Owner Stats:`, ownerStats);
+  console.log(`Total Owners: ${totalOwners}, Active Owners: ${activeOwners}`);
 
   // 2) Land details (from lots)
   const landSql = `
@@ -58,6 +78,8 @@ async function getLotProgress(planId, lotId) {
   `;
   const [landRows] = await db.query(landSql, [lotId]);
   const land = landRows?.[0] || {};
+  
+  console.log(`Land Details:`, land);
 
   // 3) Valuation (lot_valuations)
   const valuationSql = `
@@ -67,8 +89,12 @@ async function getLotProgress(planId, lotId) {
     ORDER BY updated_at DESC, created_at DESC
     LIMIT 1
   `;
+  console.log(`Executing valuation query with lotId=${lotId}, planId=${planId}`);
   const [valRows] = await db.query(valuationSql, [lotId, planId]);
   const valuation = valRows?.[0] || null;
+  
+  console.log(`Valuation Data:`, valuation);
+  console.log(`Valuation rows found:`, valRows?.length || 0);
 
   // 4) Compensation (compensation_payment_details)
   const compSql = `
@@ -83,17 +109,53 @@ async function getLotProgress(planId, lotId) {
     FROM compensation_payment_details
     WHERE plan_id = ? AND lot_id = ?
   `;
+  console.log(`Executing compensation query with planId=${planId}, lotId=${lotId}`);
   const [compRows] = await db.query(compSql, [planId, lotId]);
   const compAgg = compRows?.[0] || { total_records: 0, with_amount: 0, with_payments: 0 };
+  console.log(`Compensation rows found:`, compRows?.length || 0);
+  
+  console.log(`Compensation Data:`, compAgg);
 
-  // Owner Details section
-  const ownerMissing = totalOwners > 0 ? [] : ["At least one owner"];
-  const ownerCompleteness = totalOwners > 0 ? 1 : 0;
+  // Owner Details section - Use actual owner status from database
+  const ownerMissing = [];
+  let ownerCompleteness = 0;
+  
+  if (totalOwners === 0) {
+    ownerMissing.push("At least one owner");
+    ownerCompleteness = 0;
+  } else {
+    // If no owners are marked as active but owners exist, 
+    // treat all existing owners as potentially active for backward compatibility
+    if (activeOwners === 0 && totalOwners > 0) {
+      console.log("WARNING: No active owners found, but owners exist. Treating as active for compatibility.");
+      // For backward compatibility, treat all owners as active if none are marked active
+      ownerCompleteness = 1;
+      // Still add missing info about status
+      ownerMissing.push(`${totalOwners} owner(s) need status verification (defaulting to active)`);
+    } else {
+      // Calculate completeness based on active owners vs total owners
+      ownerCompleteness = activeOwners / totalOwners;
+      
+      if (activeOwners < totalOwners) {
+        const inactiveCount = totalOwners - activeOwners;
+        if (inactiveCount > 0) {
+          ownerMissing.push(`${inactiveCount} owner(s) not active or transferred`);
+        }
+      }
+    }
+  }
+  
   const ownerSection = {
     name: "Owner Details",
     status: sectionStatus(ownerCompleteness),
     completeness: ownerCompleteness,
-    missing: ownerMissing
+    missing: ownerMissing,
+    details: {
+      total: totalOwners,
+      active: activeOwners,
+      inactive: parseInt(ownerStats.inactive_owners) || 0,
+      transferred: parseInt(ownerStats.transferred_owners) || 0
+    }
   };
 
   // Land Details section – require a small set of fields
@@ -102,20 +164,43 @@ async function getLotProgress(planId, lotId) {
   let landCompleteness = 0;
   let landStatus = "not_started";
   
-  if (ownerCompleteness < 1) {
-    landMissing.push("Complete Owner Details first");
+  // Use effective active owners (for backward compatibility)
+  const effectiveActiveOwners = activeOwners === 0 && totalOwners > 0 ? totalOwners : activeOwners;
+  
+  if (effectiveActiveOwners === 0) {
+    landMissing.push("Complete Owner Details first - need active owners");
     landCompleteness = 0;
     landStatus = "blocked";
   } else {
-    // Owner Details complete, now check land fields
-    if (!land.land_type) landMissing.push("Land Type");
-    if (!land.advance_tracing_no) landMissing.push("Survey/Advance Tracing No");
-    if (!land.preliminary_plan_extent_ha && !land.preliminary_plan_extent_perch) {
-      landMissing.push("Preliminary Plan Extent (Ha or Perch)");
+    // Owner Details have active owners, now check land fields
+    const landFields = [];
+    if (land.land_type) landFields.push("Land Type");
+    if (land.advance_tracing_no) landFields.push("Survey/Advance Tracing No");
+    if (land.preliminary_plan_extent_ha || land.preliminary_plan_extent_perch) {
+      landFields.push("Preliminary Plan Extent");
     }
-    const landTotalRequired = 3;
-    const landFieldsPresent = landTotalRequired - landMissing.length;
-    landCompleteness = landFieldsPresent / landTotalRequired;
+    
+    // Additional optional fields for higher completion
+    if (land.advance_tracing_extent_ha || land.advance_tracing_extent_perch) {
+      landFields.push("Advance Tracing Extent");
+    }
+    
+    const landTotalRequired = 3; // Minimum required fields
+    const landFieldsPresent = landFields.length;
+    
+    if (landFieldsPresent === 0) {
+      landMissing.push("Land Type", "Survey/Advance Tracing No", "Preliminary Plan Extent");
+      landCompleteness = 0;
+    } else {
+      // Calculate missing fields
+      if (!land.land_type) landMissing.push("Land Type");
+      if (!land.advance_tracing_no) landMissing.push("Survey/Advance Tracing No");
+      if (!land.preliminary_plan_extent_ha && !land.preliminary_plan_extent_perch) {
+        landMissing.push("Preliminary Plan Extent");
+      }
+      
+      landCompleteness = Math.min(1, landFieldsPresent / landTotalRequired);
+    }
     landStatus = sectionStatus(landCompleteness);
   }
   
@@ -132,8 +217,8 @@ async function getLotProgress(planId, lotId) {
   let valCompleteness = 0;
   let valStatus = "not_started";
   
-  if (ownerCompleteness < 1 || landCompleteness < 1) {
-    if (ownerCompleteness < 1) valMissing.push("Complete Owner Details first");
+  if (effectiveActiveOwners === 0 || landCompleteness < 1) {
+    if (effectiveActiveOwners === 0) valMissing.push("Need active owners in Owner Details");
     if (landCompleteness < 1) valMissing.push("Complete Land Details first");
     valCompleteness = 0;
     valStatus = "blocked";
@@ -165,37 +250,46 @@ async function getLotProgress(planId, lotId) {
   let compCompleteness = 0;
   let compStatus = "not_started";
   
-  if (ownerCompleteness < 1 || landCompleteness < 1 || valCompleteness < 1) {
-    if (ownerCompleteness < 1) compMissing.push("Complete Owner Details first");
+  if (effectiveActiveOwners === 0 || landCompleteness < 1 || valCompleteness < 1) {
+    if (effectiveActiveOwners === 0) compMissing.push("Need active owners in Owner Details");
     if (landCompleteness < 1) compMissing.push("Complete Land Details first");
     if (valCompleteness < 1) compMissing.push("Complete Valuation first");
     compCompleteness = 0;
     compStatus = "blocked";
-  } else {
-    // Previous sections complete, now check compensation
-    if (totalOwners === 0) {
-      // No owners yet; treat as not started and indicate dependency
-      compMissing.push("Owners not added");
-      compCompleteness = 0;
     } else {
-      const withAmount = Number(compAgg.with_amount || 0);
-      const withPayments = Number(compAgg.with_payments || 0);
-      const coverage = withAmount / totalOwners; // 0..1
-      if (withAmount === 0 && withPayments === 0) {
-        compMissing.push("Final Compensation Amounts");
+      // Previous sections complete, now check compensation
+      if (effectiveActiveOwners === 0) {
+        // No active owners yet; treat as not started and indicate dependency
+        compMissing.push("No active owners for compensation");
         compCompleteness = 0;
-      } else if (withAmount < totalOwners) {
-        compMissing.push("Compensation for all owners");
-        // Give partial credit based on coverage and any payments
-        compCompleteness = Math.min(1, Math.max(coverage, withPayments > 0 ? 0.3 : 0));
       } else {
-        compCompleteness = 1;
+        const totalRecords = Number(compAgg.total_records || 0);
+        const withAmount = Number(compAgg.with_amount || 0);
+        const withPayments = Number(compAgg.with_payments || 0);
+        
+        if (totalRecords === 0) {
+          // No compensation records created yet
+          compMissing.push("Compensation records not created");
+          compCompleteness = 0;
+        } else if (withAmount === 0) {
+          // Records exist but no amounts set
+          compMissing.push("Final Compensation Amounts not set");
+          compCompleteness = 0.2; // Give some credit for having records
+        } else {
+          // Calculate coverage based on effective active owners vs records with amounts
+          const coverage = withAmount / effectiveActiveOwners;
+          if (coverage >= 1) {
+            // All active owners have compensation amounts
+            compCompleteness = withPayments > 0 ? 1 : 0.8; // Full if payments made, 80% if just amounts set
+          } else {
+            // Partial coverage
+            compMissing.push(`Compensation for ${effectiveActiveOwners - withAmount} more active owner(s)`);
+            compCompleteness = Math.min(0.8, Math.max(coverage * 0.6, withPayments > 0 ? 0.3 : 0));
+          }
+        }
       }
-    }
-    compStatus = sectionStatus(compCompleteness);
-  }
-  
-  const compensationSection = {
+      compStatus = sectionStatus(compCompleteness);
+    }  const compensationSection = {
     name: "Compensation",
     status: compStatus,
     completeness: compCompleteness,
@@ -209,21 +303,21 @@ async function getLotProgress(planId, lotId) {
   // Each section worth 25%, but can only start after previous is complete
   let cumulativeProgress = 0;
   
-  // Owner Details: 0-25%
+  // Owner Details: 0-25% (based on active owners ratio)
   cumulativeProgress += ownerCompleteness * 25;
   
-  // Land Details: 25-50% (only if owners complete)
-  if (ownerCompleteness === 1) {
+  // Land Details: 25-50% (only if effective active owners exist)
+  if (effectiveActiveOwners > 0) {
     cumulativeProgress += landCompleteness * 25;
   }
   
-  // Valuation: 50-75% (only if land details complete)
-  if (ownerCompleteness === 1 && landCompleteness === 1) {
+  // Valuation: 50-75% (only if land details complete and effective active owners exist)
+  if (effectiveActiveOwners > 0 && landCompleteness === 1) {
     cumulativeProgress += valCompleteness * 25;
   }
   
-  // Compensation: 75-100% (only if valuation complete)
-  if (ownerCompleteness === 1 && landCompleteness === 1 && valCompleteness === 1) {
+  // Compensation: 75-100% (only if valuation complete and effective active owners exist)
+  if (effectiveActiveOwners > 0 && landCompleteness === 1 && valCompleteness === 1) {
     cumulativeProgress += compCompleteness * 25;
   }
 
@@ -237,11 +331,20 @@ async function getLotProgress(planId, lotId) {
 
   // Build status message
   const { stoppedAt, message } = buildStatusMessage(sections);
+  
+  console.log(`\n=== FINAL CALCULATION ===`);
+  console.log(`Cumulative Progress: ${cumulativeProgress}`);
+  console.log(`Overall Percent: ${overall}`);
+  console.log(`Last Completed Section: ${lastCompletedSection}`);
+  console.log(`Status Message: ${message}`);
+  console.log(`Sections Status:`, sections.map(s => ({ name: s.name, status: s.status, completeness: s.completeness })));
+  console.log(`=== END DEBUG ===\n`);
 
   return {
     plan_id: Number(planId),
     lot_id: Number(lotId),
     total_owners: totalOwners,
+    active_owners: activeOwners,
     sections,
     overall_percent: overall,
     last_completed_section: lastCompletedSection,
@@ -249,7 +352,13 @@ async function getLotProgress(planId, lotId) {
     status_message: message,
     // Useful aggregates for UI if needed
     aggregates: {
-      owners: { total: totalOwners },
+      owners: { 
+        total: totalOwners,
+        active: activeOwners,
+        effective_active: effectiveActiveOwners,
+        inactive: parseInt(ownerStats.inactive_owners) || 0,
+        transferred: parseInt(ownerStats.transferred_owners) || 0
+      },
       compensation: compAgg
     },
     // Sample queries for reference
@@ -476,11 +585,127 @@ async function getProjectProgress(projectId) {
   };
 }
 
+// Get stage participation for all lots (for chart display)
+async function getAllLotsStageParticipation(projectId = null, planId = null) {
+  console.log('\n=== CALCULATING STAGE PARTICIPATION FOR FILTERED LOTS ===');
+  console.log('Filters applied - projectId:', projectId, 'planId:', planId);
+  
+  // Build dynamic SQL with filters
+  let lotsSql = `
+    SELECT l.id, l.lot_no, l.plan_id, l.status,
+           p.plan_identifier, p.project_id, pr.name as project_name
+    FROM lots l
+    LEFT JOIN plans p ON l.plan_id = p.id  
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    WHERE l.status IN ('active', 'pending')
+  `;
+  
+  const params = [];
+  
+  // Apply project filter
+  if (projectId && projectId !== 'all') {
+    lotsSql += ` AND pr.id = ?`;
+    params.push(projectId);
+  }
+  
+  // Apply plan filter  
+  if (planId && planId !== 'all') {
+    lotsSql += ` AND p.id = ?`;
+    params.push(planId);
+  }
+  
+  lotsSql += ` ORDER BY l.id`;
+  
+  console.log('Executing SQL:', lotsSql, 'with params:', params);
+  const [allLots] = await db.query(lotsSql, params);
+  
+  console.log(`Found ${allLots.length} lots after filtering`);
+  if (allLots.length > 0) {
+    console.log('Sample lots:', allLots.slice(0, 3).map(lot => ({
+      id: lot.id,
+      lot_no: lot.lot_no,
+      project_id: lot.project_id,
+      plan_id: lot.plan_id,
+      project_name: lot.project_name,
+      plan_identifier: lot.plan_identifier
+    })));
+  }
+  
+  const stageParticipation = {
+    'Owner Details': 0,
+    'Land Details': 0, 
+    'Valuation': 0,
+    'Compensation': 0,
+    'Completed': 0
+  };
+  
+  for (const lot of allLots) {
+    console.log(`\nProcessing Lot ${lot.lot_no} (ID: ${lot.id}, Plan: ${lot.plan_id})`);
+    
+    // 1. Owner Details - Check if lot has owners
+    const [ownerRows] = await db.query(
+      'SELECT COUNT(*) as count FROM lot_owners WHERE lot_id = ?', 
+      [lot.id]
+    );
+    const hasOwners = ownerRows[0].count > 0;
+    if (hasOwners) {
+      stageParticipation['Owner Details']++;
+      console.log(`  ✓ Has Owner Details`);
+    }
+    
+    // 2. Land Details - Check if lot has land data
+    const [landRows] = await db.query(
+      'SELECT COUNT(*) as count FROM lots WHERE id = ? AND (advance_tracing_no IS NOT NULL OR preliminary_plan_extent_ha IS NOT NULL)', 
+      [lot.id]
+    );
+    const hasLandDetails = landRows[0].count > 0;
+    if (hasLandDetails) {
+      stageParticipation['Land Details']++;
+      console.log(`  ✓ Has Land Details`);
+    }
+    
+    // 3. Valuation - Check if lot has valuation
+    const [valuationRows] = await db.query(
+      'SELECT COUNT(*) as count FROM lot_valuations WHERE lot_id = ? AND plan_id = ?', 
+      [lot.id, lot.plan_id]
+    );
+    const hasValuation = valuationRows[0].count > 0;
+    if (hasValuation) {
+      stageParticipation['Valuation']++;
+      console.log(`  ✓ Has Valuation`);
+    }
+    
+    // 4. Compensation - Check if lot has compensation
+    const [compensationRows] = await db.query(
+      'SELECT COUNT(*) as count FROM compensation_payment_details WHERE lot_id = ? AND plan_id = ?', 
+      [lot.id, lot.plan_id]
+    );
+    const hasCompensation = compensationRows[0].count > 0;
+    if (hasCompensation) {
+      stageParticipation['Compensation']++;
+      console.log(`  ✓ Has Compensation`);
+    }
+    
+    // 5. Completed - Check if lot is fully complete (has all stages)
+    if (hasOwners && hasLandDetails && hasValuation && hasCompensation) {
+      stageParticipation['Completed']++;
+      console.log(`  ✓ Fully Completed`);
+    }
+  }
+  
+  console.log('\n=== FINAL STAGE PARTICIPATION COUNTS ===');
+  console.log(stageParticipation);
+  console.log('=== END STAGE PARTICIPATION ===\n');
+  
+  return stageParticipation;
+}
+
 module.exports = {
   getLotProgress,
   getPlanProgress,
   getPlanCreationProgress,
   getProjectCreationProgress,
   getProjectProgress,
+  getAllLotsStageParticipation,
   SECTION_ORDER
 };

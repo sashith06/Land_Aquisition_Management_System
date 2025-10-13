@@ -164,6 +164,21 @@ const Dashboard = () => {
     }
   };
 
+  // Add refresh functionality for real-time updates
+  const refreshProgressData = async () => {
+    if (userRole === 'land_officer') {
+      try {
+        setLoading(true);
+        const response = await api.get('/api/plans/my-plans');
+        setMyPlans(response.data || []);
+      } catch (error) {
+        console.error('Error refreshing progress data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handleCreatePlan = () => {
     if (selectedProject) {
       navigate(`/dashboard/create-plan?project=${selectedProject.id}`);
@@ -242,9 +257,33 @@ const Dashboard = () => {
                   ]}
                 />
                 
-                {/* Create Plan Button for Land Officers */}
+                {/* Create Plan Button and Refresh Button for Land Officers */}
                 {isLandOfficerDashboard && (
-                  <div>
+                  <div className="flex items-center space-x-3">
+                    {/* Refresh Progress Button */}
+                    <button
+                      onClick={refreshProgressData}
+                      disabled={loading}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Refresh progress data"
+                    >
+                      <svg 
+                        className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                        />
+                      </svg>
+                      <span>Refresh</span>
+                    </button>
+                    
+                    {/* Create Plan Button */}
                     {canCreatePlan ? (
                       <button
                         onClick={handleCreatePlan}
