@@ -78,6 +78,10 @@ app.use('/api/inquiries', inquiryRoutes);
 const progressRoutes = require('./routes/progressRoutes');
 app.use('/api', progressRoutes);
 
+// Report routes (financial and physical progress reports)
+const reportRoutes = require('./routes/reportRoutes');
+app.use('/api/reports', reportRoutes);
+
 
 
 

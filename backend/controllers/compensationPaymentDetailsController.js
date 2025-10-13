@@ -315,6 +315,20 @@ const createOrUpdateCompensation = (req, res) => {
   console.log('=== END DEBUG ===');
   console.log('🚀 Starting permission and format checks...');
   
+  // Helper function to format date from day/month/year to YYYY-MM-DD
+  const formatDateFromParts = (day, month, year) => {
+    if (!day || !month || !year) return null;
+    
+    // Convert 2-digit year to 4-digit year (assuming 20xx for years 00-99)
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    
+    // Pad day and month with leading zeros
+    const paddedDay = day.toString().padStart(2, '0');
+    const paddedMonth = month.toString().padStart(2, '0');
+    
+    return `${fullYear}-${paddedMonth}-${paddedDay}`;
+  };
+  
   // Check if user has permission to modify compensation details
   if (!req.user || !['financial_officer', 'FO'].includes(req.user.role)) {
     console.error('Unauthorized access attempt:', { 
@@ -367,7 +381,7 @@ const createOrUpdateCompensation = (req, res) => {
       owner_name: req.body.owner_name,
       final_compensation_amount: req.body.final_compensation_amount || 0,
       
-      // Compensation payment details
+      // Compensation payment details - handle both date formats
       compensation_full_payment_date: req.body.compensation_full_payment_date || null,
       compensation_full_payment_cheque_no: req.body.compensation_full_payment_cheque_no || null,
       compensation_full_payment_deducted_amount: req.body.compensation_full_payment_deducted_amount || 0,
@@ -383,6 +397,28 @@ const createOrUpdateCompensation = (req, res) => {
       compensation_part_payment_02_deducted_amount: req.body.compensation_part_payment_02_deducted_amount || 0,
       compensation_part_payment_02_paid_amount: req.body.compensation_part_payment_02_paid_amount || 0,
       
+      // Interest payment details
+      interest_full_payment_date: req.body.interest_full_payment_date || null,
+      interest_full_payment_cheque_no: req.body.interest_full_payment_cheque_no || null,
+      interest_full_payment_deducted_amount: req.body.interest_full_payment_deducted_amount || 0,
+      interest_full_payment_paid_amount: req.body.interest_full_payment_paid_amount || 0,
+      
+      interest_part_payment_01_date: req.body.interest_part_payment_01_date || null,
+      interest_part_payment_01_cheque_no: req.body.interest_part_payment_01_cheque_no || null,
+      interest_part_payment_01_deducted_amount: req.body.interest_part_payment_01_deducted_amount || 0,
+      interest_part_payment_01_paid_amount: req.body.interest_part_payment_01_paid_amount || 0,
+      
+      interest_part_payment_02_date: req.body.interest_part_payment_02_date || null,
+      interest_part_payment_02_cheque_no: req.body.interest_part_payment_02_cheque_no || null,
+      interest_part_payment_02_deducted_amount: req.body.interest_part_payment_02_deducted_amount || 0,
+      interest_part_payment_02_paid_amount: req.body.interest_part_payment_02_paid_amount || 0,
+      
+      // Account division
+      account_division_sent_date: req.body.account_division_sent_date || null,
+      account_division_cheque_no: req.body.account_division_cheque_no || null,
+      account_division_deducted_amount: req.body.account_division_deducted_amount || 0,
+      account_division_paid_amount: req.body.account_division_paid_amount || 0,
+      
       created_by: req.user.id.toString(),
       updated_by: req.user.id.toString()
     };
@@ -391,11 +427,15 @@ const createOrUpdateCompensation = (req, res) => {
 
     CompensationPaymentDetails.createOrUpdate(paymentData, (err, result) => {
       if (err) {
-        console.error("Error saving compensation details:", err);
+        console.error("Error saving compensation details - Full error:", err);
+        console.error("Error saving compensation details - Error message:", err.message);
+        console.error("Error saving compensation details - Error code:", err.code);
+        console.error("Error saving compensation details - SQL:", err.sql);
         return res.status(500).json({ 
           success: false, 
           message: "Error saving compensation details",
-          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+          details: process.env.NODE_ENV === 'development' ? err : undefined
         });
       }
 
@@ -694,7 +734,12 @@ const getCompensationByLot = (req, res) => {
           }
         },
         accountDivision: {
-          sentDate: convertDateToComponents(result.send_account_division_date || result.account_division_sent_date)
+          sentDate: {
+            ...convertDateToComponents(result.send_account_division_date || result.account_division_sent_date),
+            chequeNo: result.account_division_cheque_no || '',
+            deductedAmount: result.account_division_deducted_amount || 0,
+            paidAmount: result.account_division_paid_amount || 0
+          }
         }
       };
     });
