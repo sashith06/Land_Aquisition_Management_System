@@ -46,7 +46,25 @@ export const getUserAvatar = () => {
 
 export const isAdmin = () => {
   const user = getCurrentUser();
-  return user?.role === 'Chief Engineer' || user?.is_admin === true;
+  const roleFromStorage = localStorage.getItem('role');
+  
+  console.log('isAdmin check:', { 
+    userRole: user?.role, 
+    roleFromStorage: roleFromStorage,
+    isAdmin: user?.is_admin 
+  });
+  
+  // Check role from localStorage first (most reliable)
+  if (roleFromStorage === 'chief_engineer') {
+    return true;
+  }
+  
+  // Fallback to user object role with various formats
+  const role = user?.role?.toLowerCase();
+  return role === 'chief_engineer' || 
+         role === 'chief engineer' || 
+         role === 'admin' ||
+         user?.is_admin === true;
 };
 
 export const isLandowner = () => {
