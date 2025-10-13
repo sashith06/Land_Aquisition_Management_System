@@ -106,9 +106,6 @@ class CompensationPaymentDetails {
             interest_part_payment_02_deducted_amount = ?,
             interest_part_payment_02_paid_amount = ?,
             account_division_sent_date = ?,
-            account_division_cheque_no = ?,
-            account_division_deducted_amount = ?,
-            account_division_paid_amount = ?,
             updated_by = ?,
             updated_at = NOW()
           WHERE id = ?
@@ -142,9 +139,6 @@ class CompensationPaymentDetails {
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
           account_division_sent_date || null,
-          account_division_cheque_no || null,
-          account_division_deducted_amount || 0,
-          account_division_paid_amount || 0,
           updated_by,
           checkResult[0].id
         ];
@@ -178,10 +172,9 @@ class CompensationPaymentDetails {
             interest_part_payment_01_deducted_amount, interest_part_payment_01_paid_amount,
             interest_part_payment_02_date, interest_part_payment_02_cheque_no,
             interest_part_payment_02_deducted_amount, interest_part_payment_02_paid_amount,
-            account_division_sent_date, account_division_cheque_no,
-            account_division_deducted_amount, account_division_paid_amount,
+            account_division_sent_date,
             created_by, updated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertValues = [
@@ -215,9 +208,6 @@ class CompensationPaymentDetails {
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
           account_division_sent_date || null,
-          account_division_cheque_no || null,
-          account_division_deducted_amount || 0,
-          account_division_paid_amount || 0,
           created_by,
           updated_by
         ];
@@ -253,8 +243,36 @@ class CompensationPaymentDetails {
         return callback(err);
       }
 
-      console.log('Payment details results:', results);
-      callback(null, results);
+      // Format date columns to avoid timezone conversion issues
+      const formattedResults = results.map(row => {
+        const formatted = { ...row };
+        
+        // Format all date columns to YYYY-MM-DD strings
+        const dateColumns = [
+          'compensation_full_payment_date',
+          'compensation_part_payment_01_date', 
+          'compensation_part_payment_02_date',
+          'interest_full_payment_date',
+          'interest_part_payment_01_date',
+          'interest_part_payment_02_date', 
+          'account_division_sent_date'
+        ];
+        
+        dateColumns.forEach(col => {
+          if (formatted[col] && formatted[col] instanceof Date) {
+            // Convert Date object to YYYY-MM-DD string without timezone conversion
+            const year = formatted[col].getFullYear();
+            const month = String(formatted[col].getMonth() + 1).padStart(2, '0');
+            const day = String(formatted[col].getDate()).padStart(2, '0');
+            formatted[col] = `${year}-${month}-${day}`;
+          }
+        });
+        
+        return formatted;
+      });
+
+      console.log('Payment details results (formatted):', formattedResults);
+      callback(null, formattedResults);
     });
   }
 
@@ -274,8 +292,36 @@ class CompensationPaymentDetails {
         return callback(err);
       }
 
-      console.log('Payment details for lot results:', results);
-      callback(null, results);
+      // Format date columns to avoid timezone conversion issues
+      const formattedResults = results.map(row => {
+        const formatted = { ...row };
+        
+        // Format all date columns to YYYY-MM-DD strings
+        const dateColumns = [
+          'compensation_full_payment_date',
+          'compensation_part_payment_01_date', 
+          'compensation_part_payment_02_date',
+          'interest_full_payment_date',
+          'interest_part_payment_01_date',
+          'interest_part_payment_02_date', 
+          'account_division_sent_date'
+        ];
+        
+        dateColumns.forEach(col => {
+          if (formatted[col] && formatted[col] instanceof Date) {
+            // Convert Date object to YYYY-MM-DD string without timezone conversion
+            const year = formatted[col].getFullYear();
+            const month = String(formatted[col].getMonth() + 1).padStart(2, '0');
+            const day = String(formatted[col].getDate()).padStart(2, '0');
+            formatted[col] = `${year}-${month}-${day}`;
+          }
+        });
+        
+        return formatted;
+      });
+
+      console.log('Payment details for lot results (formatted):', formattedResults);
+      callback(null, formattedResults);
     });
   }
 

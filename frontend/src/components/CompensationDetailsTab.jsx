@@ -112,19 +112,19 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
             processedPaymentDetails[key] = {
               compensationPayment: {
                 fullPayment: {
-                  ...splitDate(payment.compensationPayment?.fullPayment?.date),
+                  fullDate: normalizeDateForInput(payment.compensationPayment?.fullPayment?.date || ''),
                   chequeNo: payment.compensationPayment?.fullPayment?.chequeNo || '',
                   deductedAmount: payment.compensationPayment?.fullPayment?.deductedAmount || 0,
                   paidAmount: payment.compensationPayment?.fullPayment?.paidAmount || 0
                 },
                 partPayment01: {
-                  ...splitDate(payment.compensationPayment?.partPayment01?.date),
+                  fullDate: normalizeDateForInput(payment.compensationPayment?.partPayment01?.date || ''),
                   chequeNo: payment.compensationPayment?.partPayment01?.chequeNo || '',
                   deductedAmount: payment.compensationPayment?.partPayment01?.deductedAmount || 0,
                   paidAmount: payment.compensationPayment?.partPayment01?.paidAmount || 0
                 },
                 partPayment02: {
-                  ...splitDate(payment.compensationPayment?.partPayment02?.date),
+                  fullDate: normalizeDateForInput(payment.compensationPayment?.partPayment02?.date || ''),
                   chequeNo: payment.compensationPayment?.partPayment02?.chequeNo || '',
                   deductedAmount: payment.compensationPayment?.partPayment02?.deductedAmount || 0,
                   paidAmount: payment.compensationPayment?.partPayment02?.paidAmount || 0
@@ -132,19 +132,19 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
               },
               interestPayment: {
                 fullPayment: {
-                  ...splitDate(payment.interestPayment?.fullPayment?.date),
+                  fullDate: normalizeDateForInput(payment.interestPayment?.fullPayment?.date || ''),
                   chequeNo: payment.interestPayment?.fullPayment?.chequeNo || '',
                   deductedAmount: payment.interestPayment?.fullPayment?.deductedAmount || 0,
                   paidAmount: payment.interestPayment?.fullPayment?.paidAmount || 0
                 },
                 partPayment01: {
-                  ...splitDate(payment.interestPayment?.partPayment01?.date),
+                  fullDate: normalizeDateForInput(payment.interestPayment?.partPayment01?.date || ''),
                   chequeNo: payment.interestPayment?.partPayment01?.chequeNo || '',
                   deductedAmount: payment.interestPayment?.partPayment01?.deductedAmount || 0,
                   paidAmount: payment.interestPayment?.partPayment01?.paidAmount || 0
                 },
                 partPayment02: {
-                  ...splitDate(payment.interestPayment?.partPayment02?.date),
+                  fullDate: normalizeDateForInput(payment.interestPayment?.partPayment02?.date || ''),
                   chequeNo: payment.interestPayment?.partPayment02?.chequeNo || '',
                   deductedAmount: payment.interestPayment?.partPayment02?.deductedAmount || 0,
                   paidAmount: payment.interestPayment?.partPayment02?.paidAmount || 0
@@ -152,10 +152,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
               },
               accountDivision: {
                 sentDate: {
-                  ...splitDate(payment.accountDivision?.sentDate?.date || null),
-                  chequeNo: payment.accountDivision?.sentDate?.chequeNo || '',
-                  deductedAmount: payment.accountDivision?.sentDate?.deductedAmount || 0,
-                  paidAmount: payment.accountDivision?.sentDate?.paidAmount || 0
+                  fullDate: normalizeDateForInput(payment.accountDivision?.sentDate?.date || '')
                 }
               }
             };
@@ -210,6 +207,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     return `${fullYear}-${paddedMonth}-${paddedDay}`;
   };
 
+  // Helper function to normalize date values for HTML date inputs
+  const normalizeDateForInput = (dateValue) => {
+    if (!dateValue || dateValue.trim() === '') return '';
+    try {
+      // Handle ISO datetime strings like "2025-07-22T18:30:00.000Z"
+      if (dateValue.includes('T')) {
+        // Extract date part directly without timezone conversion
+        return dateValue.split('T')[0]; // Get YYYY-MM-DD part before 'T'
+      }
+      // Already in YYYY-MM-DD format
+      return dateValue;
+    } catch (error) {
+      console.error('Date normalization error:', error);
+      return '';
+    }
+  };
+
   // Helper function to split date from YYYY-MM-DD to day/month/year components
   const splitDate = (dateString) => {
     if (!dateString) return { day: '', month: '', year: '' };
@@ -222,6 +236,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       month: parts[1], 
       year: parts[0].slice(-2) // Get last 2 digits of year
     };
+  };
+
+  // Helper function to format date from YYYY-MM-DD or ISO datetime to backend format
+  const formatDateFromFullDate = (fullDate) => {
+    if (!fullDate || fullDate.trim() === '') return null;
+    try {
+      // Handle ISO datetime strings like "2025-07-22T18:30:00.000Z"
+      if (fullDate.includes('T')) {
+        // Extract date part directly without timezone conversion
+        return fullDate.split('T')[0]; // Get YYYY-MM-DD part before 'T'
+      }
+      // Input format: YYYY-MM-DD, return as-is for backend
+      return fullDate;
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return null;
+    }
   };
 
   const handleSaveCompensation = async () => {
@@ -260,42 +291,26 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       console.log('🔍 DEBUG: paymentDetails state:', paymentDetails);
       
       console.log('🔍 DEBUG: Compensation Part Payment 01 values:');
-      console.log('  Day:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day'));
-      console.log('  Month:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month'));
-      console.log('  Year:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year'));
+      console.log('  Full Date:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'fullDate'));
       console.log('  Cheque No:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'chequeNo'));
       console.log('  Paid Amount:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount'));
-      console.log('  Formatted date:', formatDate(
-        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day'),
-        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month'),
-        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year')
+      console.log('  Formatted date:', formatDateFromFullDate(
+        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'fullDate')
       ));
       
       console.log('🔍 DEBUG: Interest Part Payment 01 values:');
-      const intDay = getPaymentDetailsValue('interestPayment', 'partPayment01', 'day');
-      const intMonth = getPaymentDetailsValue('interestPayment', 'partPayment01', 'month');
-      const intYear = getPaymentDetailsValue('interestPayment', 'partPayment01', 'year');
+      const intFullDate = getPaymentDetailsValue('interestPayment', 'partPayment01', 'fullDate');
       const intCheque = getPaymentDetailsValue('interestPayment', 'partPayment01', 'chequeNo');
       const intPaid = getPaymentDetailsValue('interestPayment', 'partPayment01', 'paidAmount');
-      console.log('  Day:', `"${intDay}" (type: ${typeof intDay}, length: ${intDay?.length})`);
-      console.log('  Month:', `"${intMonth}" (type: ${typeof intMonth}, length: ${intMonth?.length})`);
-      console.log('  Year:', `"${intYear}" (type: ${typeof intYear}, length: ${intYear?.length})`);
+      console.log('  Full Date:', `"${intFullDate}" (type: ${typeof intFullDate})`);
       console.log('  Cheque No:', `"${intCheque}" (type: ${typeof intCheque})`);
       console.log('  Paid Amount:', `"${intPaid}" (type: ${typeof intPaid})`);
-      console.log('  Formatted date:', formatDate(intDay, intMonth, intYear));
+      console.log('  Formatted date:', formatDateFromFullDate(intFullDate));
       
       console.log('🔍 DEBUG: Account Division values:');
-      const accDay = getPaymentDetailsValue('accountDivision', 'sentDate', 'day');
-      const accMonth = getPaymentDetailsValue('accountDivision', 'sentDate', 'month');
-      const accYear = getPaymentDetailsValue('accountDivision', 'sentDate', 'year');
-      const accCheque = getPaymentDetailsValue('accountDivision', 'sentDate', 'chequeNo');
-      const accPaid = getPaymentDetailsValue('accountDivision', 'sentDate', 'paidAmount');
-      console.log('  Day:', `"${accDay}" (type: ${typeof accDay}, length: ${accDay?.length})`);
-      console.log('  Month:', `"${accMonth}" (type: ${typeof accMonth}, length: ${accMonth?.length})`);
-      console.log('  Year:', `"${accYear}" (type: ${typeof accYear}, length: ${accYear?.length})`);
-      console.log('  Cheque No:', `"${accCheque}" (type: ${typeof accCheque})`);
-      console.log('  Paid Amount:', `"${accPaid}" (type: ${typeof accPaid})`);
-      console.log('  Formatted date:', formatDate(accDay, accMonth, accYear));
+      const accFullDate = getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate');
+      console.log('  Full Date:', `"${accFullDate}" (type: ${typeof accFullDate})`);
+      console.log('  Formatted date:', formatDateFromFullDate(accFullDate));
       
       const compensationPayload = {
         owner_nic: editingOwner.nic,
@@ -304,70 +319,53 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         
         // Helper function to convert day/month/year to proper date format
         // Compensation payment details with proper date formatting
-        compensation_full_payment_date: formatDate(
-          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'day'),
-          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'month'), 
-          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'year')
+        compensation_full_payment_date: formatDateFromFullDate(
+          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'fullDate')
         ),
         compensation_full_payment_cheque_no: getPaymentDetailsValue('compensationPayment', 'fullPayment', 'chequeNo') || null,
         compensation_full_payment_deducted_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'deductedAmount')) || 0,
         compensation_full_payment_paid_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount')) || 0,
         
-        compensation_part_payment_01_date: formatDate(
-          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day'),
-          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month'),
-          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year')
+        compensation_part_payment_01_date: formatDateFromFullDate(
+          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'fullDate')
         ),
         compensation_part_payment_01_cheque_no: getPaymentDetailsValue('compensationPayment', 'partPayment01', 'chequeNo') || null,
         compensation_part_payment_01_deducted_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'deductedAmount')) || 0,
         compensation_part_payment_01_paid_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount')) || 0,
         
-        compensation_part_payment_02_date: formatDate(
-          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'day'),
-          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'month'),
-          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'year')
+        compensation_part_payment_02_date: formatDateFromFullDate(
+          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'fullDate')
         ),
         compensation_part_payment_02_cheque_no: getPaymentDetailsValue('compensationPayment', 'partPayment02', 'chequeNo') || null,
         compensation_part_payment_02_deducted_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'deductedAmount')) || 0,
         compensation_part_payment_02_paid_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount')) || 0,
         
         // Interest payment details with proper date formatting
-        interest_full_payment_date: formatDate(
-          getPaymentDetailsValue('interestPayment', 'fullPayment', 'day'),
-          getPaymentDetailsValue('interestPayment', 'fullPayment', 'month'), 
-          getPaymentDetailsValue('interestPayment', 'fullPayment', 'year')
+        interest_full_payment_date: formatDateFromFullDate(
+          getPaymentDetailsValue('interestPayment', 'fullPayment', 'fullDate')
         ),
         interest_full_payment_cheque_no: getPaymentDetailsValue('interestPayment', 'fullPayment', 'chequeNo') || null,
         interest_full_payment_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'fullPayment', 'deductedAmount')) || 0,
         interest_full_payment_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'fullPayment', 'paidAmount')) || 0,
         
-        interest_part_payment_01_date: formatDate(
-          getPaymentDetailsValue('interestPayment', 'partPayment01', 'day'),
-          getPaymentDetailsValue('interestPayment', 'partPayment01', 'month'),
-          getPaymentDetailsValue('interestPayment', 'partPayment01', 'year')
+        interest_part_payment_01_date: formatDateFromFullDate(
+          getPaymentDetailsValue('interestPayment', 'partPayment01', 'fullDate')
         ),
         interest_part_payment_01_cheque_no: getPaymentDetailsValue('interestPayment', 'partPayment01', 'chequeNo') || null,
         interest_part_payment_01_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment01', 'deductedAmount')) || 0,
         interest_part_payment_01_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment01', 'paidAmount')) || 0,
         
-        interest_part_payment_02_date: formatDate(
-          getPaymentDetailsValue('interestPayment', 'partPayment02', 'day'),
-          getPaymentDetailsValue('interestPayment', 'partPayment02', 'month'),
-          getPaymentDetailsValue('interestPayment', 'partPayment02', 'year')
+        interest_part_payment_02_date: formatDateFromFullDate(
+          getPaymentDetailsValue('interestPayment', 'partPayment02', 'fullDate')
         ),
         interest_part_payment_02_cheque_no: getPaymentDetailsValue('interestPayment', 'partPayment02', 'chequeNo') || null,
         interest_part_payment_02_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment02', 'deductedAmount')) || 0,
         interest_part_payment_02_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment02', 'paidAmount')) || 0,
         
-        // Account division details (now includes all payment fields)
-        account_division_sent_date: formatDate(
-          getPaymentDetailsValue('accountDivision', 'sentDate', 'day'),
-          getPaymentDetailsValue('accountDivision', 'sentDate', 'month'),
-          getPaymentDetailsValue('accountDivision', 'sentDate', 'year')
+        // Account division details (only date field, no payment fields as per requirements)
+        account_division_sent_date: formatDateFromFullDate(
+          getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate')
         ),
-        account_division_cheque_no: getPaymentDetailsValue('accountDivision', 'sentDate', 'chequeNo') || null,
-        account_division_deducted_amount: parseFloat(getPaymentDetailsValue('accountDivision', 'sentDate', 'deductedAmount')) || 0,
-        account_division_paid_amount: parseFloat(getPaymentDetailsValue('accountDivision', 'sentDate', 'paidAmount')) || 0,
         
         created_by: 'system',
         updated_by: 'system'
@@ -475,7 +473,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     
     const fieldData = data[section][field];
     // Check if at least date and one amount field are filled
-    return fieldData.date && (fieldData.paidAmount || fieldData.chequeNo);
+    return fieldData.fullDate && (fieldData.paidAmount || fieldData.chequeNo);
   };
 
   // Helper function to check if account division date is filled
@@ -486,7 +484,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     const data = paymentDetails[key];
     if (!data || !data.accountDivision || !data.accountDivision.sentDate) return false;
-    return data.accountDivision.sentDate.date;
+    return data.accountDivision.sentDate.fullDate;
   };
 
   const formatCurrency = (value) => {
@@ -1084,34 +1082,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       Full Payment
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="col-span-2 md:col-span-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="DD"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'day')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'day', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'month')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'month', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'year')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'year', e.target.value)}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'fullDate', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
@@ -1150,34 +1128,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       Part Payment 01
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="col-span-2 md:col-span-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="DD"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'day', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'month', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'year', e.target.value)}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'fullDate', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
@@ -1216,34 +1174,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       Part Payment 02
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="col-span-2 md:col-span-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="DD"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'day')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'day', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'month')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'month', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'year')}
-                            onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'year', e.target.value)}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'fullDate', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
@@ -1393,34 +1331,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       Full Payment
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="col-span-2 md:col-span-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="DD"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'day')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'day', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'month')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'month', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'year')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'year', e.target.value)}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'fullDate', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
@@ -1459,34 +1377,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       Part Payment 01
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="col-span-2 md:col-span-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="DD"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'day')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'day', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'month')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'month', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'year')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'year', e.target.value)}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'fullDate', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
@@ -1525,34 +1423,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       Part Payment 02
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="col-span-2 md:col-span-2">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="DD"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'day')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'day', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="MM"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'month')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'month', e.target.value)}
-                          />
-                          <input
-                            type="text"
-                            placeholder="YY"
-                            maxLength="2"
-                            className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                            value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'year')}
-                            onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'year', e.target.value)}
-                          />
-                        </div>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'fullDate', e.target.value)}
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
@@ -1596,61 +1474,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                 </div>
 
                 <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                    <div className="col-span-2 md:col-span-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="DD"
-                          maxLength="2"
-                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'day')}
-                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'day', e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="MM"
-                          maxLength="2"
-                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'month')}
-                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'month', e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          placeholder="YY"
-                          maxLength="2"
-                          className="w-12 px-2 py-2 border border-gray-300 rounded-md text-center bg-white/70 backdrop-blur-sm"
-                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'year')}
-                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'year', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
                       <input
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
-                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'chequeNo')}
-                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'chequeNo', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
-                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'deductedAmount')}
-                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'deductedAmount', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
-                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'paidAmount')}
-                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'paidAmount', e.target.value)}
+                        type="date"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate')}
+                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'fullDate', e.target.value)}
                       />
                     </div>
                   </div>
