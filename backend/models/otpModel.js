@@ -18,6 +18,15 @@ const OTP = {
     db.query(query, [email], callback);
   },
 
+  getLatestByEmail: (email, callback) => {
+    const query = `
+      SELECT * FROM password_reset_otps
+      WHERE email = ?
+      ORDER BY created_at DESC LIMIT 1
+    `;
+    db.query(query, [email], callback);
+  },
+
   markAsUsed: (id, callback) => {
     const query = `UPDATE password_reset_otps SET is_used = 1 WHERE id = ?`;
     db.query(query, [id], callback);
