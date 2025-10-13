@@ -103,7 +103,66 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         
         console.log('📋 Final compensationData state:', newCompensationData);
         setCompensationData(newCompensationData);
-        setPaymentDetails(data.compensation_payment || {});
+        
+        // Convert compensation_payment data and split dates into day/month/year format for the form
+        const processedPaymentDetails = {};
+        if (data.compensation_payment) {
+          Object.keys(data.compensation_payment).forEach(key => {
+            const payment = data.compensation_payment[key];
+            processedPaymentDetails[key] = {
+              compensationPayment: {
+                fullPayment: {
+                  ...splitDate(payment.compensationPayment?.fullPayment?.date),
+                  chequeNo: payment.compensationPayment?.fullPayment?.chequeNo || '',
+                  deductedAmount: payment.compensationPayment?.fullPayment?.deductedAmount || 0,
+                  paidAmount: payment.compensationPayment?.fullPayment?.paidAmount || 0
+                },
+                partPayment01: {
+                  ...splitDate(payment.compensationPayment?.partPayment01?.date),
+                  chequeNo: payment.compensationPayment?.partPayment01?.chequeNo || '',
+                  deductedAmount: payment.compensationPayment?.partPayment01?.deductedAmount || 0,
+                  paidAmount: payment.compensationPayment?.partPayment01?.paidAmount || 0
+                },
+                partPayment02: {
+                  ...splitDate(payment.compensationPayment?.partPayment02?.date),
+                  chequeNo: payment.compensationPayment?.partPayment02?.chequeNo || '',
+                  deductedAmount: payment.compensationPayment?.partPayment02?.deductedAmount || 0,
+                  paidAmount: payment.compensationPayment?.partPayment02?.paidAmount || 0
+                }
+              },
+              interestPayment: {
+                fullPayment: {
+                  ...splitDate(payment.interestPayment?.fullPayment?.date),
+                  chequeNo: payment.interestPayment?.fullPayment?.chequeNo || '',
+                  deductedAmount: payment.interestPayment?.fullPayment?.deductedAmount || 0,
+                  paidAmount: payment.interestPayment?.fullPayment?.paidAmount || 0
+                },
+                partPayment01: {
+                  ...splitDate(payment.interestPayment?.partPayment01?.date),
+                  chequeNo: payment.interestPayment?.partPayment01?.chequeNo || '',
+                  deductedAmount: payment.interestPayment?.partPayment01?.deductedAmount || 0,
+                  paidAmount: payment.interestPayment?.partPayment01?.paidAmount || 0
+                },
+                partPayment02: {
+                  ...splitDate(payment.interestPayment?.partPayment02?.date),
+                  chequeNo: payment.interestPayment?.partPayment02?.chequeNo || '',
+                  deductedAmount: payment.interestPayment?.partPayment02?.deductedAmount || 0,
+                  paidAmount: payment.interestPayment?.partPayment02?.paidAmount || 0
+                }
+              },
+              accountDivision: {
+                sentDate: {
+                  ...splitDate(payment.accountDivision?.sentDate?.date || null),
+                  chequeNo: payment.accountDivision?.sentDate?.chequeNo || '',
+                  deductedAmount: payment.accountDivision?.sentDate?.deductedAmount || 0,
+                  paidAmount: payment.accountDivision?.sentDate?.paidAmount || 0
+                }
+              }
+            };
+          });
+        }
+        
+        setPaymentDetails(processedPaymentDetails);
       } else {
         console.log('❌ No data received or unsuccessful response:', response.data);
       }
@@ -137,6 +196,34 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     setEditingOwner({ ...owner, compensation: existing });
   };
 
+  // Helper function to format date from day/month/year inputs to YYYY-MM-DD
+  const formatDate = (day, month, year) => {
+    if (!day || !month || !year) return null;
+    
+    // Convert 2-digit year to 4-digit year (assuming 20xx for years 00-99)
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    
+    // Pad day and month with leading zeros
+    const paddedDay = day.toString().padStart(2, '0');
+    const paddedMonth = month.toString().padStart(2, '0');
+    
+    return `${fullYear}-${paddedMonth}-${paddedDay}`;
+  };
+
+  // Helper function to split date from YYYY-MM-DD to day/month/year components
+  const splitDate = (dateString) => {
+    if (!dateString) return { day: '', month: '', year: '' };
+    
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return { day: '', month: '', year: '' };
+    
+    return {
+      day: parts[2],
+      month: parts[1], 
+      year: parts[0].slice(-2) // Get last 2 digits of year
+    };
+  };
+
   const handleSaveCompensation = async () => {
     if (!editingOwner || !canEdit) return;
 
@@ -167,26 +254,120 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       const ownerPaymentData = paymentDetails[ownerKey] || {};
       const compensationPaymentData = ownerPaymentData.compensationPayment || {};
       
+      // Debug: Log payment details values
+      console.log('🔍 DEBUG: Payment details for key:', ownerKey);
+      console.log('🔍 DEBUG: ownerPaymentData:', ownerPaymentData);
+      console.log('🔍 DEBUG: paymentDetails state:', paymentDetails);
+      
+      console.log('🔍 DEBUG: Compensation Part Payment 01 values:');
+      console.log('  Day:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day'));
+      console.log('  Month:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month'));
+      console.log('  Year:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year'));
+      console.log('  Cheque No:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'chequeNo'));
+      console.log('  Paid Amount:', getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount'));
+      console.log('  Formatted date:', formatDate(
+        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day'),
+        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month'),
+        getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year')
+      ));
+      
+      console.log('🔍 DEBUG: Interest Part Payment 01 values:');
+      const intDay = getPaymentDetailsValue('interestPayment', 'partPayment01', 'day');
+      const intMonth = getPaymentDetailsValue('interestPayment', 'partPayment01', 'month');
+      const intYear = getPaymentDetailsValue('interestPayment', 'partPayment01', 'year');
+      const intCheque = getPaymentDetailsValue('interestPayment', 'partPayment01', 'chequeNo');
+      const intPaid = getPaymentDetailsValue('interestPayment', 'partPayment01', 'paidAmount');
+      console.log('  Day:', `"${intDay}" (type: ${typeof intDay}, length: ${intDay?.length})`);
+      console.log('  Month:', `"${intMonth}" (type: ${typeof intMonth}, length: ${intMonth?.length})`);
+      console.log('  Year:', `"${intYear}" (type: ${typeof intYear}, length: ${intYear?.length})`);
+      console.log('  Cheque No:', `"${intCheque}" (type: ${typeof intCheque})`);
+      console.log('  Paid Amount:', `"${intPaid}" (type: ${typeof intPaid})`);
+      console.log('  Formatted date:', formatDate(intDay, intMonth, intYear));
+      
+      console.log('🔍 DEBUG: Account Division values:');
+      const accDay = getPaymentDetailsValue('accountDivision', 'sentDate', 'day');
+      const accMonth = getPaymentDetailsValue('accountDivision', 'sentDate', 'month');
+      const accYear = getPaymentDetailsValue('accountDivision', 'sentDate', 'year');
+      const accCheque = getPaymentDetailsValue('accountDivision', 'sentDate', 'chequeNo');
+      const accPaid = getPaymentDetailsValue('accountDivision', 'sentDate', 'paidAmount');
+      console.log('  Day:', `"${accDay}" (type: ${typeof accDay}, length: ${accDay?.length})`);
+      console.log('  Month:', `"${accMonth}" (type: ${typeof accMonth}, length: ${accMonth?.length})`);
+      console.log('  Year:', `"${accYear}" (type: ${typeof accYear}, length: ${accYear?.length})`);
+      console.log('  Cheque No:', `"${accCheque}" (type: ${typeof accCheque})`);
+      console.log('  Paid Amount:', `"${accPaid}" (type: ${typeof accPaid})`);
+      console.log('  Formatted date:', formatDate(accDay, accMonth, accYear));
+      
       const compensationPayload = {
         owner_nic: editingOwner.nic,
         owner_name: editingOwner.name,
         final_compensation_amount: updatedCompensation.finalCompensationAmount || 0,
         
-        // Compensation payment details
-        compensation_full_payment_date: compensationPaymentData.fullPayment?.date || null,
-        compensation_full_payment_cheque_no: compensationPaymentData.fullPayment?.chequeNo || null,
-        compensation_full_payment_deducted_amount: compensationPaymentData.fullPayment?.deductedAmount || 0,
-        compensation_full_payment_paid_amount: compensationPaymentData.fullPayment?.paidAmount || 0,
+        // Helper function to convert day/month/year to proper date format
+        // Compensation payment details with proper date formatting
+        compensation_full_payment_date: formatDate(
+          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'day'),
+          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'month'), 
+          getPaymentDetailsValue('compensationPayment', 'fullPayment', 'year')
+        ),
+        compensation_full_payment_cheque_no: getPaymentDetailsValue('compensationPayment', 'fullPayment', 'chequeNo') || null,
+        compensation_full_payment_deducted_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'deductedAmount')) || 0,
+        compensation_full_payment_paid_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount')) || 0,
         
-        compensation_part_payment_01_date: compensationPaymentData.partPayment01?.date || null,
-        compensation_part_payment_01_cheque_no: compensationPaymentData.partPayment01?.chequeNo || null,
-        compensation_part_payment_01_deducted_amount: compensationPaymentData.partPayment01?.deductedAmount || 0,
-        compensation_part_payment_01_paid_amount: compensationPaymentData.partPayment01?.paidAmount || 0,
+        compensation_part_payment_01_date: formatDate(
+          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'day'),
+          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'month'),
+          getPaymentDetailsValue('compensationPayment', 'partPayment01', 'year')
+        ),
+        compensation_part_payment_01_cheque_no: getPaymentDetailsValue('compensationPayment', 'partPayment01', 'chequeNo') || null,
+        compensation_part_payment_01_deducted_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'deductedAmount')) || 0,
+        compensation_part_payment_01_paid_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount')) || 0,
         
-        compensation_part_payment_02_date: compensationPaymentData.partPayment02?.date || null,
-        compensation_part_payment_02_cheque_no: compensationPaymentData.partPayment02?.chequeNo || null,
-        compensation_part_payment_02_deducted_amount: compensationPaymentData.partPayment02?.deductedAmount || 0,
-        compensation_part_payment_02_paid_amount: compensationPaymentData.partPayment02?.paidAmount || 0,
+        compensation_part_payment_02_date: formatDate(
+          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'day'),
+          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'month'),
+          getPaymentDetailsValue('compensationPayment', 'partPayment02', 'year')
+        ),
+        compensation_part_payment_02_cheque_no: getPaymentDetailsValue('compensationPayment', 'partPayment02', 'chequeNo') || null,
+        compensation_part_payment_02_deducted_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'deductedAmount')) || 0,
+        compensation_part_payment_02_paid_amount: parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount')) || 0,
+        
+        // Interest payment details with proper date formatting
+        interest_full_payment_date: formatDate(
+          getPaymentDetailsValue('interestPayment', 'fullPayment', 'day'),
+          getPaymentDetailsValue('interestPayment', 'fullPayment', 'month'), 
+          getPaymentDetailsValue('interestPayment', 'fullPayment', 'year')
+        ),
+        interest_full_payment_cheque_no: getPaymentDetailsValue('interestPayment', 'fullPayment', 'chequeNo') || null,
+        interest_full_payment_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'fullPayment', 'deductedAmount')) || 0,
+        interest_full_payment_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'fullPayment', 'paidAmount')) || 0,
+        
+        interest_part_payment_01_date: formatDate(
+          getPaymentDetailsValue('interestPayment', 'partPayment01', 'day'),
+          getPaymentDetailsValue('interestPayment', 'partPayment01', 'month'),
+          getPaymentDetailsValue('interestPayment', 'partPayment01', 'year')
+        ),
+        interest_part_payment_01_cheque_no: getPaymentDetailsValue('interestPayment', 'partPayment01', 'chequeNo') || null,
+        interest_part_payment_01_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment01', 'deductedAmount')) || 0,
+        interest_part_payment_01_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment01', 'paidAmount')) || 0,
+        
+        interest_part_payment_02_date: formatDate(
+          getPaymentDetailsValue('interestPayment', 'partPayment02', 'day'),
+          getPaymentDetailsValue('interestPayment', 'partPayment02', 'month'),
+          getPaymentDetailsValue('interestPayment', 'partPayment02', 'year')
+        ),
+        interest_part_payment_02_cheque_no: getPaymentDetailsValue('interestPayment', 'partPayment02', 'chequeNo') || null,
+        interest_part_payment_02_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment02', 'deductedAmount')) || 0,
+        interest_part_payment_02_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment02', 'paidAmount')) || 0,
+        
+        // Account division details (now includes all payment fields)
+        account_division_sent_date: formatDate(
+          getPaymentDetailsValue('accountDivision', 'sentDate', 'day'),
+          getPaymentDetailsValue('accountDivision', 'sentDate', 'month'),
+          getPaymentDetailsValue('accountDivision', 'sentDate', 'year')
+        ),
+        account_division_cheque_no: getPaymentDetailsValue('accountDivision', 'sentDate', 'chequeNo') || null,
+        account_division_deducted_amount: parseFloat(getPaymentDetailsValue('accountDivision', 'sentDate', 'deductedAmount')) || 0,
+        account_division_paid_amount: parseFloat(getPaymentDetailsValue('accountDivision', 'sentDate', 'paidAmount')) || 0,
         
         created_by: 'system',
         updated_by: 'system'
@@ -264,6 +445,21 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     const actualLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     const data = paymentDetails[key];
+    
+    // Enhanced debugging
+    console.log(`🔍 getPaymentDetailsValue(${section}, ${field}, ${subField})`);
+    console.log(`🔍 Key: "${key}"`);
+    console.log(`🔍 Data exists:`, !!data);
+    if (data) {
+      console.log(`🔍 Section "${section}" exists:`, !!data[section]);
+      if (data[section]) {
+        console.log(`🔍 Field "${field}" exists:`, !!data[section][field]);
+        if (data[section][field] && subField) {
+          console.log(`🔍 SubField "${subField}" value:`, data[section][field][subField]);
+        }
+      }
+    }
+    
     if (!data || !data[section] || !data[section][field]) return '';
     return subField ? (data[section][field][subField] || '') : data[section][field];
   };
