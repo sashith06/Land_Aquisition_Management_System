@@ -10,7 +10,7 @@ export default function ProjectPlans() {
   const { projectId } = useParams();
   const location = useLocation();
   const { generateBreadcrumbs } = useBreadcrumbs();
-  const { projectName } = location.state || {};
+  const [projectName, setProjectName] = useState(location.state?.projectName || null);
   const [plans, setPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +25,13 @@ export default function ProjectPlans() {
   const loadPlans = async () => {
     try {
       setLoading(true);
+      
+      // Load project details first if project name is not available
+      if (!projectName) {
+        const projectResponse = await api.get(`/api/projects/${projectId}`);
+        setProjectName(projectResponse.data.project_name);
+      }
+      
       const response = await api.get(`/api/plans/project/${projectId}`);
       console.log('Plans loaded:', response.data);
       console.log('Plans with progress:', response.data.map(plan => ({ 
@@ -45,20 +52,13 @@ export default function ProjectPlans() {
     setSelectedPlan(plan);
   };
 
-  if (loading) {
+  if (loading || !projectName) {
     return (
       <div className="p-6">
-        <div className="mb-6">
-          <Breadcrumb items={generateBreadcrumbs({ projectName })} />
-          <h1 className="text-2xl font-bold text-gray-900">
-            {projectName ? `${projectName} - Plans` : 'Project Plans'}
-          </h1>
-        </div>
-
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading plans...</p>
+            <p className="mt-4 text-gray-600">Loading...</p>
           </div>
         </div>
       </div>

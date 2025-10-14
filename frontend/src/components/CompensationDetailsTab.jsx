@@ -15,30 +15,39 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   // Get planId from URL if not provided
   const currentPlanId = planId || window.location.pathname.split('/')[3];
 
-  // Get actual user role from token
-  const actualUserRole = getUserRole();
+  // Get actual user role from token with useState to ensure reactivity
+  const [actualUserRole, setActualUserRole] = useState(null);
+  const [canEdit, setCanEdit] = useState(false);
 
-  // Check if user has permission to edit (only financial officers can edit)
-  // Support multiple role formats: 'financial_officer', 'Financial Officer', 'FO'
-  const financialOfficerRoles = ['financial_officer', 'Financial Officer', 'FO'];
-  const canEdit = financialOfficerRoles.includes(actualUserRole);
-  
-  // Debug role information
-  console.log('🔐 User Role Debug:', {
-    actualUserRole,
-    canEdit,
-    supportedRoles: financialOfficerRoles,
-    token: !!localStorage.getItem('token')
-  });
-  
   // Check token validity for additional authentication info
   const [tokenStatus, setTokenStatus] = useState('checking');
+  
+  // Initialize user role on mount
+  useEffect(() => {
+    const role = getUserRole();
+    setActualUserRole(role);
+    
+    // Check if user has permission to edit (only financial officers can edit)
+    // Support multiple role formats: 'financial_officer', 'Financial Officer', 'FO'
+    const financialOfficerRoles = ['financial_officer', 'Financial Officer', 'FO'];
+    const hasEditPermission = financialOfficerRoles.includes(role);
+    setCanEdit(hasEditPermission);
+    
+    // Debug role information
+    console.log('🔐 User Role Debug:', {
+      actualUserRole: role,
+      canEdit: hasEditPermission,
+      supportedRoles: financialOfficerRoles,
+      token: !!localStorage.getItem('token')
+    });
+  }, []);
   
   useEffect(() => {
     const checkToken = () => {
       const token = localStorage.getItem('token');
       if (!token) {
         setTokenStatus('missing');
+        setCanEdit(false);
         return;
       }
       
@@ -46,12 +55,29 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         const payload = JSON.parse(atob(token.split('.')[1]));
         const isExpired = payload.exp < (Date.now() / 1000);
         setTokenStatus(isExpired ? 'expired' : 'valid');
+        
+        // Re-verify role from token
+        if (!isExpired && payload.role) {
+          const financialOfficerRoles = ['financial_officer', 'Financial Officer', 'FO'];
+          const hasEditPermission = financialOfficerRoles.includes(payload.role);
+          setActualUserRole(payload.role);
+          setCanEdit(hasEditPermission);
+          
+          console.log('🔐 Token verified - Role:', payload.role, 'Can Edit:', hasEditPermission);
+        } else if (isExpired) {
+          setCanEdit(false);
+        }
       } catch (e) {
         setTokenStatus('invalid');
+        setCanEdit(false);
       }
     };
     
     checkToken();
+    
+    // Re-check token every minute
+    const interval = setInterval(checkToken, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   // Load plan data to get Section 38 gazette date
@@ -123,6 +149,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       if (response.data.success && response.data.data) {
         const data = response.data.data;
         console.log('📡 Received compensation data from API:', data);
+        console.log('💰 Calculated Interest Amounts from API:', 
+          data.owner_data?.map(o => ({ nic: o.nic, calculatedInterest: o.calculatedInterestAmount }))
+        );
         
         // Convert API data back to component format
         const ownerData = data.owner_data || [];
@@ -194,19 +223,24 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                 }
               }
             };
+            
+            console.log(`🔍 Processing payment for key: ${key}`);
+            console.log(`📅 Raw account division from API:`, payment.accountDivision);
+            console.log(`📅 Processed account division:`, processedPaymentDetails[key].accountDivision);
+            console.log(`📅 Final fullDate value:`, processedPaymentDetails[key].accountDivision.sentDate.fullDate);
+            
+            if (processedPaymentDetails[key].interestPayment) {
+              console.log(`🏦 Key "${key}" interest payment:`, processedPaymentDetails[key].interestPayment);
+            }
+            
+            if (processedPaymentDetails[key].accountDivision) {
+              console.log(`📅 Key "${key}" account division:`, processedPaymentDetails[key].accountDivision);
+            }
           });
-          
-          if (details.interestPayment) {
-            console.log(`🏦 Key "${key}" interest payment:`, details.interestPayment);
-          }
-          
-          if (details.accountDivision) {
-            console.log(`📅 Key "${key}" account division:`, details.accountDivision);
-          }
-        });
         
-        setPaymentDetails(paymentDetailsData);
-        console.log('✅ Payment details state updated successfully');
+          setPaymentDetails(processedPaymentDetails);
+          console.log('✅ Payment details state updated successfully');
+        }
       } else {
         console.log('❌ No data received or unsuccessful response:', response.data);
       }
@@ -230,18 +264,25 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     console.log('🔍 Data found for this owner:', existingData);
     
     // Use existing data if available, otherwise initialize with basic structure
-    const ownerData = existingData || {
+    const ownerData = {
       name: owner.name,
       nic: owner.nic,
       compensation: {
-        finalCompensationAmount: 0,
-        assessmentDate: '',
-        assessorName: '',
-        lotShare: (100 / selectedLot.owners.length).toString()
+        finalCompensationAmount: existingData?.finalCompensationAmount || 0,
+        assessmentDate: existingData?.assessmentDate || '',
+        assessorName: existingData?.assessorName || '',
+        lotShare: existingData?.lotShare || (100 / selectedLot.owners.length).toString(),
+        ...existingData?.compensation
       }
     };
     
-    return `${fullYear}-${paddedMonth}-${paddedDay}`;
+    console.log('🔍 Setting editing owner with data:', ownerData);
+    setEditingOwner(ownerData);
+    
+    // Load land details if not already loaded
+    if (!landDetails) {
+      loadLandDetails();
+    }
   };
 
   // Helper function to normalize date values for HTML date inputs
@@ -265,12 +306,8 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   const splitDate = (dateString) => {
     if (!dateString) return { day: '', month: '', year: '' };
     
-    setEditingOwner(ownerData);
-    
-    // Load land details if not already loaded
-    if (!landDetails) {
-      loadLandDetails();
-    }
+    const [year, month, day] = dateString.split('-');
+    return { day, month, year };
   };
 
   // Helper function to format date from YYYY-MM-DD or ISO datetime to backend format
@@ -333,7 +370,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       // Use backend_id for consistent key generation
       const actualLotId = selectedLot.backend_id || selectedLot.id;
       const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
-      const compensationInfo = editingOwner.compensation;
+      
+      // Ensure compensation object exists with default values
+      const compensationInfo = editingOwner.compensation || {
+        finalCompensationAmount: 0,
+        assessmentDate: '',
+        assessorName: '',
+        lotShare: (100 / selectedLot.owners.length).toString()
+      };
       
       // No breakdown calculation - just use the final compensation amount
       const updatedCompensation = {
@@ -341,7 +385,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         lastUpdated: new Date().toISOString(),
         nic: editingOwner.nic,
         name: editingOwner.name,
-        finalCompensationAmount: compensationInfo.finalCompensationAmount || 0
+        finalCompensationAmount: parseFloat(compensationInfo.finalCompensationAmount) || 0
       };
 
       const newData = {
@@ -433,8 +477,17 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         interest_part_payment_02_deducted_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment02', 'deductedAmount')) || 0,
         interest_part_payment_02_paid_amount: parseFloat(getPaymentDetailsValue('interestPayment', 'partPayment02', 'paidAmount')) || 0,
         
+        // Calculate and include the calculated interest amount for backend comparison
+        calculated_interest_amount: getEditingOwnerInterest(),
+        
         // Account division details (only date field, no payment fields as per requirements)
+        // IMPORTANT: Database has TWO date fields that need to be populated:
+        // 1. account_division_sent_date (original field)
+        // 2. send_account_division_date (new field for completion tracking)
         account_division_sent_date: formatDateFromFullDate(
+          getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate')
+        ),
+        send_account_division_date: formatDateFromFullDate(
           getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate')
         ),
         
@@ -443,6 +496,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       };
       
       console.log('🛰 Sending payload:', compensationPayload);
+      console.log('💰 Interest Calculation Debug:');
+      console.log('  - Calculated Interest Amount:', compensationPayload.calculated_interest_amount);
+      console.log('  - Interest Full Payment:', compensationPayload.interest_full_payment_paid_amount);
+      console.log('  - Interest Part 01:', compensationPayload.interest_part_payment_01_paid_amount);
+      console.log('  - Interest Part 02:', compensationPayload.interest_part_payment_02_paid_amount);
+      console.log('  - Total Interest Paid:', 
+        (compensationPayload.interest_full_payment_paid_amount || 0) +
+        (compensationPayload.interest_part_payment_01_paid_amount || 0) +
+        (compensationPayload.interest_part_payment_02_paid_amount || 0)
+      );
+      console.log('📅 Account Division Date Debug:');
+      console.log('  - Raw Value from State:', getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate'));
+      console.log('  - account_division_sent_date (for model):', compensationPayload.account_division_sent_date);
+      console.log('  - send_account_division_date (for progress):', compensationPayload.send_account_division_date);
+      console.log('  - Is NULL?:', compensationPayload.account_division_sent_date === null);
+      console.log('  - Is Empty String?:', compensationPayload.account_division_sent_date === '');
+      console.log('  - Type:', typeof compensationPayload.account_division_sent_date);
 
       // Check token before sending
       const token = localStorage.getItem('token');
@@ -509,7 +579,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     setEditingOwner(prev => ({
       ...prev,
       compensation: {
-        ...prev.compensation,
+        ...(prev.compensation || {}),
         [field]: value
       }
     }));
@@ -521,6 +591,17 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     const actualLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
     
+    // Debug account division date changes
+    if (section === 'accountDivision') {
+      console.log('📅 Account Division Date Change:', {
+        section,
+        field,
+        subField,
+        value,
+        key
+      });
+    }
+    
     setPaymentDetails(prev => {
       const updated = { ...prev };
       if (!updated[key]) updated[key] = {};
@@ -531,6 +612,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         updated[key][section][field][subField] = value;
       } else {
         updated[key][section][field] = value;
+      }
+      
+      // Debug the updated state
+      if (section === 'accountDivision') {
+        console.log('📅 Updated payment details:', updated[key][section]);
       }
       
       return updated;
@@ -656,7 +742,20 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   };
 
   // Calculate interest for an owner
+  // Formula: (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
   const getOwnerInterest = (owner) => {
+    // First, try to get the stored calculated interest from the database
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${owner.nic}`;
+    const storedData = compensationData[key];
+    
+    // If we have a stored calculated interest amount, use it (more accurate and consistent)
+    if (storedData && storedData.calculatedInterestAmount && storedData.calculatedInterestAmount > 0) {
+      console.log(`💰 Using stored calculated interest for ${owner.name}: ${storedData.calculatedInterestAmount}`);
+      return parseFloat(storedData.calculatedInterestAmount);
+    }
+    
+    // Otherwise, calculate it dynamically
     const finalAmount = getOwnerFinalCompensation(owner);
     const gazetteDate = planData?.section_38_gazette_date;
     
@@ -665,15 +764,38 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     const startDate = new Date(gazetteDate);
     const currentDate = new Date();
     const timeDiff = currentDate.getTime() - startDate.getTime();
-    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24)); // Use Math.floor and 60 * 60 * 24 for consistency
     
     if (daysDiff <= 0) return 0;
     
-    // Calculate daily interest: (Principal × Annual Rate × Days) / 365
-    const annualRate = 0.07; // 7% (updated from 5%)
-    const dailyInterest = (finalAmount * annualRate * daysDiff) / 365;
+    // Calculate interest: (Principal × Annual Rate × Days) / 365
+    const annualRate = 0.07; // 7% annual interest rate
+    const interest = (finalAmount * annualRate * daysDiff) / 365;
     
-    return dailyInterest;
+    // Round to 2 decimal places
+    return Math.round(interest * 100) / 100;
+  };
+
+  // Calculate interest dynamically for editing owner (updates in real-time)
+  const getEditingOwnerInterest = () => {
+    if (!editingOwner) return 0;
+    
+    const finalAmount = parseFloat(editingOwner.compensation?.finalCompensationAmount) || 0;
+    const gazetteDate = planData?.section_38_gazette_date;
+    
+    if (!gazetteDate || !finalAmount) return 0;
+    
+    const startDate = new Date(gazetteDate);
+    const currentDate = new Date();
+    const timeDiff = currentDate.getTime() - startDate.getTime();
+    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff <= 0) return 0;
+    
+    const annualRate = 0.07; // 7% annual interest rate
+    const interest = (finalAmount * annualRate * daysDiff) / 365;
+    
+    return Math.round(interest * 100) / 100;
   };
 
   // Get total interest payments made for an owner
@@ -709,7 +831,26 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   // Check if send account division date is set
   const isSendAccountDivisionComplete = (owner) => {
-    return isAccountDivisionFilled();
+    // Check the payment details for this specific owner (not just editingOwner)
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${owner.nic}`;
+    const data = paymentDetails[key];
+    
+    console.log(`🔍 Checking account division completion for ${owner.name} (${owner.nic})`);
+    console.log(`  Key: ${key}`);
+    console.log(`  Payment Details Exists: ${!!data}`);
+    console.log(`  Account Division Exists: ${!!(data?.accountDivision)}`);
+    console.log(`  Sent Date Exists: ${!!(data?.accountDivision?.sentDate)}`);
+    console.log(`  Full Date Value: "${data?.accountDivision?.sentDate?.fullDate}"`);
+    
+    if (!data || !data.accountDivision || !data.accountDivision.sentDate) {
+      console.log(`  ❌ Division date NOT complete - missing data structure`);
+      return false;
+    }
+    
+    const isComplete = data.accountDivision.sentDate.fullDate && data.accountDivision.sentDate.fullDate.trim() !== '';
+    console.log(`  ${isComplete ? '✅' : '❌'} Division date ${isComplete ? 'IS' : 'NOT'} complete`);
+    return isComplete;
   };
 
   // Get overall completion status for an owner based on new criteria
@@ -1103,7 +1244,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Interest Due (7% annually)</label>
                     <div className="text-lg font-semibold text-blue-600">
-                      {formatCurrency(getOwnerInterest(editingOwner))}
+                      {formatCurrency(getEditingOwnerInterest())}
                     </div>
                   </div>
                 </div>
@@ -1280,7 +1421,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       <div>
                         <span className="font-medium text-gray-600">Calculated Interest:</span>
                         <span className="text-lg font-bold text-purple-600 ml-2">
-                          {formatCurrency(getOwnerInterest(editingOwner))}
+                          {formatCurrency(getEditingOwnerInterest())}
                         </span>
                       </div>
                       <div>
@@ -1440,25 +1581,26 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                   </div>
                 </div>
 
-              {/* Sent To Account Division */}
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
-                    <Building className="w-5 h-5 text-white" />
+                {/* Sent To Account Division */}
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
+                      <Building className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800">Sent To Account Division</h3>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Sent To Account Division</h3>
-                </div>
 
-                <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                      <input
-                        type="date"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                        value={getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate')}
-                        onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'fullDate', e.target.value)}
-                      />
+                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          value={getPaymentDetailsValue('accountDivision', 'sentDate', 'fullDate')}
+                          onChange={(e) => handlePaymentDetailsChange('accountDivision', 'sentDate', 'fullDate', e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1469,6 +1611,6 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       )}
     </div>
   );
-};
+}
 
 export default CompensationDetailsTab;

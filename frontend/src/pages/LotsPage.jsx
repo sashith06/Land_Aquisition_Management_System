@@ -1043,6 +1043,13 @@ const LotsPage = () => {
               planId={planId} 
               userRole={userRole}
               landDetails={landDetails}
+              onDataUpdate={() => {
+                console.log('🔄 Compensation data updated - refreshing progress...');
+                // Refresh lot progress if progress data is loaded
+                if (lotProgress) {
+                  fetchLotProgress();
+                }
+              }}
             />
           )}
 

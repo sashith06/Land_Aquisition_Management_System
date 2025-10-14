@@ -668,7 +668,8 @@ const getCompensationByLot = (req, res) => {
     const owner_data = results.map(result => ({
       nic: result.owner_nic,
       name: result.owner_name,
-      finalCompensationAmount: result.final_compensation_amount || 0
+      finalCompensationAmount: result.final_compensation_amount || 0,
+      calculatedInterestAmount: result.calculated_interest_amount || 0
     }));
 
     // Helper function to convert YYYY-MM-DD date to {day, month, year} format
@@ -693,6 +694,7 @@ const getCompensationByLot = (req, res) => {
     results.forEach(result => {
       const key = `${parsedPlanId}_${parsedLotId}_${result.owner_nic}`;
       compensation_payment[key] = {
+        calculatedInterestAmount: result.calculated_interest_amount || 0,
         compensationPayment: {
           fullPayment: {
             ...convertDateToComponents(result.compensation_full_payment_date),
@@ -744,6 +746,10 @@ const getCompensationByLot = (req, res) => {
       };
     });
 
+    console.log('📤 Sending response with calculated interest amounts:', 
+      owner_data.map(o => ({ nic: o.nic, calculatedInterest: o.calculatedInterestAmount }))
+    );
+    
     res.status(200).json({
       success: true,
       data: {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { Save, X } from 'lucide-react';
 import api from '../../api';
 import Breadcrumb from '../../components/Breadcrumb';
@@ -8,6 +8,7 @@ import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 const CreatePlan = () => {
   const [searchParams] = useSearchParams();
   const { projectId: urlProjectId, id: planId } = useParams(); // Get planId for edit mode
+  const navigate = useNavigate();
   const { generateBreadcrumbs } = useBreadcrumbs();
   const projectFromQuery = searchParams.get('project');
   
@@ -113,7 +114,22 @@ const CreatePlan = () => {
     }
   };
 
-  const getDashboardPath = () => '/dashboard';
+  const navigateToProjectPlans = () => {
+    // Navigate to the specific project's plans page
+    const projectId = formData.project_id || initialProjectId;
+    if (projectId) {
+      // Get project name from selectedProject or selectedProjectDetails
+      const projectName = selectedProject?.project_name || 
+                         selectedProjectDetails?.project_name || 
+                         'Project';
+      
+      navigate(`/dashboard/project/${projectId}/plans`, {
+        state: { projectName }
+      });
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -175,6 +191,8 @@ const CreatePlan = () => {
       
       if (response.data) {
         alert(isEditMode ? 'Plan updated successfully!' : 'Plan created successfully!');
+        // Redirect to the specific project's plans page after successful creation/update
+        navigateToProjectPlans();
       }
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} plan:`, error);
@@ -195,7 +213,7 @@ const CreatePlan = () => {
   };
 
   const handleCancel = () => {
-    navigate(getDashboardPath());
+    navigateToProjectPlans();
   };
 
   const clearForm = () => {

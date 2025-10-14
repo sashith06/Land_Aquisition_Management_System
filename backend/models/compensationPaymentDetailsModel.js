@@ -150,7 +150,13 @@ class CompensationPaymentDetails {
         ];
 
         console.log('🔄 UPDATE: Payment details with ID:', checkResult[0].id);
-        console.log('🔄 UPDATE Values (part payments):', {
+        console.log('📅 ACCOUNT DIVISION DATES:', {
+          send_account_division_date: updateValues[26], // position 26
+          calculated_interest_amount: updateValues[27], // position 27
+          account_division_sent_date: updateValues[28], // position 28
+        });
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[27]);
+        console.log('�🔄 UPDATE Values (part payments):', {
           part01_date: updateValues[6], // compensation_part_payment_01_date
           part01_cheque: updateValues[7], // compensation_part_payment_01_cheque_no
           part01_deducted: updateValues[8], // compensation_part_payment_01_deducted_amount
@@ -178,9 +184,9 @@ class CompensationPaymentDetails {
             interest_part_payment_01_deducted_amount, interest_part_payment_01_paid_amount,
             interest_part_payment_02_date, interest_part_payment_02_cheque_no,
             interest_part_payment_02_deducted_amount, interest_part_payment_02_paid_amount,
-            account_division_sent_date,
+            send_account_division_date, calculated_interest_amount, account_division_sent_date,
             created_by, updated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertValues = [
@@ -231,6 +237,7 @@ class CompensationPaymentDetails {
           part02_deducted: insertValues[15], // compensation_part_payment_02_deducted_amount
           part02_paid: insertValues[16] // compensation_part_payment_02_paid_amount
         });
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[30]); // calculated_interest_amount is at position 30
         db.query(insertQuery, insertValues, callback);
       }
     });

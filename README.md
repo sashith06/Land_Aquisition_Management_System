@@ -28,8 +28,12 @@ LAMS addresses the complex challenges associated with land acquisition by provid
 ### Valuation and Compensation
 - Record land valuations based on established criteria
 - Calculate compensation amounts
+- **Automatic interest calculation** (7% p.a. from Section 38 Gazette Date) ⚡
+- **Store calculated interest** in database for consistency 💾
 - Track compensation payment status
 - Generate payment schedules
+
+> **Note**: The system automatically calculates and saves interest amounts when final compensation is entered. See [Calculated Interest Documentation](./IMPLEMENTATION_SUMMARY.md) for details.
 
 ### Communication
 - Notification system for stakeholders
@@ -133,6 +137,21 @@ LAMS addresses the complex challenges associated with land acquisition by provid
 - Access compensation details
 - Submit inquiries
 - Upload documents
+
+## Recent Updates
+
+### October 14, 2025 - Calculated Interest Amount
+✅ **Implemented automatic interest calculation and storage**
+- System now calculates interest when final compensation is entered
+- Interest amount is saved to `calculated_interest_amount` database column
+- Stored interest is used for consistent completion tracking
+- Formula: `(Principal × 0.07 × Days) / 365`
+
+**Documentation:**
+- [📋 Implementation Summary](./IMPLEMENTATION_SUMMARY.md)
+- [📘 User Guide](./CALCULATED_INTEREST_USER_GUIDE.md)
+- [🔄 Data Flow Diagram](./CALCULATED_INTEREST_FLOW_DIAGRAM.md)
+- [🎯 Quick Reference](./QUICK_REFERENCE.md)
 
 ## Contributing
 

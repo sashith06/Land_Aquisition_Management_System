@@ -105,7 +105,7 @@ async function getFinancialProgressByPlan(planId) {
       ) as balance_due,
       
       -- Interest to be paid: Use calculated interest amount from database
-      COALESCE(cpd.interest_to_be_paid, 0) as interest_7_percent,
+      COALESCE(cpd.calculated_interest_amount, 0) as interest_7_percent,
       
       -- Interest Paid: Interest payments for this specific lot
       COALESCE(
