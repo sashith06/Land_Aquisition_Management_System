@@ -53,6 +53,8 @@ class CompensationPaymentDetails {
       interest_part_payment_02_paid_amount,
       
       // Account Division Details (optional)
+      send_account_division_date,
+      calculated_interest_amount,
       account_division_sent_date,
       account_division_cheque_no,
       account_division_deducted_amount,
@@ -105,6 +107,8 @@ class CompensationPaymentDetails {
             interest_part_payment_02_cheque_no = ?,
             interest_part_payment_02_deducted_amount = ?,
             interest_part_payment_02_paid_amount = ?,
+            send_account_division_date = ?,
+            calculated_interest_amount = ?,
             account_division_sent_date = ?,
             updated_by = ?,
             updated_at = NOW()
@@ -138,6 +142,8 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
+          send_account_division_date || null,
+          calculated_interest_amount || 0,
           account_division_sent_date || null,
           updated_by,
           checkResult[0].id
@@ -207,6 +213,8 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
+          send_account_division_date || null,
+          calculated_interest_amount || 0,
           account_division_sent_date || null,
           created_by,
           updated_by

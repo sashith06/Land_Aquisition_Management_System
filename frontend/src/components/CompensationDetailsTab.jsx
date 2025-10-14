@@ -3,7 +3,7 @@ import { User, DollarSign, Save, Edit, Building, TreePine, Wheat, Home, Users, M
 import api, { saveCompensation, getCompensation, getPlanById } from '../api';
 import { getUserRole } from './ProtectedRoute';
 
-const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDetails }) => {
+const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDetails, onDataUpdate }) => {
   const [compensationData, setCompensationData] = useState({});
   const [editingOwner, setEditingOwner] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState({});
@@ -19,7 +19,40 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   const actualUserRole = getUserRole();
 
   // Check if user has permission to edit (only financial officers can edit)
-  const canEdit = actualUserRole === 'financial_officer';
+  // Support multiple role formats: 'financial_officer', 'Financial Officer', 'FO'
+  const financialOfficerRoles = ['financial_officer', 'Financial Officer', 'FO'];
+  const canEdit = financialOfficerRoles.includes(actualUserRole);
+  
+  // Debug role information
+  console.log('🔐 User Role Debug:', {
+    actualUserRole,
+    canEdit,
+    supportedRoles: financialOfficerRoles,
+    token: !!localStorage.getItem('token')
+  });
+  
+  // Check token validity for additional authentication info
+  const [tokenStatus, setTokenStatus] = useState('checking');
+  
+  useEffect(() => {
+    const checkToken = () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setTokenStatus('missing');
+        return;
+      }
+      
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const isExpired = payload.exp < (Date.now() / 1000);
+        setTokenStatus(isExpired ? 'expired' : 'valid');
+      } catch (e) {
+        setTokenStatus('invalid');
+      }
+    };
+    
+    checkToken();
+  }, []);
 
   // Load plan data to get Section 38 gazette date
   useEffect(() => {
@@ -32,7 +65,6 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   useEffect(() => {
     if (selectedLot && currentPlanId) {
       loadCompensationData();
-      loadLandDetails();
     }
   }, [selectedLot, currentPlanId]);
 
@@ -47,18 +79,24 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   };
 
   const loadLandDetails = async () => {
-    if (!selectedLot) return;
-    
     try {
-      const lotId = selectedLot.backend_id || selectedLot.id;
-      const response = await api.get(`/api/lots/${lotId}/land-details`);
-      setLandDetails(response.data);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error('Error loading land details:', error);
+      const response = await api.get(`/api/plans/${currentPlanId}/lots/${selectedLot.backend_id || selectedLot.id}/land-details`);
+      if (response.data.success) {
+        setLandDetails(response.data.data);
+        console.log('Land details loaded:', response.data.data);
       }
-      // If no land details exist (404), that's fine
-      setLandDetails(null);
+    } catch (error) {
+      console.log('Land details API not available (404), using default data');
+      // If we can't load specific land details, use what's provided as prop or create basic structure
+      if (propLandDetails) {
+        setLandDetails(propLandDetails);
+      } else {
+        // Create basic land details structure for display
+        setLandDetails({
+          preliminary_plan_extent_ha: selectedLot.extent_ha || '0.0000',
+          preliminary_plan_extent_perch: selectedLot.extent_perch || '0.0000'
+        });
+      }
     }
   };
 
@@ -76,10 +114,10 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         lotId = parseInt(lotId.substring(1));
       }
       
-      console.log('Loading compensation for lot:', lotId, 'plan:', currentPlanId);
-      console.log('selectedLot object:', selectedLot);
-      console.log('selectedLot.backend_id:', selectedLot.backend_id, 'selectedLot.id:', selectedLot.id);
-      console.log('Final URL will be: /api/plans/' + currentPlanId + '/lots/' + lotId + '/compensation');
+      console.log('🔄 Loading compensation for lot:', lotId, 'plan:', currentPlanId);
+      console.log('🔄 selectedLot object:', selectedLot);
+      console.log('🔄 selectedLot.backend_id:', selectedLot.backend_id, 'selectedLot.id:', selectedLot.id);
+      console.log('🔄 Final URL will be: /api/plans/' + currentPlanId + '/lots/' + lotId + '/compensation');
       
       const response = await getCompensation(currentPlanId, lotId);
       if (response.data.success && response.data.data) {
@@ -157,14 +195,23 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
               }
             };
           });
-        }
+          
+          if (details.interestPayment) {
+            console.log(`🏦 Key "${key}" interest payment:`, details.interestPayment);
+          }
+          
+          if (details.accountDivision) {
+            console.log(`📅 Key "${key}" account division:`, details.accountDivision);
+          }
+        });
         
-        setPaymentDetails(processedPaymentDetails);
+        setPaymentDetails(paymentDetailsData);
+        console.log('✅ Payment details state updated successfully');
       } else {
         console.log('❌ No data received or unsuccessful response:', response.data);
       }
     } catch (error) {
-      console.error('Error loading compensation data:', error);
+      console.error('❌ Error loading compensation data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -175,34 +222,24 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     // Use backend_id for consistent key generation
     const editLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${editLotId}_${owner.nic}`;
-    
     console.log('🔍 Opening compensation form for owner:', owner.name);
     console.log('🔍 Looking for data with key:', key);
     console.log('🔍 Available compensation data keys:', Object.keys(compensationData));
-    console.log('🔍 Data found for this owner:', compensationData[key]);
     
-    const existing = compensationData[key] || {
-      // Only final compensation amount - no breakdown calculations
-      finalCompensationAmount: '',
-      paymentStatus: 'pending',
-      assessmentDate: new Date().toISOString().split('T')[0],
-      assessorName: actualUserRole,
-      notes: ''
+    const existingData = compensationData[key];
+    console.log('🔍 Data found for this owner:', existingData);
+    
+    // Use existing data if available, otherwise initialize with basic structure
+    const ownerData = existingData || {
+      name: owner.name,
+      nic: owner.nic,
+      compensation: {
+        finalCompensationAmount: 0,
+        assessmentDate: '',
+        assessorName: '',
+        lotShare: (100 / selectedLot.owners.length).toString()
+      }
     };
-    
-    setEditingOwner({ ...owner, compensation: existing });
-  };
-
-  // Helper function to format date from day/month/year inputs to YYYY-MM-DD
-  const formatDate = (day, month, year) => {
-    if (!day || !month || !year) return null;
-    
-    // Convert 2-digit year to 4-digit year (assuming 20xx for years 00-99)
-    const fullYear = year.length === 2 ? `20${year}` : year;
-    
-    // Pad day and month with leading zeros
-    const paddedDay = day.toString().padStart(2, '0');
-    const paddedMonth = month.toString().padStart(2, '0');
     
     return `${fullYear}-${paddedMonth}-${paddedDay}`;
   };
@@ -228,14 +265,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   const splitDate = (dateString) => {
     if (!dateString) return { day: '', month: '', year: '' };
     
-    const parts = dateString.split('-');
-    if (parts.length !== 3) return { day: '', month: '', year: '' };
+    setEditingOwner(ownerData);
     
-    return {
-      day: parts[2],
-      month: parts[1], 
-      year: parts[0].slice(-2) // Get last 2 digits of year
-    };
+    // Load land details if not already loaded
+    if (!landDetails) {
+      loadLandDetails();
+    }
   };
 
   // Helper function to format date from YYYY-MM-DD or ISO datetime to backend format
@@ -261,6 +296,40 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     setIsSaving(true);
     
     try {
+      // Helper function to format date - now handles direct YYYY-MM-DD format
+      const formatDate = (dateValue) => {
+        if (!dateValue) return null;
+        
+        // If it's already in YYYY-MM-DD format (from type="date" inputs), return as-is
+        if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          return dateValue;
+        }
+        
+        // Handle object format {date: 'YYYY-MM-DD'}
+        if (typeof dateValue === 'object' && dateValue.date) {
+          if (!dateValue.date.trim()) return null;
+          
+          // If it's already in YYYY-MM-DD format
+          if (dateValue.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return dateValue.date;
+          }
+          
+          // Handle DD/MM/YY format conversion
+          const dateParts = dateValue.date.split('/');
+          if (dateParts.length === 3) {
+            const day = dateParts[0].padStart(2, '0');
+            const month = dateParts[1].padStart(2, '0');
+            const year = dateParts[2].length === 2 ? '20' + dateParts[2] : dateParts[2];
+            const formatted = `${year}-${month}-${day}`;
+            console.log('🗓️ Formatted date from DD/MM/YY:', formatted);
+            return formatted;
+          }
+        }
+        
+        console.log('🗓️ Unknown date format, returning null');
+        return null;
+      };
+      
       // Use backend_id for consistent key generation
       const actualLotId = selectedLot.backend_id || selectedLot.id;
       const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
@@ -284,6 +353,8 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       const ownerKey = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
       const ownerPaymentData = paymentDetails[ownerKey] || {};
       const compensationPaymentData = ownerPaymentData.compensationPayment || {};
+      const interestPaymentData = ownerPaymentData.interestPayment || {};
+      const accountDivisionData = ownerPaymentData.accountDivision || {};
       
       // Debug: Log payment details values
       console.log('🔍 DEBUG: Payment details for key:', ownerKey);
@@ -373,6 +444,19 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       
       console.log('🛰 Sending payload:', compensationPayload);
 
+      // Check token before sending
+      const token = localStorage.getItem('token');
+      console.log('🔐 Token check - Token exists:', !!token);
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          console.log('🔐 Token payload:', { role: payload.role, exp: payload.exp, current: Date.now() / 1000 });
+          console.log('🔐 Token expired:', payload.exp < (Date.now() / 1000));
+        } catch (e) {
+          console.log('🔐 Token decode error:', e.message);
+        }
+      }
+
       // Use backend_id which is the actual database ID
       let saveLotId = selectedLot.backend_id || selectedLot.id;
       
@@ -383,8 +467,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       }
       
       console.log('Saving compensation for lot:', saveLotId, 'plan:', currentPlanId);
+      console.log('💾 Compensation payload being sent:', compensationPayload);
 
       const response = await saveCompensation(currentPlanId, saveLotId, compensationPayload);
+      
+      console.log('💾 Save response:', response.data);
       
       if (response.data.success) {
         setCompensationData(newData);
@@ -392,12 +479,25 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         alert('Compensation details saved successfully!');
         // Reload data to get latest from server
         await loadCompensationData();
+        
+        // Trigger parent refresh if available
+        if (onDataUpdate) {
+          console.log('🔄 Triggering parent data refresh...');
+          onDataUpdate();
+        }
+      } else {
+        alert('Error saving compensation details: ' + (response.data.message || 'Unknown error'));
+        console.error('Save failed:', response.data);
+      }
+    } catch (error) {
+      if (error.response?.status === 400 && error.response?.data?.error === 'Invalid token.') {
+        alert('Your session has expired. Please log in again as a Financial Officer to save compensation data.');
+        // Redirect to login
+        window.location.href = '/login';
       } else {
         alert('Error saving compensation details. Please try again.');
       }
-    } catch (error) {
-      alert('Error saving compensation details. Please try again.');
-      console.error('Save error:', error);
+      console.error('Save error:', error.response?.data || error.message || error);
     } finally {
       setIsSaving(false);
     }
@@ -439,25 +539,12 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   const getPaymentDetailsValue = (section, field, subField = null) => {
     if (!editingOwner) return '';
+    
     // Use consistent key format with backend_id like in save function
     const actualLotId = selectedLot.backend_id || selectedLot.id;
     const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
+    
     const data = paymentDetails[key];
-    
-    // Enhanced debugging
-    console.log(`🔍 getPaymentDetailsValue(${section}, ${field}, ${subField})`);
-    console.log(`🔍 Key: "${key}"`);
-    console.log(`🔍 Data exists:`, !!data);
-    if (data) {
-      console.log(`🔍 Section "${section}" exists:`, !!data[section]);
-      if (data[section]) {
-        console.log(`🔍 Field "${field}" exists:`, !!data[section][field]);
-        if (data[section][field] && subField) {
-          console.log(`🔍 SubField "${subField}" value:`, data[section][field][subField]);
-        }
-      }
-    }
-    
     if (!data || !data[section] || !data[section][field]) return '';
     return subField ? (data[section][field][subField] || '') : data[section][field];
   };
@@ -495,7 +582,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   const getOwnerCompensationStatus = (owner) => {
     const key = `${currentPlanId}_${selectedLot.backend_id || selectedLot.id}_${owner.nic}`;
     const data = compensationData[key];
-    if (!data) return 'pending';
+    if (!data) return 'not_started';
     return data.paymentStatus || 'pending';
   };
 
@@ -529,9 +616,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     
     let total = 0;
     selectedLot.owners.forEach(owner => {
-      const key = `${currentPlanId}_${selectedLot.backend_id || selectedLot.id}_${owner.nic}`;
-      const data = compensationData[key];
-      const finalAmount = parseFloat(data?.finalCompensationAmount) || 0;
+      const finalAmount = getOwnerFinalCompensation(owner);
       total += finalAmount;
     });
     
@@ -556,9 +641,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     let total = 0;
     // Sum up all compensation payments
     if (data.compensationPayment) {
-      total += parseFloat(data.compensationPayment.fullPayment?.paidAmount) || 0;
-      total += parseFloat(data.compensationPayment.partPayment01?.paidAmount) || 0;
-      total += parseFloat(data.compensationPayment.partPayment02?.paidAmount) || 0;
+      if (data.compensationPayment.fullPayment?.paidAmount) total += parseFloat(data.compensationPayment.fullPayment.paidAmount);
+      if (data.compensationPayment.partPayment01?.paidAmount) total += parseFloat(data.compensationPayment.partPayment01.paidAmount);
+      if (data.compensationPayment.partPayment02?.paidAmount) total += parseFloat(data.compensationPayment.partPayment02.paidAmount);
     }
     return total;
   };
@@ -585,10 +670,75 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     if (daysDiff <= 0) return 0;
     
     // Calculate daily interest: (Principal × Annual Rate × Days) / 365
-    const annualRate = 0.07; // 7%
+    const annualRate = 0.07; // 7% (updated from 5%)
     const dailyInterest = (finalAmount * annualRate * daysDiff) / 365;
     
     return dailyInterest;
+  };
+
+  // Get total interest payments made for an owner
+  const getOwnerTotalInterestPaid = (owner) => {
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${owner.nic}`;
+    const data = paymentDetails[key];
+    if (!data || !data.interestPayment) return 0;
+    
+    let total = 0;
+    if (data.interestPayment.fullPayment?.paidAmount) {
+      total += parseFloat(data.interestPayment.fullPayment.paidAmount);
+    }
+    if (data.interestPayment.partPayment01?.paidAmount) {
+      total += parseFloat(data.interestPayment.partPayment01.paidAmount);
+    }
+    if (data.interestPayment.partPayment02?.paidAmount) {
+      total += parseFloat(data.interestPayment.partPayment02.paidAmount);
+    }
+    return total;
+  };
+
+  // Check if interest payments are complete (paid amount equals calculated interest)
+  const isInterestPaymentComplete = (owner) => {
+    const calculatedInterest = getOwnerInterest(owner);
+    const paidInterest = getOwnerTotalInterestPaid(owner);
+    
+    if (calculatedInterest === 0) return true; // No interest required
+    
+    // Allow small rounding differences (within 1 rupee)
+    return Math.abs(calculatedInterest - paidInterest) <= 1;
+  };
+
+  // Check if send account division date is set
+  const isSendAccountDivisionComplete = (owner) => {
+    return isAccountDivisionFilled();
+  };
+
+  // Get overall completion status for an owner based on new criteria
+  const getOwnerCompletionStatus = (owner) => {
+    const hasAmount = getOwnerFinalCompensation(owner) > 0;
+    const balanceCleared = getOwnerBalanceDue(owner) === 0;
+    const interestComplete = isInterestPaymentComplete(owner);
+    const divisionDateSet = isSendAccountDivisionComplete(owner);
+    
+    if (hasAmount && balanceCleared && interestComplete && divisionDateSet) {
+      return { status: 'complete', percentage: 100 };
+    } else {
+      // Calculate partial completion percentage based on 4 criteria (25% each)
+      let completedCriteria = 0;
+      if (hasAmount) completedCriteria++;
+      if (balanceCleared) completedCriteria++;
+      if (interestComplete) completedCriteria++;
+      if (divisionDateSet) completedCriteria++;
+      
+      const percentage = (completedCriteria / 4) * 100;
+      
+      if (percentage >= 75) {
+        return { status: 'near_complete', percentage };
+      } else if (percentage >= 25) {
+        return { status: 'partial', percentage };
+      } else {
+        return { status: 'not_started', percentage };
+      }
+    }
   };
 
   if (!selectedLot) {
@@ -616,19 +766,51 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   if (!selectedLot.owners || selectedLot.owners.length === 0) {
     return (
-      <div className="text-center py-12 bg-yellow-50 rounded-lg border border-yellow-200">
-        <Users className="mx-auto h-12 w-12 text-yellow-400 mb-4" />
-        <h3 className="text-lg font-medium text-yellow-800 mb-2">No Owners Found</h3>
-        <p className="text-yellow-600">
-          This lot doesn't have any owners assigned. Please add owners in the Owner Details tab first.
-        </p>
+      <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+        <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No Owners Found</h3>
+        <p className="text-gray-500">This lot doesn't have any registered owners yet.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header with Lot Summary */}
+      {/* Authentication Warning Banner */}
+      {(tokenStatus === 'expired' || tokenStatus === 'invalid' || tokenStatus === 'missing') && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <Lock className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Authentication Required
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>
+                  {tokenStatus === 'expired' && 'Your session has expired.'}
+                  {tokenStatus === 'invalid' && 'Your authentication token is invalid.'}  
+                  {tokenStatus === 'missing' && 'You are not logged in.'}
+                  {' '}You need to <strong>log in as a Financial Officer</strong> to save compensation data.
+                </p>
+              </div>
+              <div className="mt-4">
+                <div className="flex">
+                  <a
+                    href="/login"
+                    className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200 transition-colors"
+                  >
+                    Go to Login
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header Section */}
       <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -641,7 +823,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
             </p>
           </div>
           
-          {/* Role indicator */}
+          {/* Role-based Access Indicator */}
           <div className="flex items-center gap-4">
             <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
               canEdit 
@@ -669,7 +851,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
           </div>
         </div>
 
-        {/* Lot Summary Stats */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div className="bg-white p-3 rounded-lg border border-orange-200">
             <div className="text-sm text-gray-600">Total Owners</div>
@@ -696,7 +878,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         </div>
       </div>
 
-      {/* Individual Owner Compensation Cards */}
+      {/* Owner Cards */}
       <div className="space-y-4">
         <h4 className="text-lg font-semibold text-gray-900 flex items-center">
           <DollarSign className="w-5 h-5 mr-2 text-orange-600" />
@@ -705,151 +887,118 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {selectedLot.owners.map((owner, index) => {
-            const status = getOwnerCompensationStatus(owner);
+            const completionStatus = getOwnerCompletionStatus(owner);
+            const finalCompensation = getOwnerFinalCompensation(owner);
+            const balanceDue = getOwnerBalanceDue(owner);
+            const calculatedInterest = getOwnerInterest(owner);
+            const paidInterest = getOwnerTotalInterestPaid(owner);
             
             return (
-              <div key={owner.nic} className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center shadow-inner">
-                      <User className="w-8 h-8 text-orange-600" />
-                    </div>
-                    <div className="ml-4">
-                      <h5 className="text-lg font-semibold text-gray-900">{owner.name}</h5>
-                      <p className="text-sm text-gray-500 flex items-center">
-                        <span className="mr-2">NIC:</span>
-                        <span className="font-mono">{owner.nic}</span>
-                      </p>
-                      <div className="flex items-center mt-1">
-                        <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-                        <span className="text-xs text-orange-600 font-medium">
-                          Owner {index + 1} of {selectedLot.owners.length}
-                        </span>
+              <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                {/* Header with completion status */}
+                <div className={`p-4 ${
+                  completionStatus.status === 'complete' ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                  completionStatus.status === 'near_complete' ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
+                  completionStatus.status === 'partial' ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+                  'bg-gradient-to-r from-gray-500 to-gray-600'
+                }`}>
+                  <div className="flex items-center justify-between text-white">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-3">
+                        <User size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-lg">{owner.name}</h3>
+                        <p className="text-sm opacity-90">NIC: {owner.nic}</p>
                       </div>
                     </div>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    status === 'completed' ? 'bg-green-100 text-green-800 border border-green-200' :
-                    status === 'in-progress' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                    'bg-gray-100 text-gray-800 border border-gray-200'
-                  }`}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </span>
-                </div>
-
-                {/* Owner Details */}
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Phone className="w-4 h-4 mr-2 text-gray-400" />
-                    <span className="font-medium">{owner.phone}</span>
-                  </div>
-                  
-                  <div className="flex items-start text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2 text-gray-400 mt-0.5" />
-                    <span className="font-medium">{owner.address}</span>
-                  </div>
-                </div>
-
-                {/* Financial Summary */}
-                <div className="space-y-3 mb-6">
-                  {/* Full Compensation Amount */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <DollarSign className="w-4 h-4 text-green-600 mr-2" />
-                        <span className="text-sm font-medium text-green-800">Full Compensation</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-green-700">
-                          {formatCurrency(getOwnerFinalCompensation(owner))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Done */}
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-50 p-3 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Check className="w-4 h-4 text-blue-600 mr-2" />
-                        <span className="text-sm font-medium text-blue-800">Payment Done</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-blue-700">
-                          {formatCurrency(getOwnerTotalPaymentDone(owner))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Balance Due */}
-                  <div className={`p-3 rounded-lg border ${
-                    getOwnerBalanceDue(owner) > 0 
-                      ? 'bg-gradient-to-r from-orange-50 to-orange-50 border-orange-200' 
-                      : 'bg-gradient-to-r from-green-50 to-green-50 border-green-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <DollarSign className={`w-4 h-4 mr-2 ${
-                          getOwnerBalanceDue(owner) > 0 ? 'text-orange-600' : 'text-green-600'
-                        }`} />
-                        <span className={`text-sm font-medium ${
-                          getOwnerBalanceDue(owner) > 0 ? 'text-orange-800' : 'text-green-800'
-                        }`}>Balance Due</span>
-                      </div>
-                      <div className="text-right">
-                        <div className={`text-lg font-bold ${
-                          getOwnerBalanceDue(owner) > 0 ? 'text-orange-700' : 'text-green-700'
-                        }`}>
-                          {formatCurrency(getOwnerBalanceDue(owner))}
-                        </div>
-                        {getOwnerBalanceDue(owner) === 0 && getOwnerFinalCompensation(owner) > 0 && (
-                          <div className="text-xs text-green-600">✓ Fully Paid</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Interest */}
-                  <div className="bg-gradient-to-r from-yellow-50 to-yellow-50 p-3 rounded-lg border border-yellow-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Percent className="w-4 h-4 text-yellow-600 mr-2" />
-                        <span className="text-sm font-medium text-yellow-800">Interest (7% p.a.)</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-yellow-700">
-                          {formatCurrency(getOwnerInterest(owner))}
-                        </div>
-                        {planData?.section_38_gazette_date ? (
-                          <div className="text-xs text-yellow-600">
-                            From {new Date(planData.section_38_gazette_date).toLocaleDateString()}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-500">
-                            Gazette date not set
-                          </div>
-                        )}
-                      </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold">{completionStatus.percentage}%</div>
+                      <div className="text-xs opacity-90">Complete</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Action Button */}
-                <div className="pt-4 border-t border-gray-200">
+                {/* Content */}
+                <div className="p-4 space-y-4">
+                  {/* Completion Criteria Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center text-sm">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${
+                        finalCompensation > 0 ? 'bg-green-500' : 'bg-gray-300'
+                      }`}></div>
+                      <span className={finalCompensation > 0 ? 'text-green-700' : 'text-gray-500'}>
+                        Amount Set
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${
+                        balanceDue === 0 ? 'bg-green-500' : 'bg-gray-300'
+                      }`}></div>
+                      <span className={balanceDue === 0 ? 'text-green-700' : 'text-gray-500'}>
+                        Balance Cleared
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${
+                        isInterestPaymentComplete(owner) ? 'bg-green-500' : 'bg-gray-300'
+                      }`}></div>
+                      <span className={isInterestPaymentComplete(owner) ? 'text-green-700' : 'text-gray-500'}>
+                        Interest Paid
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${
+                        isSendAccountDivisionComplete(owner) ? 'bg-green-500' : 'bg-gray-300'
+                      }`}></div>
+                      <span className={isSendAccountDivisionComplete(owner) ? 'text-green-700' : 'text-gray-500'}>
+                        Division Date
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Financial Summary */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Final Amount:</span>
+                      <span className="font-semibold text-green-600">
+                        {formatCurrency(finalCompensation)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Balance Due:</span>
+                      <span className={`font-semibold ${balanceDue === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(balanceDue)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Interest Due:</span>
+                      <span className="font-semibold text-blue-600">
+                        {formatCurrency(calculatedInterest)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Interest Paid:</span>
+                      <span className="font-semibold text-purple-600">
+                        {formatCurrency(paidInterest)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
                   <button
                     onClick={() => handleEditCompensation(owner)}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-colors ${
-                      canEdit 
-                        ? 'bg-orange-600 text-white hover:bg-orange-700' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    className={`w-full py-2 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
+                      canEdit
+                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
+                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
                     }`}
                   >
-                    {canEdit ? <Edit className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                    {canEdit 
-                      ? (getOwnerFinalCompensation(owner) === 0 ? 'Add Compensation' : 'Edit Compensation')
-                      : (getOwnerFinalCompensation(owner) === 0 ? 'View Compensation Details' : 'View Compensation')
-                    }
+                    {canEdit ? <Edit size={16} className="mr-2" /> : <Eye size={16} className="mr-2" />}
+                    {canEdit ? 'Edit Details' : 'View Details'}
                   </button>
                 </div>
               </div>
@@ -858,8 +1007,7 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         </div>
       </div>
 
-
-               {/* Compensation Management Modal */}
+      {/* Modal for editing/viewing compensation details */}
       {editingOwner && (
         <div className="fixed inset-0 bg-white bg-opacity-20 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white bg-opacity-95 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-6xl max-h-[90vh] overflow-y-auto border border-white border-opacity-30"
@@ -886,199 +1034,95 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleSaveCompensation}
-                  disabled={isSaving}
-                  className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {isSaving ? 'Saving...' : 'Save'}
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={handleSaveCompensation}
+                    disabled={isSaving}
+                    className="flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg font-medium disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              {/* Owner Information */}
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100 backdrop-blur-sm p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
-                  <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center mr-3">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
+            {/* Basic Owner Information */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 bg-opacity-80 backdrop-blur rounded-xl p-6 border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <User className="w-5 h-5 mr-2 text-gray-600" />
                   Owner Information
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div><strong>Name:</strong> {editingOwner.name}</div>
-                  <div><strong>NIC:</strong> {editingOwner.nic}</div>
-                  <div><strong>Phone:</strong> {editingOwner.phone}</div>
-                  <div><strong>Address:</strong> {editingOwner.address}</div>
-                </div>
-              </div>
-
-              {/* Lot Information */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 backdrop-blur-sm p-6 rounded-xl border border-blue-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-blue-800 mb-4 flex items-center">
-                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                    <MapPin className="w-4 h-4 text-white" />
-                  </div>
-                  Lot Information
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div><strong>Lot ID:</strong> {selectedLot.id}</div>
-                  <div><strong>Size:</strong> {landDetails.preliminary_plan_extent_ha}</div>
-                  <div><strong>Total Owners:</strong> {selectedLot.owners.length}</div>
-                </div>
-              </div>
-
-              {/* Assessment Information */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 backdrop-blur-sm p-6 rounded-xl border border-green-200 shadow-sm">
-                <h3 className="text-lg font-semibold text-green-800 mb-4 flex items-center">
-                  <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center mr-3">
-                    <Percent className="w-4 h-4 text-white" />
-                  </div>
-                  Assessment Details
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ownership Share (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={editingOwner.compensation.lotShare}
-                      onChange={(e) => handleInputChange('lotShare', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Owner Name</label>
+                    <div className="text-lg font-semibold text-gray-900">{editingOwner.name}</div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Date</label>
-                    <input
-                      type="date"
-                      value={editingOwner.compensation.assessmentDate}
-                      onChange={(e) => handleInputChange('assessmentDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-600 mb-1">NIC Number</label>
+                    <div className="text-gray-900">{editingOwner.nic}</div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assessor Name</label>
-                    <input
-                      type="text"
-                      value={editingOwner.compensation.assessorName}
-                      onChange={(e) => handleInputChange('assessorName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Final Compensation Amount Section */}
-            <div className="space-y-6">
-              <div className="bg-green-50/80 backdrop-blur-sm rounded-xl p-6 border border-green-200">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Final Compensation Amount</h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Final Compensation Amount to be Paid (Rs.) *
-                    </label>
-                    <input
-                      type="number"
-                      value={editingOwner.compensation.finalCompensationAmount || ''}
-                      onChange={(e) => handleInputChange('finalCompensationAmount', e.target.value)}
-                      className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      placeholder="e.g., 2550000"
-                      step="0.01"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Enter the final compensation amount to be paid</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Balance Due (Rs.)
-                    </label>
-                    <div className="relative">
-                      <div className={`w-full px-3 py-2 border rounded-lg font-medium flex items-center justify-between ${(() => {
-                        const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
-                        const totalPaid = 
-                          parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
-                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
-                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
-                        const balanceDue = finalAmount - totalPaid;
-                        return balanceDue <= 0 
-                          ? 'bg-green-50 border-green-300 text-green-800' 
-                          : 'bg-orange-50 border-orange-300 text-orange-800';
-                      })()}`}>
-                        <span>
-                          {(() => {
-                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
-                            const totalPaid = 
-                              parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
-                              parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
-                              parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
-                            const balanceDue = finalAmount - totalPaid;
-                            return balanceDue >= 0 
-                              ? `Rs. ${balanceDue.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`
-                              : `Rs. 0.00`;
-                          })()}
-                        </span>
-                        {(() => {
-                          const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
-                          const totalPaid = 
-                            parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
-                            parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
-                            parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
-                          const balanceDue = finalAmount - totalPaid;
-                          if (balanceDue <= 0 && finalAmount > 0) {
-                            return (
-                              <div className="flex items-center space-x-2">
-                                <Check size={20} className="text-green-600" />
-                                <span className="text-sm font-bold text-green-600">FULLY PAID</span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Share Percentage</label>
+                    <div className="text-lg font-semibold text-blue-600">
+                      {getOwnerSharePercentage(editingOwner)}%
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {(() => {
-                        const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
-                        const totalPaid = 
-                          parseFloat(getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount') || 0) +
-                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount') || 0) +
-                          parseFloat(getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount') || 0);
-                        const balanceDue = finalAmount - totalPaid;
-                        return balanceDue <= 0 && finalAmount > 0
-                          ? 'Compensation fully paid ✓'
-                          : 'Automatically calculated: Final Amount - Total Paid';
-                      })()}
-                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-green-100 bg-opacity-80 backdrop-blur rounded-xl p-6 border border-green-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2 text-green-600" />
+                  Compensation Summary
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Final Compensation Amount</label>
+                    {canEdit ? (
+                      <input
+                        type="number"
+                        value={editingOwner.compensation?.finalCompensationAmount || ''}
+                        onChange={(e) => handleInputChange('finalCompensationAmount', e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white bg-opacity-90 backdrop-blur"
+                        placeholder="Enter final compensation amount"
+                      />
+                    ) : (
+                      <div className="text-lg font-semibold text-green-600">
+                        {formatCurrency(editingOwner.compensation?.finalCompensationAmount || 0)}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Balance Due</label>
+                    <div className={`text-lg font-semibold ${getOwnerBalanceDue(editingOwner) === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(getOwnerBalanceDue(editingOwner))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Interest Due (7% annually)</label>
+                    <div className="text-lg font-semibold text-blue-600">
+                      {formatCurrency(getOwnerInterest(editingOwner))}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Compensation Payment Details Form */}
-            <div className="space-y-8">
-              {/* Compensation Payment Details */}
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Compensation Payment Details</h3>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Full Payment */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm">1</span>
+            {canEdit && (
+              <>
+                {/* Compensation Payment Details */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 bg-opacity-80 backdrop-blur rounded-xl p-6 border border-blue-200 mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <DollarSign className="w-6 h-6 mr-2 text-blue-600" />
+                    Compensation Payment Details
+                  </h3>
+                  
+                  {/* Compensation Full Payment */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 mb-4 border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${isPaymentFilled('compensationPayment', 'fullPayment') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                       Full Payment
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -1092,39 +1136,42 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Cheque No</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'chequeNo')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'chequeNo', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="Cheque number"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Deducted Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'deductedAmount')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'deductedAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Paid Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'fullPayment', 'paidAmount')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'fullPayment', 'paidAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Part Payment 01 */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm">2</span>
+                  {/* Compensation Part Payment 01 */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 mb-4 border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${isPaymentFilled('compensationPayment', 'partPayment01') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                       Part Payment 01
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -1138,39 +1185,42 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Cheque No</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'chequeNo')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'chequeNo', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="Cheque number"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Deducted Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'deductedAmount')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'deductedAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Paid Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'partPayment01', 'paidAmount')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment01', 'paidAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Part Payment 02 */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm">3</span>
+                  {/* Compensation Part Payment 02 */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 border border-blue-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${isPaymentFilled('compensationPayment', 'partPayment02') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                       Part Payment 02
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
@@ -1184,151 +1234,69 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Cheque No</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'chequeNo')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'chequeNo', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="Cheque number"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Deducted Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'deductedAmount')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'deductedAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Paid Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('compensationPayment', 'partPayment02', 'paidAmount')}
                           onChange={(e) => handlePaymentDetailsChange('compensationPayment', 'partPayment02', 'paidAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Interest to be paid */}
-              <div className="bg-yellow-50/80 backdrop-blur-sm rounded-xl p-6 border border-yellow-200">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center">
-                    <Percent className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Interest to be paid</h3>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Section 38 Gazette Date Input */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4">Section 38 Gazette Date (Auto-populated from Plan)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Interest Payment Details */}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 bg-opacity-80 backdrop-blur rounded-xl p-6 border border-purple-200 mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <Percent className="w-6 h-6 mr-2 text-purple-600" />
+                    Interest Payment Details (7% annually)
+                  </h3>
+                  
+                  {/* Interest calculation display */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 mb-4 border border-purple-200">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Section 38 Gazette Date (from Plan)</label>
-                        <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
-                          {planData?.section_38_gazette_date 
-                            ? new Date(planData.section_38_gazette_date).toLocaleDateString('en-CA') // YYYY-MM-DD format
-                            : 'Not set in plan'
-                          }
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">This date is automatically taken from the plan created by Land Officer</p>
+                        <span className="font-medium text-gray-600">Calculated Interest:</span>
+                        <span className="text-lg font-bold text-purple-600 ml-2">
+                          {formatCurrency(getOwnerInterest(editingOwner))}
+                        </span>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Interest Rate per Annum</label>
-                        <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-800 font-medium">
-                          7.00%
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Fixed annual interest rate</p>
+                        <span className="font-medium text-gray-600">Interest Paid:</span>
+                        <span className="text-lg font-bold text-green-600 ml-2">
+                          {formatCurrency(getOwnerTotalInterestPaid(editingOwner))}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Interest Calculation Results */}
-                  <div className="border border-yellow-300 rounded-lg p-4 bg-yellow-50/50">
-                    <h4 className="font-semibold text-gray-800 mb-4">Calculated Interest Amount</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Days Since Gazette</label>
-                        <div className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 font-medium">
-                          {(() => {
-                            const gazetteDate = planData?.section_38_gazette_date;
-                            if (!gazetteDate) return '0';
-                            const startDate = new Date(gazetteDate);
-                            const currentDate = new Date();
-                            const timeDiff = currentDate.getTime() - startDate.getTime();
-                            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                            return daysDiff > 0 ? daysDiff : 0;
-                          })()}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Principal Amount (Rs.)</label>
-                        <div className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 font-medium">
-                          {(() => {
-                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
-                            return `Rs. ${finalAmount.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
-                          })()}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Interest to be paid (Rs.)</label>
-                        <div className="w-full px-3 py-2 bg-yellow-100 border border-yellow-300 rounded-md text-yellow-800 font-bold text-lg">
-                          {(() => {
-                            const gazetteDate = planData?.section_38_gazette_date;
-                            const finalAmount = parseFloat(editingOwner.compensation.finalCompensationAmount || 0);
-                            
-                            if (!gazetteDate || !finalAmount) return 'Rs. 0.00';
-                            
-                            const startDate = new Date(gazetteDate);
-                            const currentDate = new Date();
-                            const timeDiff = currentDate.getTime() - startDate.getTime();
-                            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-                            
-                            if (daysDiff <= 0) return 'Rs. 0.00';
-                            
-                            // Calculate daily interest: (Principal × Annual Rate × Days) / 365
-                            const annualRate = 0.07; // 7%
-                            const dailyInterest = (finalAmount * annualRate * daysDiff) / 365;
-                            
-                            return `Rs. ${dailyInterest.toLocaleString('en-LK', { minimumFractionDigits: 2 })}`;
-                          })()}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">Calculated daily at 7% per annum from plan gazette date</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                      <p className="text-sm text-blue-700">
-                        <strong>Formula:</strong> (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
-                      </p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Daily Interest = (Principal × Annual Interest Rate ÷ 365) × Number of Days
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Interest Payment Details */}
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
-                    <Percent className="w-5 h-5 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-800">Interest Payment Details</h3>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Full Payment */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm">1</span>
-                      Full Payment
+                  {/* Interest Full Payment */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 mb-4 border border-purple-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${isPaymentFilled('interestPayment', 'fullPayment') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      Interest Full Payment
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                       <div>
@@ -1341,40 +1309,43 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Cheque No</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'chequeNo')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'chequeNo', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="Cheque number"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Deducted Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'deductedAmount')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'deductedAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Paid Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'fullPayment', 'paidAmount')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'fullPayment', 'paidAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Part Payment 01 */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-teal-500 text-white rounded-full flex items-center justify-center text-sm">2</span>
-                      Part Payment 01
+                  {/* Interest Part Payment 01 */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 mb-4 border border-purple-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${isPaymentFilled('interestPayment', 'partPayment01') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      Interest Part Payment 01
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                       <div>
@@ -1387,40 +1358,43 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Cheque No</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'chequeNo')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'chequeNo', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="Cheque number"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Deducted Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'deductedAmount')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'deductedAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Paid Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'partPayment01', 'paidAmount')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment01', 'paidAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Part Payment 02 */}
-                  <div className="border border-gray-200 rounded-lg p-4 bg-white/30">
-                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      <span className="w-6 h-6 bg-cyan-500 text-white rounded-full flex items-center justify-center text-sm">3</span>
-                      Part Payment 02
+                  {/* Interest Part Payment 02 */}
+                  <div className="bg-white bg-opacity-90 backdrop-blur rounded-lg p-4 border border-purple-200">
+                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                      <div className={`w-4 h-4 rounded-full mr-2 ${isPaymentFilled('interestPayment', 'partPayment02') ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      Interest Part Payment 02
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                       <div>
@@ -1433,36 +1407,38 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Cheque No / Slip No</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Cheque No</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'chequeNo')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'chequeNo', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="Cheque number"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Deducted Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Deducted Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'deductedAmount')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'deductedAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Paid Amount</label>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">Paid Amount</label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white/70 backdrop-blur-sm"
                           value={getPaymentDetailsValue('interestPayment', 'partPayment02', 'paidAmount')}
                           onChange={(e) => handlePaymentDetailsChange('interestPayment', 'partPayment02', 'paidAmount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          placeholder="0.00"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
               {/* Sent To Account Division */}
               <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
@@ -1486,50 +1462,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Summary Section */}
-            <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 shadow-sm">
-              <h3 className="text-xl font-semibold text-orange-800 mb-4 flex items-center">
-                <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center mr-3">
-                  <DollarSign className="w-4 h-4 text-white" />
-                </div>
-                Payment Summary
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="text-sm text-orange-700">Owner Information</div>
-                  <div className="text-lg font-bold text-orange-800">{editingOwner.name}</div>
-                  <div className="text-sm text-orange-600">NIC: {editingOwner.nic}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-orange-700">Lot Details</div>
-                  <div className="text-lg font-bold text-orange-800">Lot {selectedLot.id}</div>
-                  <div className="text-sm text-orange-600">Plan {currentPlanId}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-sm text-orange-700">Last Updated</div>
-                  <div className="text-lg font-bold text-orange-800">{new Date().toLocaleDateString()}</div>
-                  <div className="text-sm text-orange-600">Payment Records</div>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}
-
-
-
-
-       
-          
-          
-        
-      
-
-      {/* Rest of the component remains the same... */}
-      {/* Individual Owner Compensation Cards and Modal */}
     </div>
   );
 };

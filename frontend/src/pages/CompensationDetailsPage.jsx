@@ -59,12 +59,39 @@ const CompensationDetailsPage = () => {
     try {
       const response = await api.get(`/api/lots/plan/${currentPlanId}`);
       if (response.data.success) {
-        const lots = response.data.lots.map(lot => ({
-          ...lot,
-          backend_id: lot.id,
-          id: `L${String(lot.id).padStart(3, '0')}`,
-          owners: lot.owners || []
+        const lots = await Promise.all(response.data.lots.map(async (lot) => {
+          // Fetch compensation progress for each lot
+          let compensationProgress = null;
+          let compensationSummary = null;
+          
+          try {
+            const progressResponse = await api.get(`/api/progress/plan/${currentPlanId}/lot/${lot.id}`);
+            if (progressResponse.data.success && progressResponse.data.data.aggregates) {
+              compensationProgress = progressResponse.data.data.aggregates.compensation;
+            }
+          } catch (progressError) {
+            console.log(`Progress data not available for lot ${lot.id}`);
+          }
+          
+          try {
+            const compensationResponse = await api.get(`/api/compensation/plans/${currentPlanId}/lots/${lot.id}/compensation`);
+            if (compensationResponse.data.success) {
+              compensationSummary = compensationResponse.data.summary;
+            }
+          } catch (compError) {
+            console.log(`Compensation data not available for lot ${lot.id}`);
+          }
+          
+          return {
+            ...lot,
+            backend_id: lot.id,
+            id: `L${String(lot.id).padStart(3, '0')}`,
+            owners: lot.owners || [],
+            compensation_progress: compensationProgress,
+            compensation_summary: compensationSummary
+          };
         }));
+        
         setLotsData(lots);
         
         // Auto-select first lot if available
@@ -101,20 +128,74 @@ const CompensationDetailsPage = () => {
     if (filterStatus === 'with-owners') return matchesSearch && lot.owners && lot.owners.length > 0;
     if (filterStatus === 'no-owners') return matchesSearch && (!lot.owners || lot.owners.length === 0);
     
+    // Enhanced compensation-based filters
+    if (filterStatus === 'compensation-complete') {
+      return matchesSearch && lot.compensation_progress && 
+             lot.compensation_progress.fully_complete === lot.compensation_progress.total_records &&
+             lot.compensation_progress.total_records > 0;
+    }
+    if (filterStatus === 'compensation-partial') {
+      return matchesSearch && lot.compensation_progress && 
+             lot.compensation_progress.with_amount > 0 &&
+             lot.compensation_progress.fully_complete < lot.compensation_progress.total_records;
+    }
+    if (filterStatus === 'compensation-pending') {
+      return matchesSearch && (!lot.compensation_progress || lot.compensation_progress.with_amount === 0);
+    }
+    if (filterStatus === 'missing-balance') {
+      return matchesSearch && lot.compensation_progress && 
+             lot.compensation_progress.with_zero_balance < lot.compensation_progress.total_records;
+    }
+    if (filterStatus === 'missing-interest') {
+      return matchesSearch && lot.compensation_progress && 
+             lot.compensation_progress.with_interest_complete < lot.compensation_progress.total_records;
+    }
+    if (filterStatus === 'missing-division-date') {
+      return matchesSearch && lot.compensation_progress && 
+             lot.compensation_progress.with_division_date < lot.compensation_progress.total_records;
+    }
+    
     return matchesSearch;
   });
 
   const getCompensationStatus = (lot) => {
     if (!lot.owners || lot.owners.length === 0) return 'No Owners';
-    // This would need to be determined based on actual compensation data
-    // For now, return a placeholder status
+    
+    // Enhanced status based on new completion criteria
+    if (lot.compensation_progress) {
+      const progress = lot.compensation_progress;
+      if (progress.fully_complete === progress.total_records && progress.total_records > 0) {
+        return 'Complete ✅';
+      } else if (progress.with_amount > 0) {
+        const missing = [];
+        if (progress.with_zero_balance < progress.total_records) missing.push('Balance');
+        if (progress.with_interest_complete < progress.total_records) missing.push('Interest');
+        if (progress.with_division_date < progress.total_records) missing.push('Division Date');
+        
+        return missing.length > 0 ? `Partial - Missing: ${missing.join(', ')}` : 'In Progress';
+      }
+    }
+    
     return 'Pending Assessment';
   };
 
   const getCompensationTotal = (lot) => {
-    // This would need to be calculated from actual compensation data
-    // For now, return a placeholder
+    if (lot.compensation_summary) {
+      const total = lot.compensation_summary.total_compensation || 0;
+      const interest = lot.compensation_summary.total_interest || 0;
+      const grandTotal = total + interest;
+      return grandTotal > 0 ? `Rs. ${grandTotal.toLocaleString()}` : 'Rs. 0';
+    }
     return 'Rs. 0';
+  };
+
+  const getCompensationProgress = (lot) => {
+    if (lot.compensation_progress && lot.compensation_progress.total_records > 0) {
+      const progress = lot.compensation_progress;
+      const completionRate = (progress.fully_complete / progress.total_records) * 100;
+      return Math.round(completionRate);
+    }
+    return 0;
   };
 
   return (
@@ -139,9 +220,12 @@ const CompensationDetailsPage = () => {
                 Manage owner-wise compensation details for land acquisition
               </p>
               {planId && (
-                <div className="mt-2">
+                <div className="mt-2 space-x-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                     Plan ID: {planId}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    Interest Rate: 7% Annual
                   </span>
                 </div>
               )}
@@ -206,6 +290,12 @@ const CompensationDetailsPage = () => {
                   <option value="all">All Lots</option>
                   <option value="with-owners">With Owners</option>
                   <option value="no-owners">No Owners</option>
+                  <option value="compensation-complete">Compensation Complete</option>
+                  <option value="compensation-partial">Compensation Partial</option>
+                  <option value="compensation-pending">Compensation Pending</option>
+                  <option value="missing-balance">Missing Balance Clearance</option>
+                  <option value="missing-interest">Missing Interest Payment</option>
+                  <option value="missing-division-date">Missing Division Date</option>
                 </select>
               </div>
 
@@ -243,10 +333,61 @@ const CompensationDetailsPage = () => {
                     
                     <div className="text-xs text-gray-500 space-y-1">
                       <div>Size: {lot.size || 'Not specified'}</div>
-                      <div>Status: {getCompensationStatus(lot)}</div>
+                      <div className="flex items-center justify-between">
+                        <span>Status: {getCompensationStatus(lot)}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          getCompensationProgress(lot) === 100 ? 'bg-green-100 text-green-800' :
+                          getCompensationProgress(lot) > 0 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {getCompensationProgress(lot)}%
+                        </span>
+                      </div>
                       <div className="font-medium text-green-600">
                         Total: {getCompensationTotal(lot)}
                       </div>
+                      
+                      {/* Enhanced progress indicators */}
+                      {lot.compensation_progress && lot.compensation_progress.total_records > 0 && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center text-xs">
+                            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className="bg-blue-600 h-1.5 rounded-full" 
+                                style={{width: `${(lot.compensation_progress.with_amount / lot.compensation_progress.total_records) * 100}%`}}
+                              ></div>
+                            </div>
+                            <span className="ml-2 text-gray-400">Amount</span>
+                          </div>
+                          <div className="flex items-center text-xs">
+                            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className="bg-green-600 h-1.5 rounded-full" 
+                                style={{width: `${(lot.compensation_progress.with_zero_balance / lot.compensation_progress.total_records) * 100}%`}}
+                              ></div>
+                            </div>
+                            <span className="ml-2 text-gray-400">Balance</span>
+                          </div>
+                          <div className="flex items-center text-xs">
+                            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className="bg-orange-600 h-1.5 rounded-full" 
+                                style={{width: `${(lot.compensation_progress.with_interest_complete / lot.compensation_progress.total_records) * 100}%`}}
+                              ></div>
+                            </div>
+                            <span className="ml-2 text-gray-400">Interest</span>
+                          </div>
+                          <div className="flex items-center text-xs">
+                            <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                              <div 
+                                className="bg-purple-600 h-1.5 rounded-full" 
+                                style={{width: `${(lot.compensation_progress.with_division_date / lot.compensation_progress.total_records) * 100}%`}}
+                              ></div>
+                            </div>
+                            <span className="ml-2 text-gray-400">Division</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -269,6 +410,7 @@ const CompensationDetailsPage = () => {
                     selectedLot={selectedLot}
                     planId={planId}
                     userRole={userRole}
+                    onDataUpdate={() => fetchLotsData(planId)}
                   />
                 </div>
               ) : (

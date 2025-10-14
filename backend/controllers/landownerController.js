@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const transporter = require("../config/emailTransporter");
+const twilioClient = require("../config/twilioClient");
 const db = require("../config/db");
 const LandownerOTP = require("../models/landownerOtpModel");
 
@@ -74,7 +75,7 @@ exports.requestOTP = async (req, res) => {
         const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
         // Store OTP in database
-        LandownerOTP.create(nic, mobile, hashedOTP, expiresAt, (err, result) => {
+        LandownerOTP.create(nic, mobile, hashedOTP, expiresAt, async (err, result) => {
           if (err) {
             console.error("Error storing OTP:", err);
             return res.status(500).json({ message: "Failed to generate OTP" });
@@ -83,15 +84,24 @@ exports.requestOTP = async (req, res) => {
           // Clean up old OTPs
           LandownerOTP.deleteExpiredOrUsed(() => {});
 
-          // In production, send SMS here
-          console.log(`OTP for ${nic}: ${otp}`); // Remove in production
-          console.log(`SMS to ${mobile}: ${generateOtpSMS(landowner.name, otp)}`);
+          // Send OTP via Twilio SMS
+          const smsBody = generateOtpSMS(landowner.name, otp);
+          try {
+            await twilioClient.messages.create({
+              body: smsBody,
+              from: process.env.TWILIO_PHONE_NUMBER,
+              to: mobile  // Must be a verified number in free trial
+            });
 
-          res.json({
-            message: "OTP sent to your mobile number",
-            // Remove the line below in production - only for testing
-            otp: otp
-          });
+            console.log(`OTP sent via Twilio to ${mobile}`);
+
+            res.json({
+              message: "OTP sent to your mobile number (Twilio trial)"
+            });
+          } catch (smsError) {
+            console.error("Error sending SMS via Twilio:", smsError);
+            res.status(500).json({ message: "Failed to send OTP SMS" });
+          }
         });
       });
     });
@@ -222,77 +232,137 @@ exports.verifyOTP = async (req, res) => {
 // Get landowner's lots
 exports.getLandownerLots = async (req, res) => {
   try {
+    console.log("=== LANDOWNER LOTS ENDPOINT CALLED ===");
+    console.log("User from token:", req.user);
     const landownerId = req.user.id;
 
-    const query = `
-      SELECT
-        lo.lot_id,
-        lo.ownership_percentage,
-        l.lot_no,
-        l.extent_ha,
-        l.extent_perch,
-        l.advance_tracing_extent_ha,
-        l.advance_tracing_extent_perch,
-        l.land_type,
-        p.plan_identifier,
-        pr.name as project_name,
-        pr.status as project_status,
-        v.total_value as valuation_amount,
-        c.total_compensation as full_compensation_amount,
-        c.compensation_payment as paid_compensation_amount,
-        c.interest_payment as interest_amount,
-        c.status as compensation_status
-      FROM lot_owners lo
-      JOIN lots l ON lo.lot_id = l.id
-      JOIN plans p ON l.plan_id = p.id
-      JOIN projects pr ON p.project_id = pr.id
-      LEFT JOIN lot_valuations v ON l.id = v.lot_id AND p.id = v.plan_id
-      LEFT JOIN lot_compensations c ON l.id = c.lot_id AND p.id = c.plan_id
-      WHERE lo.owner_id = ? AND lo.status = 'active'
-      ORDER BY pr.name, p.plan_identifier, l.lot_no
-    `;
-
-    db.query(query, [landownerId], (err, results) => {
+    // First get the landowner's NIC
+    const ownerQuery = `SELECT nic FROM owners WHERE id = ?`;
+    
+    db.query(ownerQuery, [landownerId], (err, ownerResults) => {
       if (err) {
-        console.error("Database error:", err);
+        console.error("Error getting owner NIC:", err);
         return res.status(500).json({ message: "Database error" });
       }
 
-      // Group by project and plan
-      const groupedData = {};
-      results.forEach(row => {
-        const projectKey = row.project_name;
-        const planKey = row.plan_identifier;
+      if (ownerResults.length === 0) {
+        return res.status(404).json({ message: "Landowner not found" });
+      }
 
-        if (!groupedData[projectKey]) {
-          groupedData[projectKey] = {};
+      const ownerNIC = ownerResults[0].nic;
+      console.log("Querying lots for landowner NIC:", ownerNIC);
+
+      const query = `
+        SELECT
+          lo.lot_id,
+          p.id as plan_id,
+          lo.ownership_percentage,
+          l.lot_no,
+          l.extent_ha,
+          l.extent_perch,
+          l.advance_tracing_extent_ha,
+          l.advance_tracing_extent_perch,
+          l.land_type,
+          p.plan_identifier,
+          pr.name as project_name,
+          pr.status as project_status,
+          v.total_value as valuation_amount,
+          cpd.final_compensation_amount as full_compensation_amount,
+          (COALESCE(cpd.compensation_full_payment_paid_amount, 0) + 
+           COALESCE(cpd.compensation_part_payment_01_paid_amount, 0) + 
+           COALESCE(cpd.compensation_part_payment_02_paid_amount, 0)) as paid_compensation_amount,
+          (COALESCE(cpd.interest_full_payment_paid_amount, 0) + 
+           COALESCE(cpd.interest_part_payment_01_paid_amount, 0) + 
+           COALESCE(cpd.interest_part_payment_02_paid_amount, 0)) as interest_amount,
+          cpd.payment_status as compensation_status,
+          o.nic as owner_nic,
+          cpd.compensation_full_payment_paid_amount,
+          cpd.compensation_part_payment_01_paid_amount,
+          cpd.compensation_part_payment_02_paid_amount,
+          cpd.owner_nic as cpd_owner_nic
+        FROM lot_owners lo
+        JOIN lots l ON lo.lot_id = l.id
+        JOIN plans p ON l.plan_id = p.id
+        JOIN projects pr ON p.project_id = pr.id
+        JOIN owners o ON lo.owner_id = o.id
+        LEFT JOIN lot_valuations v ON l.id = v.lot_id AND p.id = v.plan_id
+        LEFT JOIN compensation_payment_details cpd ON l.id = cpd.lot_id AND p.id = cpd.plan_id AND (
+          cpd.owner_nic = ? OR 
+          TRIM(cpd.owner_nic) = TRIM(?) OR
+          REPLACE(TRIM(cpd.owner_nic), ' ', '') = REPLACE(TRIM(?), ' ', '')
+        )
+        WHERE lo.owner_id = ? AND lo.status = 'active'
+        ORDER BY pr.name, p.plan_identifier, l.lot_no
+      `;
+
+      db.query(query, [ownerNIC, ownerNIC, ownerNIC, landownerId], (err, results) => {
+        if (err) {
+          console.error("Database error:", err);
+          return res.status(500).json({ message: "Database error" });
         }
 
-        if (!groupedData[projectKey][planKey]) {
-          groupedData[projectKey][planKey] = [];
-        }
-
-        groupedData[projectKey][planKey].push({
-          lotId: row.lot_id,
-          lotNo: row.lot_no,
-          extentHa: row.extent_ha,
-          extentPerch: row.extent_perch,
-          advanceTracingExtentHa: row.advance_tracing_extent_ha,
-          advanceTracingExtentPerch: row.advance_tracing_extent_perch,
-          landType: row.land_type,
-          ownershipPercentage: row.ownership_percentage,
-          valuationAmount: row.valuation_amount,
-          fullCompensationAmount: row.full_compensation_amount,
-          paidCompensationAmount: row.paid_compensation_amount,
-          interestAmount: row.interest_amount,
-          compensationStatus: row.compensation_status,
-          projectStatus: row.project_status
+        // Debug logging
+        console.log("Landowner lots query results for landowner ID:", landownerId, "NIC:", ownerNIC);
+        results.forEach((row, index) => {
+          console.log(`Row ${index + 1}:`, {
+            lotId: row.lot_id,
+            planId: row.plan_id,
+            ownerNic: row.owner_nic,
+            cpdOwnerNic: row.cpd_owner_nic,
+            fullCompensationAmount: row.full_compensation_amount,
+            paidCompensationAmount: row.paid_compensation_amount,
+            compensationFullPaid: row.compensation_full_payment_paid_amount,
+            compensationPart01Paid: row.compensation_part_payment_01_paid_amount,
+            compensationPart02Paid: row.compensation_part_payment_02_paid_amount,
+            compensationStatus: row.compensation_status
+          });
         });
-      });
 
-      res.json({
-        success: true,
-        data: groupedData
+        // Group by project and plan
+        const groupedData = {};
+        results.forEach(row => {
+          const projectKey = row.project_name;
+          const planKey = row.plan_identifier;
+
+          if (!groupedData[projectKey]) {
+            groupedData[projectKey] = {};
+          }
+
+          if (!groupedData[projectKey][planKey]) {
+            groupedData[projectKey][planKey] = [];
+          }
+
+          groupedData[projectKey][planKey].push({
+            lotId: row.lot_id,
+            planId: row.plan_id,
+            lotNo: row.lot_no,
+            extentHa: row.extent_ha,
+            extentPerch: row.extent_perch,
+            advanceTracingExtentHa: row.advance_tracing_extent_ha,
+            advanceTracingExtentPerch: row.advance_tracing_extent_perch,
+            landType: row.land_type,
+            ownershipPercentage: row.ownership_percentage,
+            valuationAmount: row.valuation_amount,
+            fullCompensationAmount: row.full_compensation_amount,
+            paidCompensationAmount: row.paid_compensation_amount,
+            interestAmount: row.interest_amount,
+            compensationStatus: row.compensation_status,
+            projectStatus: row.project_status,
+            // Debug fields
+            debug: {
+              compensationFullPaid: row.compensation_full_payment_paid_amount,
+              compensationPart01Paid: row.compensation_part_payment_01_paid_amount,
+              compensationPart02Paid: row.compensation_part_payment_02_paid_amount,
+              ownerNic: row.owner_nic,
+              cpdOwnerNic: row.cpd_owner_nic
+            }
+          });
+        });
+
+        res.json({
+          success: true,
+          data: groupedData
+        });
       });
     });
 
@@ -533,6 +603,39 @@ exports.deleteDocument = async (req, res) => {
 
   } catch (error) {
     console.error("Error in deleteDocument:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Debug endpoint to check compensation data
+exports.debugCompensationData = async (req, res) => {
+  try {
+    const { nic } = req.params;
+
+    if (!nic) {
+      return res.status(400).json({ message: "NIC is required" });
+    }
+
+    const query = `
+      SELECT * FROM compensation_payment_details 
+      WHERE owner_nic = ? OR TRIM(owner_nic) = TRIM(?)
+    `;
+
+    db.query(query, [nic, nic], (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+      res.json({
+        message: "Compensation data retrieved",
+        data: results,
+        count: results.length
+      });
+    });
+
+  } catch (error) {
+    console.error("Error in debugCompensationData:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -18,4 +18,7 @@ router.get("/documents", verifyToken, landownerController.getDocuments);
 router.get("/documents-by-nic/:nic", verifyToken, landownerController.getDocumentsByNIC);
 router.delete("/documents/:document_type", verifyToken, landownerController.deleteDocument);
 
+// Debug route
+router.get("/debug-compensation/:nic", verifyToken, landownerController.debugCompensationData);
+
 module.exports = router;

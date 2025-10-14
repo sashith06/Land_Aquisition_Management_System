@@ -1,4 +1,5 @@
 const CompensationPaymentDetails = require("../models/compensationPaymentDetailsModel");
+const { updateCompensationCompletion, calculateInterestAmount } = require("../services/progressService");
 
 // Create or update payment details
 const createOrUpdatePaymentDetails = (req, res) => {
@@ -10,6 +11,14 @@ const createOrUpdatePaymentDetails = (req, res) => {
   console.log('User Role:', req.user?.role);
   console.log('createOrUpdatePaymentDetails called with:', { plan_id, lot_id, owner_nic });
   console.log('Request Body:', req.body);
+  console.log('🏦 Interest Payment Fields:', {
+    interest_full_payment_date: req.body.interest_full_payment_date,
+    interest_full_payment_paid_amount: req.body.interest_full_payment_paid_amount,
+    interest_part_payment_01_date: req.body.interest_part_payment_01_date,
+    interest_part_payment_01_paid_amount: req.body.interest_part_payment_01_paid_amount
+  });
+  console.log('📅 Account Division Date:', req.body.send_account_division_date);
+  console.log('🧮 Calculated Interest Amount:', req.body.calculated_interest_amount);
   console.log('=== END DEBUG ===');
   
   // Check if user has permission to modify payment details
@@ -64,7 +73,7 @@ const createOrUpdatePaymentDetails = (req, res) => {
 
   console.log('Saving payment data:', paymentData);
 
-  CompensationPaymentDetails.createOrUpdate(paymentData, (err, result) => {
+  CompensationPaymentDetails.createOrUpdate(paymentData, async (err, result) => {
     if (err) {
       console.error("Error saving payment details:", err);
       return res.status(500).json({ 
@@ -72,6 +81,15 @@ const createOrUpdatePaymentDetails = (req, res) => {
         message: "Error saving payment details",
         error: process.env.NODE_ENV === 'development' ? err.message : undefined
       });
+    }
+
+    try {
+      // Update completion fields after saving
+      await updateCompensationCompletion(parsedPlanId, parsedLotId, owner_nic);
+      console.log('Payment details and completion status updated successfully');
+    } catch (updateErr) {
+      console.error('Error updating completion status:', updateErr);
+      // Don't fail the main operation, just log the error
     }
 
     console.log('Payment details saved successfully:', result);
@@ -653,6 +671,23 @@ const getCompensationByLot = (req, res) => {
       finalCompensationAmount: result.final_compensation_amount || 0
     }));
 
+    // Helper function to convert YYYY-MM-DD date to {day, month, year} format
+    const convertDateToComponents = (dateString) => {
+      if (!dateString) return { day: '', month: '', year: '', date: '' };
+      
+      try {
+        const date = new Date(dateString);
+        return {
+          day: date.getDate().toString().padStart(2, '0'),
+          month: (date.getMonth() + 1).toString().padStart(2, '0'),
+          year: date.getFullYear().toString(),
+          date: dateString
+        };
+      } catch (e) {
+        return { day: '', month: '', year: '', date: '' };
+      }
+    };
+
     // Build compensation_payment data structure for frontend
     const compensation_payment = {};
     results.forEach(result => {
@@ -660,47 +695,47 @@ const getCompensationByLot = (req, res) => {
       compensation_payment[key] = {
         compensationPayment: {
           fullPayment: {
-            date: result.compensation_full_payment_date || '',
+            ...convertDateToComponents(result.compensation_full_payment_date),
             chequeNo: result.compensation_full_payment_cheque_no || '',
-            deductedAmount: result.compensation_full_payment_deducted_amount || 0,
-            paidAmount: result.compensation_full_payment_paid_amount || 0
+            deductedAmount: (result.compensation_full_payment_deducted_amount || 0).toString(),
+            paidAmount: (result.compensation_full_payment_paid_amount || 0).toString()
           },
           partPayment01: {
-            date: result.compensation_part_payment_01_date || '',
+            ...convertDateToComponents(result.compensation_part_payment_01_date),
             chequeNo: result.compensation_part_payment_01_cheque_no || '',
-            deductedAmount: result.compensation_part_payment_01_deducted_amount || 0,
-            paidAmount: result.compensation_part_payment_01_paid_amount || 0
+            deductedAmount: (result.compensation_part_payment_01_deducted_amount || 0).toString(),
+            paidAmount: (result.compensation_part_payment_01_paid_amount || 0).toString()
           },
           partPayment02: {
-            date: result.compensation_part_payment_02_date || '',
+            ...convertDateToComponents(result.compensation_part_payment_02_date),
             chequeNo: result.compensation_part_payment_02_cheque_no || '',
-            deductedAmount: result.compensation_part_payment_02_deducted_amount || 0,
-            paidAmount: result.compensation_part_payment_02_paid_amount || 0
+            deductedAmount: (result.compensation_part_payment_02_deducted_amount || 0).toString(),
+            paidAmount: (result.compensation_part_payment_02_paid_amount || 0).toString()
           }
         },
         interestPayment: {
           fullPayment: {
-            date: result.interest_full_payment_date || '',
+            ...convertDateToComponents(result.interest_full_payment_date),
             chequeNo: result.interest_full_payment_cheque_no || '',
-            deductedAmount: result.interest_full_payment_deducted_amount || 0,
-            paidAmount: result.interest_full_payment_paid_amount || 0
+            deductedAmount: (result.interest_full_payment_deducted_amount || 0).toString(),
+            paidAmount: (result.interest_full_payment_paid_amount || 0).toString()
           },
           partPayment01: {
-            date: result.interest_part_payment_01_date || '',
+            ...convertDateToComponents(result.interest_part_payment_01_date),
             chequeNo: result.interest_part_payment_01_cheque_no || '',
-            deductedAmount: result.interest_part_payment_01_deducted_amount || 0,
-            paidAmount: result.interest_part_payment_01_paid_amount || 0
+            deductedAmount: (result.interest_part_payment_01_deducted_amount || 0).toString(),
+            paidAmount: (result.interest_part_payment_01_paid_amount || 0).toString()
           },
           partPayment02: {
-            date: result.interest_part_payment_02_date || '',
+            ...convertDateToComponents(result.interest_part_payment_02_date),
             chequeNo: result.interest_part_payment_02_cheque_no || '',
-            deductedAmount: result.interest_part_payment_02_deducted_amount || 0,
-            paidAmount: result.interest_part_payment_02_paid_amount || 0
+            deductedAmount: (result.interest_part_payment_02_deducted_amount || 0).toString(),
+            paidAmount: (result.interest_part_payment_02_paid_amount || 0).toString()
           }
         },
         accountDivision: {
           sentDate: {
-            date: result.account_division_sent_date || '',
+            ...convertDateToComponents(result.send_account_division_date || result.account_division_sent_date),
             chequeNo: result.account_division_cheque_no || '',
             deductedAmount: result.account_division_deducted_amount || 0,
             paidAmount: result.account_division_paid_amount || 0
@@ -734,6 +769,86 @@ const extractPaymentDetails = (compensation_payment, owner_nic) => {
   };
 };
 
+// Calculate interest for a compensation record
+const calculateInterest = async (req, res) => {
+  const { plan_id, lot_id, owner_nic } = req.params;
+  const { 
+    compensation_amount, 
+    valuation_date, 
+    interest_rate = 0.07, // Default 7% annual interest
+    end_date = new Date().toISOString().split('T')[0] // Default to today
+  } = req.body;
+
+  try {
+    // Validate input
+    if (!compensation_amount || !valuation_date) {
+      return res.status(400).json({
+        success: false,
+        message: "Compensation amount and valuation date are required"
+      });
+    }
+
+    // Calculate interest
+    const interestAmount = calculateInterestAmount(
+      parseFloat(compensation_amount),
+      valuation_date,
+      end_date,
+      parseFloat(interest_rate)
+    );
+
+    // Update the record with calculated interest
+    const updateData = {
+      calculated_interest_amount: interestAmount,
+      interest_calculation_date: new Date().toISOString().split('T')[0],
+      final_compensation_amount: parseFloat(compensation_amount)
+    };
+
+    CompensationPaymentDetails.createOrUpdate({
+      plan_id: parseInt(plan_id),
+      lot_id: parseInt(lot_id),
+      owner_nic,
+      ...updateData,
+      updated_by: req.user?.id
+    }, async (err, result) => {
+      if (err) {
+        console.error("Error updating interest calculation:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Error calculating interest",
+          error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
+      }
+
+      try {
+        // Update completion status
+        await updateCompensationCompletion(parseInt(plan_id), parseInt(lot_id), owner_nic);
+      } catch (updateErr) {
+        console.error('Error updating completion status:', updateErr);
+      }
+
+      res.json({
+        success: true,
+        message: "Interest calculated successfully",
+        data: {
+          compensation_amount: parseFloat(compensation_amount),
+          calculated_interest: interestAmount,
+          total_amount: parseFloat(compensation_amount) + interestAmount,
+          interest_rate: parseFloat(interest_rate),
+          days_calculated: Math.ceil((new Date(end_date) - new Date(valuation_date)) / (1000 * 60 * 60 * 24))
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error("Error in calculateInterest:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   createOrUpdatePaymentDetails,
   getPaymentDetailsByOwner,
@@ -741,6 +856,7 @@ module.exports = {
   getPaymentDetailsByPlan,
   getPaymentSummary,
   deletePaymentDetails,
+  calculateInterest,
   // Legacy compatibility methods
   createOrUpdateCompensation,
   getCompensationByLot

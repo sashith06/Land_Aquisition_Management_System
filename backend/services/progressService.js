@@ -96,7 +96,7 @@ async function getLotProgress(planId, lotId) {
   console.log(`Valuation Data:`, valuation);
   console.log(`Valuation rows found:`, valRows?.length || 0);
 
-  // 4) Compensation (compensation_payment_details)
+  // 4) Compensation (compensation_payment_details) - Enhanced with new completion criteria
   const compSql = `
     SELECT 
       COUNT(*) AS total_records,
@@ -105,12 +105,30 @@ async function getLotProgress(planId, lotId) {
         COALESCE(compensation_full_payment_paid_amount,0) +
         COALESCE(compensation_part_payment_01_paid_amount,0) +
         COALESCE(compensation_part_payment_02_paid_amount,0)
-      ) > 0 THEN 1 ELSE 0 END) AS with_payments
+      ) > 0 THEN 1 ELSE 0 END) AS with_payments,
+      SUM(CASE WHEN COALESCE(balance_due, 0) = 0 THEN 1 ELSE 0 END) AS with_zero_balance,
+      SUM(CASE WHEN COALESCE(total_paid_interest, 0) = COALESCE(calculated_interest_amount, 0) AND COALESCE(calculated_interest_amount, 0) > 0 THEN 1 ELSE 0 END) AS with_interest_complete,
+      SUM(CASE WHEN send_account_division_date IS NOT NULL THEN 1 ELSE 0 END) AS with_division_date,
+      SUM(CASE WHEN 
+        COALESCE(balance_due, 0) = 0 AND 
+        COALESCE(total_paid_interest, 0) = COALESCE(calculated_interest_amount, 0) AND
+        send_account_division_date IS NOT NULL AND
+        COALESCE(final_compensation_amount, 0) > 0
+      THEN 1 ELSE 0 END) AS fully_complete
     FROM compensation_payment_details
     WHERE plan_id = ? AND lot_id = ?
   `;
   console.log(`Executing compensation query with planId=${planId}, lotId=${lotId}`);
   const [compRows] = await db.query(compSql, [planId, lotId]);
+  const compAgg = compRows?.[0] || { 
+    total_records: 0, 
+    with_amount: 0, 
+    with_payments: 0, 
+    with_zero_balance: 0, 
+    with_interest_complete: 0, 
+    with_division_date: 0, 
+    fully_complete: 0 
+  };
   const compAgg = compRows?.[0] || { total_records: 0, with_amount: 0, with_payments: 0 };
   console.log(`Compensation rows found:`, compRows?.length || 0);
   
@@ -257,36 +275,37 @@ async function getLotProgress(planId, lotId) {
     compCompleteness = 0;
     compStatus = "blocked";
     } else {
-      // Previous sections complete, now check compensation
-      if (effectiveActiveOwners === 0) {
-        // No active owners yet; treat as not started and indicate dependency
-        compMissing.push("No active owners for compensation");
+      const totalRecords = Number(compAgg.total_records || 0);
+      const withAmount = Number(compAgg.with_amount || 0);
+      const withZeroBalance = Number(compAgg.with_zero_balance || 0);
+      const withInterestComplete = Number(compAgg.with_interest_complete || 0);
+      const withDivisionDate = Number(compAgg.with_division_date || 0);
+      const fullyComplete = Number(compAgg.fully_complete || 0);
+      
+      // Check what's missing for 100% completion
+      if (totalRecords === 0) {
+        compMissing.push("Compensation records for owners");
         compCompleteness = 0;
       } else {
-        const totalRecords = Number(compAgg.total_records || 0);
-        const withAmount = Number(compAgg.with_amount || 0);
-        const withPayments = Number(compAgg.with_payments || 0);
+        // Build missing items list
+        if (withAmount < totalOwners) compMissing.push("Final compensation amounts");
+        if (withZeroBalance < totalOwners) compMissing.push("Balance due must be 0");
+        if (withInterestComplete < totalOwners) compMissing.push("Interest payments must equal calculated interest");
+        if (withDivisionDate < totalOwners) compMissing.push("Send account division date");
         
-        if (totalRecords === 0) {
-          // No compensation records created yet
-          compMissing.push("Compensation records not created");
-          compCompleteness = 0;
-        } else if (withAmount === 0) {
-          // Records exist but no amounts set
-          compMissing.push("Final Compensation Amounts not set");
-          compCompleteness = 0.2; // Give some credit for having records
-        } else {
-          // Calculate coverage based on effective active owners vs records with amounts
-          const coverage = withAmount / effectiveActiveOwners;
-          if (coverage >= 1) {
-            // All active owners have compensation amounts
-            compCompleteness = withPayments > 0 ? 1 : 0.8; // Full if payments made, 80% if just amounts set
-          } else {
-            // Partial coverage
-            compMissing.push(`Compensation for ${effectiveActiveOwners - withAmount} more active owner(s)`);
-            compCompleteness = Math.min(0.8, Math.max(coverage * 0.6, withPayments > 0 ? 0.3 : 0));
-          }
-        }
+        // Calculate completion percentage based on multiple criteria
+        const completionScores = [
+          withAmount / totalOwners,           // 25% - Has compensation amount
+          withZeroBalance / totalOwners,      // 25% - Balance is zero
+          withInterestComplete / totalOwners, // 25% - Interest payments complete
+          withDivisionDate / totalOwners      // 25% - Division date provided
+        ];
+        
+        // Average of all completion criteria
+        compCompleteness = completionScores.reduce((sum, score) => sum + score, 0) / completionScores.length;
+        
+        // Ensure we don't exceed 1.0
+        compCompleteness = Math.min(1, compCompleteness);
       }
       compStatus = sectionStatus(compCompleteness);
     }  const compensationSection = {
@@ -585,119 +604,74 @@ async function getProjectProgress(projectId) {
   };
 }
 
-// Get stage participation for all lots (for chart display)
-async function getAllLotsStageParticipation(projectId = null, planId = null) {
-  console.log('\n=== CALCULATING STAGE PARTICIPATION FOR FILTERED LOTS ===');
-  console.log('Filters applied - projectId:', projectId, 'planId:', planId);
-  
-  // Build dynamic SQL with filters
-  let lotsSql = `
-    SELECT l.id, l.lot_no, l.plan_id, l.status,
-           p.plan_identifier, p.project_id, pr.name as project_name
-    FROM lots l
-    LEFT JOIN plans p ON l.plan_id = p.id  
-    LEFT JOIN projects pr ON p.project_id = pr.id
-    WHERE l.status IN ('active', 'pending')
+// Helper function to calculate and update compensation completion fields
+async function updateCompensationCompletion(planId, lotId, ownerNic) {
+  const updateSql = `
+    UPDATE compensation_payment_details 
+    SET 
+      total_paid_interest = COALESCE(interest_full_payment_paid_amount, 0) + 
+                           COALESCE(interest_part_payment_01_paid_amount, 0) + 
+                           COALESCE(interest_part_payment_02_paid_amount, 0),
+      balance_due = GREATEST(0, 
+        COALESCE(final_compensation_amount, 0) - 
+        (COALESCE(compensation_full_payment_paid_amount, 0) + 
+         COALESCE(compensation_part_payment_01_paid_amount, 0) + 
+         COALESCE(compensation_part_payment_02_paid_amount, 0))
+      ),
+      completion_status = CASE 
+        WHEN COALESCE(balance_due, 0) = 0 AND 
+             COALESCE(total_paid_interest, 0) = COALESCE(calculated_interest_amount, 0) AND 
+             send_account_division_date IS NOT NULL AND
+             COALESCE(final_compensation_amount, 0) > 0
+        THEN 'complete'
+        WHEN COALESCE(final_compensation_amount, 0) > 0 OR 
+             (COALESCE(compensation_full_payment_paid_amount, 0) + 
+              COALESCE(compensation_part_payment_01_paid_amount, 0) + 
+              COALESCE(compensation_part_payment_02_paid_amount, 0)) > 0
+        THEN 'partial'
+        ELSE 'pending'
+      END,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE plan_id = ? AND lot_id = ? AND owner_nic = ?
   `;
   
-  const params = [];
+  await db.query(updateSql, [planId, lotId, ownerNic]);
+}
+
+// Helper function to calculate interest amount based on compensation and time
+function calculateInterestAmount(compensationAmount, fromDate, toDate, interestRate = 0.07) {
+  if (!compensationAmount || !fromDate || !toDate) return 0;
   
-  // Apply project filter
-  if (projectId && projectId !== 'all') {
-    lotsSql += ` AND pr.id = ?`;
-    params.push(projectId);
-  }
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+  const daysDiff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
+  const yearsDiff = daysDiff / 365.25;
   
-  // Apply plan filter  
-  if (planId && planId !== 'all') {
-    lotsSql += ` AND p.id = ?`;
-    params.push(planId);
-  }
+  return Math.round(compensationAmount * interestRate * yearsDiff * 100) / 100;
+}
+
+// Helper function to get detailed compensation progress for a lot
+async function getCompensationDetails(planId, lotId) {
+  const detailSql = `
+    SELECT 
+      owner_nic,
+      owner_name,
+      final_compensation_amount,
+      calculated_interest_amount,
+      total_paid_interest,
+      balance_due,
+      send_account_division_date,
+      completion_status,
+      (COALESCE(compensation_full_payment_paid_amount, 0) + 
+       COALESCE(compensation_part_payment_01_paid_amount, 0) + 
+       COALESCE(compensation_part_payment_02_paid_amount, 0)) as total_compensation_paid
+    FROM compensation_payment_details
+    WHERE plan_id = ? AND lot_id = ?
+    ORDER BY owner_name
+  `;
   
-  lotsSql += ` ORDER BY l.id`;
-  
-  console.log('Executing SQL:', lotsSql, 'with params:', params);
-  const [allLots] = await db.query(lotsSql, params);
-  
-  console.log(`Found ${allLots.length} lots after filtering`);
-  if (allLots.length > 0) {
-    console.log('Sample lots:', allLots.slice(0, 3).map(lot => ({
-      id: lot.id,
-      lot_no: lot.lot_no,
-      project_id: lot.project_id,
-      plan_id: lot.plan_id,
-      project_name: lot.project_name,
-      plan_identifier: lot.plan_identifier
-    })));
-  }
-  
-  const stageParticipation = {
-    'Owner Details': 0,
-    'Land Details': 0, 
-    'Valuation': 0,
-    'Compensation': 0,
-    'Completed': 0
-  };
-  
-  for (const lot of allLots) {
-    console.log(`\nProcessing Lot ${lot.lot_no} (ID: ${lot.id}, Plan: ${lot.plan_id})`);
-    
-    // 1. Owner Details - Check if lot has owners
-    const [ownerRows] = await db.query(
-      'SELECT COUNT(*) as count FROM lot_owners WHERE lot_id = ?', 
-      [lot.id]
-    );
-    const hasOwners = ownerRows[0].count > 0;
-    if (hasOwners) {
-      stageParticipation['Owner Details']++;
-      console.log(`  ✓ Has Owner Details`);
-    }
-    
-    // 2. Land Details - Check if lot has land data
-    const [landRows] = await db.query(
-      'SELECT COUNT(*) as count FROM lots WHERE id = ? AND (advance_tracing_no IS NOT NULL OR preliminary_plan_extent_ha IS NOT NULL)', 
-      [lot.id]
-    );
-    const hasLandDetails = landRows[0].count > 0;
-    if (hasLandDetails) {
-      stageParticipation['Land Details']++;
-      console.log(`  ✓ Has Land Details`);
-    }
-    
-    // 3. Valuation - Check if lot has valuation
-    const [valuationRows] = await db.query(
-      'SELECT COUNT(*) as count FROM lot_valuations WHERE lot_id = ? AND plan_id = ?', 
-      [lot.id, lot.plan_id]
-    );
-    const hasValuation = valuationRows[0].count > 0;
-    if (hasValuation) {
-      stageParticipation['Valuation']++;
-      console.log(`  ✓ Has Valuation`);
-    }
-    
-    // 4. Compensation - Check if lot has compensation
-    const [compensationRows] = await db.query(
-      'SELECT COUNT(*) as count FROM compensation_payment_details WHERE lot_id = ? AND plan_id = ?', 
-      [lot.id, lot.plan_id]
-    );
-    const hasCompensation = compensationRows[0].count > 0;
-    if (hasCompensation) {
-      stageParticipation['Compensation']++;
-      console.log(`  ✓ Has Compensation`);
-    }
-    
-    // 5. Completed - Check if lot is fully complete (has all stages)
-    if (hasOwners && hasLandDetails && hasValuation && hasCompensation) {
-      stageParticipation['Completed']++;
-      console.log(`  ✓ Fully Completed`);
-    }
-  }
-  
-  console.log('\n=== FINAL STAGE PARTICIPATION COUNTS ===');
-  console.log(stageParticipation);
-  console.log('=== END STAGE PARTICIPATION ===\n');
-  
-  return stageParticipation;
+  const [rows] = await db.query(detailSql, [planId, lotId]);
+  return rows;
 }
 
 module.exports = {
@@ -706,6 +680,8 @@ module.exports = {
   getPlanCreationProgress,
   getProjectCreationProgress,
   getProjectProgress,
-  getAllLotsStageParticipation,
+  updateCompensationCompletion,
+  calculateInterestAmount,
+  getCompensationDetails,
   SECTION_ORDER
 };
