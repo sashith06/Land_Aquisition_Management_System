@@ -3,14 +3,6 @@ const db = require('../config/db');
 class CompensationPaymentDetails {
   // Create or update payment details
   static createOrUpdate(paymentData, callback) {
-    console.log('🧠 MODEL: Received data for createOrUpdate:', paymentData);
-    console.log('🧠 MODEL: Part Payment 01 Fields:', {
-      date: paymentData.compensation_part_payment_01_date,
-      cheque: paymentData.compensation_part_payment_01_cheque_no,
-      deducted: paymentData.compensation_part_payment_01_deducted_amount,
-      paid: paymentData.compensation_part_payment_01_paid_amount
-    });
-    
     const {
       plan_id,
       lot_id,
@@ -149,23 +141,6 @@ class CompensationPaymentDetails {
           checkResult[0].id
         ];
 
-        console.log('🔄 UPDATE: Payment details with ID:', checkResult[0].id);
-        console.log('📅 ACCOUNT DIVISION DATES:', {
-          send_account_division_date: updateValues[26], // position 26
-          calculated_interest_amount: updateValues[27], // position 27
-          account_division_sent_date: updateValues[28], // position 28
-        });
-        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[27]);
-        console.log('�🔄 UPDATE Values (part payments):', {
-          part01_date: updateValues[6], // compensation_part_payment_01_date
-          part01_cheque: updateValues[7], // compensation_part_payment_01_cheque_no
-          part01_deducted: updateValues[8], // compensation_part_payment_01_deducted_amount
-          part01_paid: updateValues[9], // compensation_part_payment_01_paid_amount
-          part02_date: updateValues[10], // compensation_part_payment_02_date
-          part02_cheque: updateValues[11], // compensation_part_payment_02_cheque_no
-          part02_deducted: updateValues[12], // compensation_part_payment_02_deducted_amount
-          part02_paid: updateValues[13] // compensation_part_payment_02_paid_amount
-        });
         db.query(updateQuery, updateValues, callback);
       } else {
         // Insert new record
@@ -226,18 +201,6 @@ class CompensationPaymentDetails {
           updated_by
         ];
 
-        console.log('➕ INSERT: Creating new payment details record');
-        console.log('➕ INSERT Values (part payments):', {
-          part01_date: insertValues[9], // compensation_part_payment_01_date
-          part01_cheque: insertValues[10], // compensation_part_payment_01_cheque_no
-          part01_deducted: insertValues[11], // compensation_part_payment_01_deducted_amount
-          part01_paid: insertValues[12], // compensation_part_payment_01_paid_amount
-          part02_date: insertValues[13], // compensation_part_payment_02_date
-          part02_cheque: insertValues[14], // compensation_part_payment_02_cheque_no
-          part02_deducted: insertValues[15], // compensation_part_payment_02_deducted_amount
-          part02_paid: insertValues[16] // compensation_part_payment_02_paid_amount
-        });
-        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[30]); // calculated_interest_amount is at position 30
         db.query(insertQuery, insertValues, callback);
       }
     });
@@ -245,8 +208,6 @@ class CompensationPaymentDetails {
 
   // Get payment details by plan_id, lot_id, and owner_nic
   static getByOwner(plan_id, lot_id, owner_nic, callback) {
-    console.log('CompensationPaymentDetails Model - getByOwner called with:', { plan_id, lot_id, owner_nic });
-    
     const query = `
       SELECT * FROM compensation_payment_details 
       WHERE plan_id = ? AND lot_id = ? AND owner_nic = ?
@@ -286,15 +247,12 @@ class CompensationPaymentDetails {
         return formatted;
       });
 
-      console.log('Payment details results (formatted):', formattedResults);
       callback(null, formattedResults);
     });
   }
 
   // Get all payment details for a lot
   static getByLot(plan_id, lot_id, callback) {
-    console.log('CompensationPaymentDetails Model - getByLot called with:', { plan_id, lot_id });
-    
     const query = `
       SELECT * FROM compensation_payment_details 
       WHERE plan_id = ? AND lot_id = ?
@@ -335,15 +293,12 @@ class CompensationPaymentDetails {
         return formatted;
       });
 
-      console.log('Payment details for lot results (formatted):', formattedResults);
       callback(null, formattedResults);
     });
   }
 
   // Get all payment details for a plan
   static getByPlan(plan_id, callback) {
-    console.log('CompensationPaymentDetails Model - getByPlan called with plan_id:', plan_id);
-    
     const query = `
       SELECT cpd.*, l.lot_no 
       FROM compensation_payment_details cpd
@@ -354,19 +309,15 @@ class CompensationPaymentDetails {
 
     db.query(query, [plan_id], (err, results) => {
       if (err) {
-        console.error('Error fetching payment details for plan:', err);
         return callback(err);
       }
 
-      console.log('Payment details for plan results:', results);
       callback(null, results);
     });
   }
 
   // Delete payment details
   static delete(plan_id, lot_id, owner_nic, callback) {
-    console.log('CompensationPaymentDetails Model - delete called with:', { plan_id, lot_id, owner_nic });
-    
     const query = `
       DELETE FROM compensation_payment_details 
       WHERE plan_id = ? AND lot_id = ? AND owner_nic = ?
@@ -404,11 +355,9 @@ class CompensationPaymentDetails {
 
     db.query(query, [plan_id], (err, results) => {
       if (err) {
-        console.error('Error fetching payment summary:', err);
         return callback(err);
       }
 
-      console.log('Payment summary results:', results);
       callback(null, results);
     });
   }

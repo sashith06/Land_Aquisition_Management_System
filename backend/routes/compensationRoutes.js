@@ -7,16 +7,6 @@ const { verifyToken, requireFinancialOfficer, requireAll } = require("../middlew
 
 // Create or update compensation for a lot (FINANCIAL OFFICERS ONLY)
 router.post("/plans/:plan_id/lots/:lot_id/compensation", 
-  (req, res, next) => {
-    console.log('🔥 === COMPENSATION POST ROUTE HIT === 🔥');
-    console.log('Method:', req.method);
-    console.log('URL:', req.originalUrl);
-    console.log('Params:', req.params);
-    console.log('Body keys:', Object.keys(req.body || {}));
-    console.log('User role:', req.user?.role);
-    console.log('🔥 === END ROUTE DEBUG === 🔥');
-    next();
-  },
   verifyToken,
   requireFinancialOfficer,
   compensationPaymentDetailsController.createOrUpdateCompensation
@@ -24,15 +14,6 @@ router.post("/plans/:plan_id/lots/:lot_id/compensation",
 
 // Get compensation for a specific lot (ALL AUTHENTICATED USERS CAN VIEW)
 router.get("/plans/:plan_id/lots/:lot_id/compensation", 
-  (req, res, next) => {
-    console.log('🔥 === COMPENSATION GET ROUTE HIT === 🔥');
-    console.log('Method:', req.method);
-    console.log('URL:', req.originalUrl);
-    console.log('Params:', req.params);
-    console.log('User role:', req.user?.role);
-    console.log('🔥 === END ROUTE DEBUG === 🔥');
-    next();
-  },
   verifyToken,
   requireAll,
   compensationPaymentDetailsController.getCompensationByLot

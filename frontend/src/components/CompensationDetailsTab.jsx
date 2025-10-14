@@ -798,6 +798,33 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     return Math.round(interest * 100) / 100;
   };
 
+  // Calculate balance due dynamically for editing owner (updates in real-time)
+  const getEditingOwnerBalanceDue = () => {
+    if (!editingOwner) return 0;
+    
+    const finalAmount = parseFloat(editingOwner.compensation?.finalCompensationAmount) || 0;
+    
+    // Get payment details for this owner
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
+    const data = paymentDetails[key];
+    
+    let totalPaid = 0;
+    if (data && data.compensationPayment) {
+      if (data.compensationPayment.fullPayment?.paidAmount) {
+        totalPaid += parseFloat(data.compensationPayment.fullPayment.paidAmount) || 0;
+      }
+      if (data.compensationPayment.partPayment01?.paidAmount) {
+        totalPaid += parseFloat(data.compensationPayment.partPayment01.paidAmount) || 0;
+      }
+      if (data.compensationPayment.partPayment02?.paidAmount) {
+        totalPaid += parseFloat(data.compensationPayment.partPayment02.paidAmount) || 0;
+      }
+    }
+    
+    return Math.max(0, finalAmount - totalPaid);
+  };
+
   // Get total interest payments made for an owner
   const getOwnerTotalInterestPaid = (owner) => {
     const actualLotId = selectedLot.backend_id || selectedLot.id;
@@ -820,10 +847,16 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
 
   // Check if interest payments are complete (paid amount equals calculated interest)
   const isInterestPaymentComplete = (owner) => {
+    const finalAmount = getOwnerFinalCompensation(owner);
+    
+    // If no compensation amount is set yet, interest payment cannot be complete
+    if (finalAmount === 0) return false;
+    
     const calculatedInterest = getOwnerInterest(owner);
     const paidInterest = getOwnerTotalInterestPaid(owner);
     
-    if (calculatedInterest === 0) return true; // No interest required
+    // If calculated interest is 0 (no gazette date or amount), consider it complete only if amount is set
+    if (calculatedInterest === 0) return true;
     
     // Allow small rounding differences (within 1 rupee)
     return Math.abs(calculatedInterest - paidInterest) <= 1;
@@ -856,7 +889,10 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
   // Get overall completion status for an owner based on new criteria
   const getOwnerCompletionStatus = (owner) => {
     const hasAmount = getOwnerFinalCompensation(owner) > 0;
-    const balanceCleared = getOwnerBalanceDue(owner) === 0;
+    
+    // Balance cleared: Only true if amount is set AND balance is 0
+    const balanceCleared = hasAmount && getOwnerBalanceDue(owner) === 0;
+    
     const interestComplete = isInterestPaymentComplete(owner);
     const divisionDateSet = isSendAccountDivisionComplete(owner);
     
@@ -1075,9 +1111,9 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                     
                     <div className="flex items-center text-sm">
                       <div className={`w-4 h-4 rounded-full mr-2 ${
-                        balanceDue === 0 ? 'bg-green-500' : 'bg-gray-300'
+                        (finalCompensation > 0 && balanceDue === 0) ? 'bg-green-500' : 'bg-gray-300'
                       }`}></div>
-                      <span className={balanceDue === 0 ? 'text-green-700' : 'text-gray-500'}>
+                      <span className={(finalCompensation > 0 && balanceDue === 0) ? 'text-green-700' : 'text-gray-500'}>
                         Balance Cleared
                       </span>
                     </div>
@@ -1237,9 +1273,14 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Balance Due</label>
-                    <div className={`text-lg font-semibold ${getOwnerBalanceDue(editingOwner) === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(getOwnerBalanceDue(editingOwner))}
+                    <div className={`text-lg font-semibold ${getEditingOwnerBalanceDue() === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(getEditingOwnerBalanceDue())}
                     </div>
+                    {getEditingOwnerBalanceDue() > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Automatically updates as you enter payment details below
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Interest Due (7% annually)</label>

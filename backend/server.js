@@ -18,17 +18,6 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Add request logging
-app.use((req, res, next) => {
-  console.log(`🌐 ${new Date().toISOString()} - ${req.method} ${req.url}`);
-  if (req.url.includes('compensation')) {
-    console.log('🎯 COMPENSATION REQUEST DETECTED:', req.method, req.url);
-    console.log('🎯 Request headers:', req.headers);
-    console.log('🎯 Request body preview:', req.body ? Object.keys(req.body) : 'No body');
-  }
-  next();
-});
-
 app.use('/uploads', express.static('uploads'));
 
 const authRoutes = require("./routes/authRoutes");
@@ -97,16 +86,12 @@ async function initializeDatabase() {
     // Initialize inquiry tables
     const InquiryModel = require('./models/inquiryModel');
     await InquiryModel.createTables();
-
-    console.log('All database tables initialized successfully');
   } catch (error) {
-    console.error('Database initialization error:', error);
-    console.log('Continuing without database initialization - tables may already exist');
+    // Tables may already exist, continue
   }
 }
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
   await initializeDatabase();
 });

@@ -35,7 +35,6 @@ function generatePassword(length = 8) {
 // ===================== REGISTER =====================
 exports.register = async (req, res) => {
   const { firstName, lastName, email, role, password } = req.body;
-  console.log('Registration attempt:', { firstName, lastName, email, role });
   
   if (!firstName || !lastName || !email || !role)
     return res.status(400).json({ error: "All fields are required" });
@@ -53,12 +52,9 @@ exports.register = async (req, res) => {
 
     User.create({ firstName, lastName, email, role, password: hashedPassword }, (err, result) => {
       if (err) {
-        console.error('User creation error:', err);
         const errorMessage = err.message || err.sqlMessage || err.toString();
         return res.status(500).json({ error: `Registration failed: ${errorMessage}` });
       }
-
-      console.log('User created successfully with ID:', result.insertId);
 
       // Create notification for Chief Engineer
       Notification.createForChiefEngineer(
@@ -179,49 +175,39 @@ exports.approveUser = (req, res) => {
 
   User.approve(id, (err) => {
     if (err) {
-      console.error("Error approving user:", err);
       return res.status(500).json({ error: err.message || err });
     }
-    console.log("User approved successfully, fetching user details...");
 
     User.findById(id, (err, rows) => {
       if (err) {
-        console.error("Error finding user by ID:", err);
         return res.status(500).json({ error: err.message || err });
       }
       if (rows.length === 0) {
-        console.log("User not found after approval");
         return res.status(404).json({ error: "User not found" });
       }
 
       const user = rows[0];
-      console.log("Found user:", user.email, "Role:", user.role);
       user.joinDate = user.updated_at ? user.updated_at.toISOString().split("T")[0] : null;
 
       // Create notification for the approved user
-      console.log("Creating notification for approved user...");
       Notification.create({
         user_id: user.id,
         type: Notification.TYPES.USER_APPROVED,
         title: 'Registration Approved',
         message: 'Your registration has been approved. You can now login to the system.'
       }, (notifErr) => {
-        if (notifErr) console.error("Error creating notification:", notifErr);
-        else console.log("Notification created successfully");
+        // Notification errors are non-critical
       });
 
-      console.log("Sending approval email...");
       transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: user.email,
         subject: "Registration Approved",
         text: "You are successfully registered. You can now login.",
       }, (emailErr) => {
-        if (emailErr) console.error("Error sending email:", emailErr);
-        else console.log("Approval email sent successfully");
+        // Email errors are non-critical
       });
 
-      console.log("Sending success response...");
       res.json({ message: "User approved", user });
     });
   });
@@ -266,19 +252,14 @@ exports.rejectUser = (req, res) => {
 // ===================== DELETE USER =====================
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
-  console.log('=== DELETE USER REQUEST ===');
-  console.log('User ID to delete:', id);
-  console.log('Request user:', req.user);
   
   User.delete(id, (err, result) => {
     if (err) {
-      console.error('Delete user error:', err);
       return res.status(500).json({
         error: err.message || 'Failed to delete user',
         details: err.sqlMessage || err.toString()
       });
     }
-    console.log('Delete user result:', result);
     res.json(result || { message: "User deleted successfully." });
   });
 };

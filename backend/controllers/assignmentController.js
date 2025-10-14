@@ -5,13 +5,9 @@ class AssignmentController {
   // Get all approved land officers
   static async getLandOfficers(req, res) {
     try {
-      console.log('getLandOfficers called by user:', req.user?.id, 'role:', req.user?.role);
       const landOfficers = await AssignmentModel.getLandOfficers();
-      console.log('Land officers fetched successfully:', landOfficers.length, 'officers found');
       res.json(landOfficers);
     } catch (error) {
-      console.error('Error fetching land officers:', error);
-      console.error('Error details:', error.message, error.stack);
       res.status(500).json({ error: 'Failed to fetch land officers' });
     }
   }
@@ -82,12 +78,7 @@ class AssignmentController {
       
       // Create the notification (using callback-based approach)
       Notification.create(notification, (notifErr) => {
-        if (notifErr) {
-          console.error('Error creating notification:', notifErr);
-          // Don't fail the assignment if notification fails
-        } else {
-          console.log(`Notification sent to ${officerName} about project assignment: ${projectName}`);
-        }
+        // Don't fail the assignment if notification fails
       });
       
       res.json({ 
