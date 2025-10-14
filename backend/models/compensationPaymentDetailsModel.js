@@ -45,12 +45,10 @@ class CompensationPaymentDetails {
       interest_part_payment_02_paid_amount,
       
       // Account Division Details (optional)
-      send_account_division_date,
+      send_account_division_date, // frontend field name (alias for account_division_sent_date)
       calculated_interest_amount,
       account_division_sent_date,
-      account_division_cheque_no,
-      account_division_deducted_amount,
-      account_division_paid_amount,
+      
       
       // Metadata
       created_by,
@@ -99,9 +97,8 @@ class CompensationPaymentDetails {
             interest_part_payment_02_cheque_no = ?,
             interest_part_payment_02_deducted_amount = ?,
             interest_part_payment_02_paid_amount = ?,
-            send_account_division_date = ?,
-            calculated_interest_amount = ?,
             account_division_sent_date = ?,
+            calculated_interest_amount = ?,
             updated_by = ?,
             updated_at = NOW()
           WHERE id = ?
@@ -134,13 +131,31 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
-          send_account_division_date || null,
+          send_account_division_date || account_division_sent_date || null,
           calculated_interest_amount || 0,
-          account_division_sent_date || null,
           updated_by,
           checkResult[0].id
         ];
 
+<<<<<<< HEAD
+=======
+        console.log('🔄 UPDATE: Payment details with ID:', checkResult[0].id);
+        console.log('📅 ACCOUNT DIVISION DATES:', {
+          send_account_division_date: updateValues[25], // position 25
+          calculated_interest_amount: updateValues[26], // position 26
+        });
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[26]);
+        console.log('🔄 UPDATE Values (part payments):', {
+          part01_date: updateValues[6], // compensation_part_payment_01_date
+          part01_cheque: updateValues[7], // compensation_part_payment_01_cheque_no
+          part01_deducted: updateValues[8], // compensation_part_payment_01_deducted_amount
+          part01_paid: updateValues[9], // compensation_part_payment_01_paid_amount
+          part02_date: updateValues[10], // compensation_part_payment_02_date
+          part02_cheque: updateValues[11], // compensation_part_payment_02_cheque_no
+          part02_deducted: updateValues[12], // compensation_part_payment_02_deducted_amount
+          part02_paid: updateValues[13] // compensation_part_payment_02_paid_amount
+        });
+>>>>>>> dfbc73acfeab2faf7ff168c9bbf8b8545600f855
         db.query(updateQuery, updateValues, callback);
       } else {
         // Insert new record
@@ -159,9 +174,9 @@ class CompensationPaymentDetails {
             interest_part_payment_01_deducted_amount, interest_part_payment_01_paid_amount,
             interest_part_payment_02_date, interest_part_payment_02_cheque_no,
             interest_part_payment_02_deducted_amount, interest_part_payment_02_paid_amount,
-            send_account_division_date, calculated_interest_amount, account_division_sent_date,
+            account_division_sent_date, calculated_interest_amount,
             created_by, updated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertValues = [
@@ -194,13 +209,27 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
-          send_account_division_date || null,
+          send_account_division_date || account_division_sent_date || null,
           calculated_interest_amount || 0,
-          account_division_sent_date || null,
           created_by,
           updated_by
         ];
 
+<<<<<<< HEAD
+=======
+        console.log('➕ INSERT: Creating new payment details record');
+        console.log('➕ INSERT Values (part payments):', {
+          part01_date: insertValues[9], // compensation_part_payment_01_date
+          part01_cheque: insertValues[10], // compensation_part_payment_01_cheque_no
+          part01_deducted: insertValues[11], // compensation_part_payment_01_deducted_amount
+          part01_paid: insertValues[12], // compensation_part_payment_01_paid_amount
+          part02_date: insertValues[13], // compensation_part_payment_02_date
+          part02_cheque: insertValues[14], // compensation_part_payment_02_cheque_no
+          part02_deducted: insertValues[15], // compensation_part_payment_02_deducted_amount
+          part02_paid: insertValues[16] // compensation_part_payment_02_paid_amount
+        });
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[29]); // calculated_interest_amount is at position 29
+>>>>>>> dfbc73acfeab2faf7ff168c9bbf8b8545600f855
         db.query(insertQuery, insertValues, callback);
       }
     });
