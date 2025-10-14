@@ -641,16 +641,70 @@ async function updateCompensationCompletion(planId, lotId, ownerNic) {
   await db.query(updateSql, [planId, lotId, ownerNic]);
 }
 
-// Helper function to calculate interest amount based on compensation and time
-function calculateInterestAmount(compensationAmount, fromDate, toDate, interestRate = 0.07) {
-  if (!compensationAmount || !fromDate || !toDate) return 0;
+// Helper function to calculate interest amount with period-based logic
+// Considers payment dates to calculate interest accurately
+function calculateInterestAmount(compensationAmount, fromDate, toDate, interestRate = 0.07, payments = []) {
+  if (!compensationAmount || !fromDate) return 0;
   
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  const daysDiff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
-  const yearsDiff = daysDiff / 365.25;
+  // If no payments provided, use simple calculation (legacy behavior)
+  if (!payments || payments.length === 0) {
+    const to = toDate ? new Date(toDate) : new Date();
+    const from = new Date(fromDate);
+    const daysDiff = Math.ceil((to - from) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff <= 0) return 0;
+    
+    return Math.round(compensationAmount * interestRate * (daysDiff / 365.0) * 100) / 100;
+  }
   
-  return Math.round(compensationAmount * interestRate * yearsDiff * 100) / 100;
+  // Period-based calculation with payments
+  const sortedPayments = payments
+    .filter(p => p.date && p.amount > 0)
+    .map(p => ({
+      date: new Date(p.date),
+      amount: parseFloat(p.amount)
+    }))
+    .sort((a, b) => a.date - b.date);
+  
+  let totalInterest = 0;
+  let remainingPrincipal = parseFloat(compensationAmount);
+  let periodStart = new Date(fromDate);
+  
+  // Calculate interest for each payment period
+  for (const payment of sortedPayments) {
+    const paymentDate = payment.date;
+    
+    // Skip if payment date is before start date
+    if (paymentDate < periodStart) continue;
+    
+    // Calculate days in this period
+    const days = Math.floor((paymentDate - periodStart) / (1000 * 60 * 60 * 24));
+    
+    if (days > 0 && remainingPrincipal > 0) {
+      const periodInterest = (remainingPrincipal * interestRate * days) / 365.0;
+      totalInterest += periodInterest;
+    }
+    
+    // Reduce principal by payment amount
+    remainingPrincipal -= payment.amount;
+    remainingPrincipal = Math.max(0, remainingPrincipal);
+    
+    // Move to next period
+    periodStart = paymentDate;
+  }
+  
+  // Calculate interest for remaining unpaid amount
+  if (remainingPrincipal > 0) {
+    const endDate = toDate ? new Date(toDate) : new Date();
+    const days = Math.floor((endDate - periodStart) / (1000 * 60 * 60 * 24));
+    
+    if (days > 0) {
+      const periodInterest = (remainingPrincipal * interestRate * days) / 365.0;
+      totalInterest += periodInterest;
+    }
+  }
+  
+  return Math.round(totalInterest * 100) / 100;
 }
 
 // Helper function to get detailed compensation progress for a lot

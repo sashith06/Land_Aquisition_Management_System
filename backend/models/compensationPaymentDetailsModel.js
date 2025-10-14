@@ -137,15 +137,14 @@ class CompensationPaymentDetails {
           checkResult[0].id
         ];
 
-<<<<<<< HEAD
-=======
         console.log('🔄 UPDATE: Payment details with ID:', checkResult[0].id);
         console.log('📅 ACCOUNT DIVISION DATES:', {
-          send_account_division_date: updateValues[25], // position 25
-          calculated_interest_amount: updateValues[26], // position 26
+          send_account_division_date: updateValues[26], // position 26
+          calculated_interest_amount: updateValues[27], // position 27
+          account_division_sent_date: updateValues[28], // position 28
         });
-        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[26]);
-        console.log('🔄 UPDATE Values (part payments):', {
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[27]);
+        console.log('�🔄 UPDATE Values (part payments):', {
           part01_date: updateValues[6], // compensation_part_payment_01_date
           part01_cheque: updateValues[7], // compensation_part_payment_01_cheque_no
           part01_deducted: updateValues[8], // compensation_part_payment_01_deducted_amount
@@ -155,7 +154,6 @@ class CompensationPaymentDetails {
           part02_deducted: updateValues[12], // compensation_part_payment_02_deducted_amount
           part02_paid: updateValues[13] // compensation_part_payment_02_paid_amount
         });
->>>>>>> dfbc73acfeab2faf7ff168c9bbf8b8545600f855
         db.query(updateQuery, updateValues, callback);
       } else {
         // Insert new record
@@ -215,8 +213,6 @@ class CompensationPaymentDetails {
           updated_by
         ];
 
-<<<<<<< HEAD
-=======
         console.log('➕ INSERT: Creating new payment details record');
         console.log('➕ INSERT Values (part payments):', {
           part01_date: insertValues[9], // compensation_part_payment_01_date
@@ -228,8 +224,7 @@ class CompensationPaymentDetails {
           part02_deducted: insertValues[15], // compensation_part_payment_02_deducted_amount
           part02_paid: insertValues[16] // compensation_part_payment_02_paid_amount
         });
-        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[29]); // calculated_interest_amount is at position 29
->>>>>>> dfbc73acfeab2faf7ff168c9bbf8b8545600f855
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[30]); // calculated_interest_amount is at position 30
         db.query(insertQuery, insertValues, callback);
       }
     });

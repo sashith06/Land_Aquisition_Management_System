@@ -741,8 +741,109 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     return Math.max(0, finalAmount - paymentDone);
   };
 
-  // Calculate interest for an owner
-  // Formula: (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
+  // Helper function to extract payment dates and amounts
+  const extractPayments = (paymentData) => {
+    const payments = [];
+    
+    if (!paymentData || !paymentData.compensationPayment) return payments;
+    
+    const comp = paymentData.compensationPayment;
+    
+    // Full payment
+    if (comp.fullPayment?.fullDate && comp.fullPayment?.paidAmount) {
+      const amount = parseFloat(comp.fullPayment.paidAmount);
+      if (amount > 0) {
+        payments.push({
+          date: comp.fullPayment.fullDate,
+          amount: amount
+        });
+      }
+    }
+    
+    // Part payment 01
+    if (comp.partPayment01?.fullDate && comp.partPayment01?.paidAmount) {
+      const amount = parseFloat(comp.partPayment01.paidAmount);
+      if (amount > 0) {
+        payments.push({
+          date: comp.partPayment01.fullDate,
+          amount: amount
+        });
+      }
+    }
+    
+    // Part payment 02
+    if (comp.partPayment02?.fullDate && comp.partPayment02?.paidAmount) {
+      const amount = parseFloat(comp.partPayment02.paidAmount);
+      if (amount > 0) {
+        payments.push({
+          date: comp.partPayment02.fullDate,
+          amount: amount
+        });
+      }
+    }
+    
+    return payments;
+  };
+
+  // Calculate interest with period-based logic (considers payment dates)
+  const calculateInterestWithPayments = (finalAmount, gazetteDate, payments) => {
+    if (!gazetteDate || !finalAmount || finalAmount <= 0) return 0;
+    
+    // Sort payments chronologically
+    const sortedPayments = payments
+      .filter(p => p.date && p.amount > 0)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let totalInterest = 0;
+    let remainingPrincipal = finalAmount;
+    let periodStart = new Date(gazetteDate);
+    
+    // Calculate interest for each payment period
+    for (const payment of sortedPayments) {
+      const paymentDate = new Date(payment.date);
+      
+      // Skip if payment date is before gazette date
+      if (paymentDate < periodStart) continue;
+      
+      // Calculate days in this period
+      const days = Math.floor((paymentDate - periodStart) / (1000 * 60 * 60 * 24));
+      
+      if (days > 0 && remainingPrincipal > 0) {
+        const periodInterest = (remainingPrincipal * 0.07 * days) / 365;
+        totalInterest += periodInterest;
+        
+        console.log(`📊 Period: ${periodStart.toISOString().split('T')[0]} to ${paymentDate.toISOString().split('T')[0]}`);
+        console.log(`   Days: ${days}, Principal: Rs.${remainingPrincipal.toFixed(2)}, Interest: Rs.${periodInterest.toFixed(2)}`);
+      }
+      
+      // Reduce principal by payment amount
+      remainingPrincipal -= payment.amount;
+      remainingPrincipal = Math.max(0, remainingPrincipal); // Can't be negative
+      
+      // Move to next period
+      periodStart = paymentDate;
+    }
+    
+    // Calculate interest for remaining unpaid amount (up to current date)
+    if (remainingPrincipal > 0) {
+      const currentDate = new Date();
+      const days = Math.floor((currentDate - periodStart) / (1000 * 60 * 60 * 24));
+      
+      if (days > 0) {
+        const periodInterest = (remainingPrincipal * 0.07 * days) / 365;
+        totalInterest += periodInterest;
+        
+        console.log(`📊 Final Period: ${periodStart.toISOString().split('T')[0]} to ${currentDate.toISOString().split('T')[0]}`);
+        console.log(`   Days: ${days}, Principal: Rs.${remainingPrincipal.toFixed(2)}, Interest: Rs.${periodInterest.toFixed(2)}`);
+      }
+    }
+    
+    console.log(`💰 Total Interest: Rs.${totalInterest.toFixed(2)}`);
+    return Math.round(totalInterest * 100) / 100;
+  };
+
+  // Calculate interest for an owner (UPDATED: Period-based calculation)
+  // Formula: Calculate interest period by period based on payment dates
   const getOwnerInterest = (owner) => {
     // First, try to get the stored calculated interest from the database
     const actualLotId = selectedLot.backend_id || selectedLot.id;
@@ -755,28 +856,21 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       return parseFloat(storedData.calculatedInterestAmount);
     }
     
-    // Otherwise, calculate it dynamically
+    // Otherwise, calculate it dynamically with period-based logic
     const finalAmount = getOwnerFinalCompensation(owner);
     const gazetteDate = planData?.section_38_gazette_date;
     
     if (!gazetteDate || !finalAmount) return 0;
     
-    const startDate = new Date(gazetteDate);
-    const currentDate = new Date();
-    const timeDiff = currentDate.getTime() - startDate.getTime();
-    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24)); // Use Math.floor and 60 * 60 * 24 for consistency
+    // Extract payment dates and amounts
+    const paymentData = paymentDetails[key];
+    const payments = extractPayments(paymentData);
     
-    if (daysDiff <= 0) return 0;
-    
-    // Calculate interest: (Principal × Annual Rate × Days) / 365
-    const annualRate = 0.07; // 7% annual interest rate
-    const interest = (finalAmount * annualRate * daysDiff) / 365;
-    
-    // Round to 2 decimal places
-    return Math.round(interest * 100) / 100;
+    // Calculate interest using period-based method
+    return calculateInterestWithPayments(finalAmount, gazetteDate, payments);
   };
 
-  // Calculate interest dynamically for editing owner (updates in real-time)
+  // Calculate interest dynamically for editing owner (UPDATED: Period-based, updates in real-time)
   const getEditingOwnerInterest = () => {
     if (!editingOwner) return 0;
     
@@ -785,24 +879,19 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
     
     if (!gazetteDate || !finalAmount) return 0;
     
-    const startDate = new Date(gazetteDate);
-    const currentDate = new Date();
-    const timeDiff = currentDate.getTime() - startDate.getTime();
-    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+    // Extract payment dates and amounts for the editing owner
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
+    const paymentData = paymentDetails[key];
+    const payments = extractPayments(paymentData);
     
-    if (daysDiff <= 0) return 0;
-    
-    const annualRate = 0.07; // 7% annual interest rate
-    const interest = (finalAmount * annualRate * daysDiff) / 365;
-    
-    return Math.round(interest * 100) / 100;
+    // Calculate interest using period-based method
+    return calculateInterestWithPayments(finalAmount, gazetteDate, payments);
   };
 
-  // Calculate balance due dynamically for editing owner (updates in real-time)
-  const getEditingOwnerBalanceDue = () => {
+  // Get total compensation paid for editing owner (updates in real-time)
+  const getEditingOwnerTotalPaid = () => {
     if (!editingOwner) return 0;
-    
-    const finalAmount = parseFloat(editingOwner.compensation?.finalCompensationAmount) || 0;
     
     // Get payment details for this owner
     const actualLotId = selectedLot.backend_id || selectedLot.id;
@@ -821,6 +910,16 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
         totalPaid += parseFloat(data.compensationPayment.partPayment02.paidAmount) || 0;
       }
     }
+    
+    return totalPaid;
+  };
+
+  // Calculate balance due dynamically for editing owner (updates in real-time)
+  const getEditingOwnerBalanceDue = () => {
+    if (!editingOwner) return 0;
+    
+    const finalAmount = parseFloat(editingOwner.compensation?.finalCompensationAmount) || 0;
+    const totalPaid = getEditingOwnerTotalPaid();
     
     return Math.max(0, finalAmount - totalPaid);
   };
@@ -843,6 +942,35 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
       total += parseFloat(data.interestPayment.partPayment02.paidAmount);
     }
     return total;
+  };
+
+  // Get total interest payments made for the editing owner
+  const getEditingOwnerInterestPaid = () => {
+    if (!editingOwner) return 0;
+    
+    const actualLotId = selectedLot.backend_id || selectedLot.id;
+    const key = `${currentPlanId}_${actualLotId}_${editingOwner.nic}`;
+    const data = paymentDetails[key];
+    if (!data || !data.interestPayment) return 0;
+    
+    let total = 0;
+    if (data.interestPayment.fullPayment?.paidAmount) {
+      total += parseFloat(data.interestPayment.fullPayment.paidAmount) || 0;
+    }
+    if (data.interestPayment.partPayment01?.paidAmount) {
+      total += parseFloat(data.interestPayment.partPayment01.paidAmount) || 0;
+    }
+    if (data.interestPayment.partPayment02?.paidAmount) {
+      total += parseFloat(data.interestPayment.partPayment02.paidAmount) || 0;
+    }
+    return total;
+  };
+
+  // Get interest due for the editing owner (Calculated - Paid)
+  const getEditingOwnerInterestDue = () => {
+    const calculatedInterest = getEditingOwnerInterest();
+    const paidInterest = getEditingOwnerInterestPaid();
+    return Math.max(0, calculatedInterest - paidInterest);
   };
 
   // Check if interest payments are complete (paid amount equals calculated interest)
@@ -1066,9 +1194,11 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
           {selectedLot.owners.map((owner, index) => {
             const completionStatus = getOwnerCompletionStatus(owner);
             const finalCompensation = getOwnerFinalCompensation(owner);
+            const totalPaid = getOwnerTotalPaymentDone(owner); // Total compensation paid
             const balanceDue = getOwnerBalanceDue(owner);
             const calculatedInterest = getOwnerInterest(owner);
             const paidInterest = getOwnerTotalInterestPaid(owner);
+            const interestDue = Math.max(0, calculatedInterest - paidInterest); // Interest Due = Calculated - Paid
             
             return (
               <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
@@ -1146,37 +1276,47 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total Paid:</span>
+                      <span className="font-semibold text-blue-600">
+                        {formatCurrency(totalPaid)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Balance Due:</span>
                       <span className={`font-semibold ${balanceDue === 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatCurrency(balanceDue)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Interest Due:</span>
+                      <span className="text-gray-600">Calculated Interest:</span>
                       <span className="font-semibold text-blue-600">
                         {formatCurrency(calculatedInterest)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Interest Paid:</span>
-                      <span className="font-semibold text-purple-600">
+                      <span className="font-semibold text-green-600">
                         {formatCurrency(paidInterest)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Interest Due:</span>
+                      <span className={`font-semibold ${interestDue === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                        {formatCurrency(interestDue)}
                       </span>
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  <button
-                    onClick={() => handleEditCompensation(owner)}
-                    className={`w-full py-2 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
-                      canEdit
-                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg'
-                        : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-                    }`}
-                  >
-                    {canEdit ? <Edit size={16} className="mr-2" /> : <Eye size={16} className="mr-2" />}
-                    {canEdit ? 'Edit Details' : 'View Details'}
-                  </button>
+                  {/* Action Button - Only show for Financial Officers */}
+                  {canEdit && (
+                    <button
+                      onClick={() => handleEditCompensation(owner)}
+                      className="w-full py-2 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg"
+                    >
+                      <Edit size={16} className="mr-2" />
+                      Edit Details
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -1272,20 +1412,40 @@ const CompensationDetailsTab = ({ selectedLot, planId, landDetails: propLandDeta
                     )}
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Total Paid</label>
+                    <div className="text-lg font-semibold text-blue-600">
+                      {formatCurrency(getEditingOwnerTotalPaid())}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Sum of all compensation payments
+                    </div>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Balance Due</label>
                     <div className={`text-lg font-semibold ${getEditingOwnerBalanceDue() === 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(getEditingOwnerBalanceDue())}
                     </div>
-                    {getEditingOwnerBalanceDue() > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Automatically updates as you enter payment details below
-                      </div>
-                    )}
                   </div>
+                </div>
+                
+                {/* Interest Summary - Three columns */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Interest Due (7% annually)</label>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Calculated Interest (7% p.a.)</label>
                     <div className="text-lg font-semibold text-blue-600">
                       {formatCurrency(getEditingOwnerInterest())}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Interest Paid</label>
+                    <div className="text-lg font-semibold text-green-600">
+                      {formatCurrency(getEditingOwnerInterestPaid())}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Interest Due</label>
+                    <div className={`text-lg font-semibold ${getEditingOwnerInterestDue() === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                      {formatCurrency(getEditingOwnerInterestDue())}
                     </div>
                   </div>
                 </div>

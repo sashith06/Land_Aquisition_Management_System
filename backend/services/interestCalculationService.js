@@ -2,16 +2,84 @@ const db = require('../config/db').promise;
 
 /**
  * Interest Calculation Service
- * Calculates Interest to be paid using the formula:
- * (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
+ * Calculates Interest to be paid using period-based calculation:
+ * Interest is calculated period by period based on payment dates.
+ * Principal reduces after each payment, affecting subsequent interest calculations.
  */
 
 class InterestCalculationService {
   
   /**
-   * Calculate interest for a specific compensation record
-   * @param {number} planId - Plan ID
-   * @param {number} lotId - Lot ID  
+   * Calculate interest with period-based logic (considers payment dates)
+   * @param {number} finalCompensationAmount - Final compensation amount (principal)
+   * @param {Date} gazetteDate - Section 38 Gazette Date (start date)
+   * @param {Array} payments - Array of payment objects: [{ date, amount }, ...]
+   * @returns {number} Calculated interest amount
+   */
+  static calculateInterestWithPayments(finalCompensationAmount, gazetteDate, payments = []) {
+    if (!finalCompensationAmount || !gazetteDate) return 0;
+    
+    // Sort payments chronologically
+    const sortedPayments = payments
+      .filter(p => p.date && p.amount > 0)
+      .map(p => ({
+        date: new Date(p.date),
+        amount: parseFloat(p.amount)
+      }))
+      .sort((a, b) => a.date - b.date);
+    
+    let totalInterest = 0;
+    let remainingPrincipal = parseFloat(finalCompensationAmount);
+    let periodStart = new Date(gazetteDate);
+    
+    // Calculate interest for each payment period
+    for (const payment of sortedPayments) {
+      const paymentDate = payment.date;
+      
+      // Skip if payment date is before gazette date
+      if (paymentDate < periodStart) continue;
+      
+      // Calculate days in this period
+      const days = Math.floor((paymentDate - periodStart) / (1000 * 60 * 60 * 24));
+      
+      if (days > 0 && remainingPrincipal > 0) {
+        const periodInterest = (remainingPrincipal * 0.07 * days) / 365.0;
+        totalInterest += periodInterest;
+        
+        console.log(`📊 Interest Period: ${periodStart.toISOString().split('T')[0]} to ${paymentDate.toISOString().split('T')[0]}`);
+        console.log(`   Days: ${days}, Principal: ${remainingPrincipal.toFixed(2)}, Interest: ${periodInterest.toFixed(2)}`);
+      }
+      
+      // Reduce principal by payment amount
+      remainingPrincipal -= payment.amount;
+      remainingPrincipal = Math.max(0, remainingPrincipal); // Can't be negative
+      
+      // Move to next period
+      periodStart = paymentDate;
+    }
+    
+    // Calculate interest for remaining unpaid amount (up to current date)
+    if (remainingPrincipal > 0) {
+      const currentDate = new Date();
+      const days = Math.floor((currentDate - periodStart) / (1000 * 60 * 60 * 24));
+      
+      if (days > 0) {
+        const periodInterest = (remainingPrincipal * 0.07 * days) / 365.0;
+        totalInterest += periodInterest;
+        
+        console.log(`📊 Final Period: ${periodStart.toISOString().split('T')[0]} to ${currentDate.toISOString().split('T')[0]}`);
+        console.log(`   Days: ${days}, Principal: ${remainingPrincipal.toFixed(2)}, Interest: ${periodInterest.toFixed(2)}`);
+      }
+    }
+    
+    console.log(`💰 Total Interest Calculated: ${totalInterest.toFixed(2)}`);
+    return Math.round(totalInterest * 100) / 100; // Round to 2 decimal places
+  }
+  
+  /**
+   * Legacy method: Calculate interest for a specific compensation record
+   * NOTE: This uses simple calculation without considering payment dates
+   * Use calculateInterestWithPayments() for accurate period-based calculation
    * @param {number} finalCompensationAmount - Final compensation amount
    * @param {Date} gazetteDate - Section 38 Gazette Date
    * @returns {number} Calculated interest amount
@@ -25,7 +93,8 @@ class InterestCalculationService {
     
     if (daysDifference <= 0) return 0;
     
-    // Formula: (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
+    // Simple formula: (Final Compensation Amount × 7% annual rate × Days Since Gazette) ÷ 365 days
+    // NOTE: This doesn't consider payment dates - use calculateInterestWithPayments() instead
     const interest = (finalCompensationAmount * 0.07 * daysDifference) / 365.0;
     return Math.round(interest * 100) / 100; // Round to 2 decimal places
   }
