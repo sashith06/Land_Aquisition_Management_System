@@ -18,6 +18,14 @@ const Navigation = () => {
   const isUserAdmin = isAdmin();
   const isUserLandowner = isLandowner();
   
+  // Debug logging
+  console.log('Navigation Debug:', {
+    currentUser,
+    isUserAdmin,
+    isUserLandowner,
+    userRole: currentUser?.role
+  });
+  
   // Use notifications hook for real-time updates
   const { 
     unreadCount, 
@@ -88,6 +96,7 @@ const Navigation = () => {
             {open && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                 {/* Only show profile option if not admin and not landowner */}
+                {/* Debug: isUserAdmin: {isUserAdmin ? 'true' : 'false'}, isUserLandowner: {isUserLandowner ? 'true' : 'false'} */}
                 {!isUserAdmin && !isUserLandowner && getProfilePath() && (
                   <>
                     <Link

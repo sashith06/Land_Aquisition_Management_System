@@ -609,7 +609,7 @@ exports.getProjectProgressData = (req, res) => {
 };
 
 // Get detailed project hierarchy with progress tracking
-exports.getProjectHierarchy = (req, res) => {
+exports.getProjectHierarchy = async (req, res) => {
   try {
     console.log('getProjectHierarchy called');
     
@@ -707,14 +707,13 @@ exports.getProjectHierarchy = (req, res) => {
       ORDER BY p.created_at DESC, pl.id ASC, l.lot_no ASC
     `;
 
-    db.query(hierarchyQuery, params, (err, results) => {
-      if (err) {
-        console.error('Error fetching project hierarchy:', err);
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to fetch project hierarchy data'
+    try {
+      const results = await new Promise((resolve, reject) => {
+        db.query(hierarchyQuery, params, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
         });
-      }
+      });
 
       // Process results into hierarchical structure
       const projectsMap = new Map();
@@ -819,11 +818,51 @@ exports.getProjectHierarchy = (req, res) => {
       const plansChartData = [];
       const lotsChartData = [];
 
-      filteredProjects.forEach(project => {
-        project.plans.forEach(plan => {
-          // Calculate plan progress based on completed lots
-          const planProgress = plan.lots.length > 0 
-            ? Math.round((plan.lots.filter(lot => lot.status === 'completed').length / plan.lots.length) * 100)
+      // Process lots data with real progress calculation
+      for (const project of filteredProjects) {
+        for (const plan of project.plans) {
+          // Calculate lots progress first
+          const lotsWithProgress = [];
+          for (const lot of plan.lots) {
+            let lotProgress = 0;
+            let lastCompletedSection = null;
+            
+            try {
+              // Calculate real progress using progress service
+              const progressData = await progressService.getLotProgress(plan.id, lot.id);
+              lotProgress = progressData.overall_percent || 0;
+              lastCompletedSection = progressData.last_completed_section;
+            } catch (progressErr) {
+              console.error(`Error calculating progress for lot ${lot.id}:`, progressErr);
+              // Fallback to status-based calculation
+              lotProgress = lot.status === 'completed' ? 100 : 
+                           lot.status === 'in_progress' ? 50 : 
+                           lot.status === 'approved' ? 25 : 0;
+            }
+            
+            const lotData = {
+              id: lot.id,
+              plan_id: plan.id,
+              project_id: project.id,
+              project_name: project.name,
+              plan_identifier: plan.plan_identifier,
+              lot_no: lot.lot_no,
+              progress: Math.round(lotProgress),
+              overall_percent: Math.round(lotProgress),
+              last_completed_section: lastCompletedSection,
+              status: lot.status,
+              extent_ha: lot.extent_ha || 0,
+              extent_perch: lot.extent_perch || 0,
+              land_type: lot.land_type
+            };
+            
+            lotsWithProgress.push(lotData);
+            lotsChartData.push(lotData);
+          }
+          
+          // Calculate plan progress based on actual lot progress
+          const planProgress = lotsWithProgress.length > 0 
+            ? Math.round(lotsWithProgress.reduce((sum, lot) => sum + lot.progress, 0) / lotsWithProgress.length)
             : 0;
 
           plansChartData.push({
@@ -833,34 +872,13 @@ exports.getProjectHierarchy = (req, res) => {
             plan_identifier: plan.plan_identifier,
             progress: planProgress,
             status: plan.status,
-            total_lots: plan.lots.length,
-            completed_lots: plan.lots.filter(lot => lot.status === 'completed').length,
+            total_lots: lotsWithProgress.length,
+            completed_lots: lotsWithProgress.filter(lot => lot.progress >= 100).length,
             estimated_cost: plan.estimated_cost || 0,
             total_extent: plan.total_extent || 0
           });
-
-          // Add lots data
-          plan.lots.forEach(lot => {
-            const lotProgress = lot.status === 'completed' ? 100 : 
-                              lot.status === 'in_progress' ? 50 : 
-                              lot.status === 'approved' ? 25 : 0;
-            
-            lotsChartData.push({
-              id: lot.id,
-              plan_id: plan.id,
-              project_id: project.id,
-              project_name: project.name,
-              plan_identifier: plan.plan_identifier,
-              lot_no: lot.lot_no,
-              progress: lotProgress,
-              status: lot.status,
-              extent_ha: lot.extent_ha || 0,
-              extent_perch: lot.extent_perch || 0,
-              land_type: lot.land_type
-            });
-          });
-        });
-      });
+        }
+      }
       
       res.json({
         success: true,
@@ -883,7 +901,14 @@ exports.getProjectHierarchy = (req, res) => {
         },
         lastUpdated: new Date().toISOString()
       });
-    });
+      
+    } catch (error) {
+      console.error('Error in getProjectHierarchy database operations:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to process project hierarchy data'
+      });
+    }
 
   } catch (error) {
     console.error('Error in getProjectHierarchy:', error);
@@ -1018,3 +1043,32 @@ exports.getProgressAnalytics = async (req, res) => {
     });
   }
 };
+  
+// Get stage participation data for charts  
+exports.getStageParticipation = async (req, res) => {  
+  try {  
+    console.log('=== GET STAGE PARTICIPATION API CALLED ===');
+    const { project_id, plan_id } = req.query;
+    console.log('Filters received - project_id:', project_id, 'plan_id:', plan_id);
+    
+    const stageParticipation = await progressService.getAllLotsStageParticipation(project_id, plan_id);  
+    res.json({
+      success: true, 
+      data: stageParticipation, 
+      lastUpdated: new Date().toISOString()
+    });  
+  } catch (error) {  
+    console.error('Error in getStageParticipation:', error);  
+    res.status(500).json({
+      success: false, 
+      error: 'Failed to fetch stage participation data',
+      data: {
+        'Owner Details': 0,
+        'Land Details': 0,
+        'Valuation': 0,
+        'Compensation': 0,
+        'Completed': 0
+      }
+    });  
+  }  
+}; 

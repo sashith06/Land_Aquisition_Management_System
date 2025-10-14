@@ -20,4 +20,7 @@ router.get('/project-hierarchy', statsController.getProjectHierarchy);
 // Route for comprehensive progress analytics using new progress system
 router.get('/progress-analytics', statsController.getProgressAnalytics);
 
+// Route for stage participation data (for charts)
+router.get('/stage-participation', statsController.getStageParticipation);
+
 module.exports = router;

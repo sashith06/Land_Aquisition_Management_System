@@ -81,60 +81,47 @@ async function getFinancialProgressByPlan(planId) {
     SELECT 
       p.name as project_name,
       pl.plan_identifier as plan_name,
-      p.name as name_of_road,  -- Use project name as Name of Road from Report Filters
-      COUNT(DISTINCT lo.owner_id) as acquired_lots,
+      p.name as name_of_road,  -- Name of Road
       
-      -- Compensation Paid: Sum from compensation_payment_details table (actual payments made)
-      COALESCE(SUM(
+      -- Individual Lot Details
+      l.lot_no as lot_number,
+      l.id as lot_id,
+      
+      -- Full Compensation: Final compensation amount for this specific lot
+      COALESCE(cpd.final_compensation_amount, 0) as full_compensation,
+      
+      -- Payment Done: Actual payments made for this specific lot
+      COALESCE(
         cpd.compensation_full_payment_paid_amount +
         cpd.compensation_part_payment_01_paid_amount +
-        cpd.compensation_part_payment_02_paid_amount
-      ), 0) as compensation_paid_lots_rs,
+        cpd.compensation_part_payment_02_paid_amount, 0
+      ) as payment_done,
       
-      -- Calculate compensation under section 17 (using lot valuation)
-      COALESCE(AVG(lv.total_value), 0) as compensation_under_sec_17_rs_mn,
+      -- Balance Due: Full Compensation - Payment Done for this lot
+      COALESCE(cpd.final_compensation_amount, 0) - COALESCE(
+        cpd.compensation_full_payment_paid_amount +
+        cpd.compensation_part_payment_01_paid_amount +
+        cpd.compensation_part_payment_02_paid_amount, 0
+      ) as balance_due,
       
-      -- Development costs (using initial estimated cost from project)
-      COALESCE(p.initial_estimated_cost / COUNT(DISTINCT l.id), 0) as development_cost_rs_mn,
+      -- Interest to be paid: Use calculated interest amount from database
+      COALESCE(cpd.interest_to_be_paid, 0) as interest_7_percent,
       
-      -- Court deposit amounts (using court_amount from lot_valuations)
-      COALESCE(SUM(lv.court_amount), 0) as court_deposit_rs_mn,
-      
-      -- Total Compensation Paid: Sum of final compensation amounts from compensation_payment_details
-      COALESCE(SUM(cpd.final_compensation_amount), 0) as compensation_paid_rs_mn,
-      
-      -- Interest Paid: Sum from Interest Payment Details in compensation_payment_details
-      COALESCE(SUM(
+      -- Interest Paid: Interest payments for this specific lot
+      COALESCE(
         cpd.interest_full_payment_paid_amount +
         cpd.interest_part_payment_01_paid_amount +
-        cpd.interest_part_payment_02_paid_amount
-      ), 0) as interest_paid_rs_mn,
-      
-      -- Calculate workers in hectares (using lot extent)
-      COALESCE(SUM(l.preliminary_plan_extent_ha), 0) as workers_in_hectares,
-      
-      -- Progress percentages calculated based on payments vs total compensation from compensation_payment_details
-      CASE 
-        WHEN SUM(cpd.final_compensation_amount) > 0 
-        THEN ROUND((SUM(
-          cpd.compensation_full_payment_paid_amount +
-          cpd.compensation_part_payment_01_paid_amount +
-          cpd.compensation_part_payment_02_paid_amount
-        ) / SUM(cpd.final_compensation_amount)) * 100, 2)
-        ELSE 0 
-      END as payment_progress_percentage,
+        cpd.interest_part_payment_02_paid_amount, 0
+      ) as interest_paid,
       
       pl.created_at as report_date
       
     FROM plans pl
     JOIN projects p ON pl.project_id = p.id
-    LEFT JOIN lots l ON l.plan_id = pl.id
-    LEFT JOIN lot_owners lo ON lo.lot_id = l.id AND lo.status = 'active'
+    JOIN lots l ON l.plan_id = pl.id
     LEFT JOIN compensation_payment_details cpd ON cpd.plan_id = pl.id AND cpd.lot_id = l.id
-    LEFT JOIN lot_valuations lv ON lv.plan_id = pl.id AND lv.lot_id = l.id
     WHERE pl.id = ?
-    GROUP BY pl.id, pl.plan_identifier, p.name
-    ORDER BY p.name ASC
+    ORDER BY l.lot_no ASC
   `;
 
   const [rows] = await db.query(sql, [planId]);
@@ -277,156 +264,158 @@ async function getFinancialProgressByProject(projectId) {
 
 // Helper function to get physical progress data for a specific plan
 async function getPhysicalProgressByPlan(planId) {
-  // Get plan and project details including Divisional Secretary
-  const planDetailsSql = `
-    SELECT 
-      pl.plan_identifier,
-      p.id as project_id,
-      p.name as project_name,
-      p.description as project_description,
-      pl.divisional_secretary,
-      pl.created_at as plan_created_date,
-      p.compensation_type
-    FROM plans pl
-    JOIN projects p ON pl.project_id = p.id
-    WHERE pl.id = ?
-  `;
+  try {
+    console.log('=== Getting physical progress for plan:', planId);
+    
+    // Get plan and project details
+    const planDetailsSql = `
+      SELECT 
+        pl.plan_identifier,
+        p.id as project_id,
+        p.name as project_name,
+        p.description as project_description,
+        pl.divisional_secretary,
+        pl.created_at as plan_created_date,
+        p.compensation_type
+      FROM plans pl
+      JOIN projects p ON pl.project_id = p.id
+      WHERE pl.id = ?
+    `;
 
-  const [planDetails] = await db.query(planDetailsSql, [planId]);
-  
-  if (planDetails.length === 0) {
-    throw new Error(`No plan found with ID: ${planId}`);
-  }
+    const [planDetails] = await db.query(planDetailsSql, [planId]);
+    console.log('Plan details found:', planDetails.length);
+    
+    if (planDetails.length === 0) {
+      throw new Error(`No plan found with ID: ${planId}`);
+    }
 
-  // Get detailed lot progress data using existing tables and compensation_payment_details
+  // Get lot-wise physical progress data - simplified version
   const physicalProgressSql = `
-    SELECT 
-      p.name as area_name,  -- Use project name as Area/Project Name from Report Filters
-      pl.plan_identifier as plan_survey_number,
-      
-      -- Total extent (Ha)
-      COALESCE(SUM(l.preliminary_plan_extent_ha), 0) as total_extent_ha,
-      
-      -- Total lots count  
-      COUNT(DISTINCT l.id) as total_lots,
-      
-      -- Acquired lots (100% project progress lots - use progress service)
-      -- For now, use compensation completion as proxy for 100% progress
-      COUNT(DISTINCT CASE 
+    SELECT DISTINCT
+      p.name as project_name,
+      pl.plan_identifier as plan_no,
+      l.lot_no as lot_no,
+      l.id as lot_id,
+      COALESCE(l.preliminary_plan_extent_ha, 0) as lot_extent_ha,
+      CASE 
         WHEN cpd.final_compensation_amount IS NOT NULL 
         AND (cpd.compensation_full_payment_paid_amount > 0 
              OR cpd.compensation_part_payment_01_paid_amount > 0 
              OR cpd.compensation_part_payment_02_paid_amount > 0)
-        THEN l.id 
-        ELSE NULL 
-      END) as acquired_lots_count,
-      
-      -- Progress calculation (based on 100% project progress)
+        THEN 'Acquired'
+        ELSE 'Not Acquired' 
+      END as acquisition_status,
       CASE 
-        WHEN COUNT(DISTINCT l.id) > 0 
-        THEN ROUND((COUNT(DISTINCT CASE 
-          WHEN cpd.final_compensation_amount IS NOT NULL 
-          AND (cpd.compensation_full_payment_paid_amount > 0 
-               OR cpd.compensation_part_payment_01_paid_amount > 0 
-               OR cpd.compensation_part_payment_02_paid_amount > 0)
-          THEN l.id 
-          ELSE NULL 
-        END) / COUNT(DISTINCT l.id)) * 100, 1)
-        ELSE 0 
-      END as acquisition_progress_percent,
-      
-      -- Owner details count
-      COUNT(DISTINCT lo.owner_id) as total_owners,
-      
-      -- Court cases (using court_amount from valuations as indicator)
-      COUNT(DISTINCT CASE 
         WHEN lv.court_amount IS NOT NULL AND lv.court_amount > 0 
-        THEN l.id 
-        ELSE NULL 
-      END) as court_cases,
-      
-      -- Compensation Type from Project Details (compensation_type field)
-      p.compensation_type as compensation_type,
-      
-      -- Compensation Paid: Sum from Compensation Payment Details
-      COALESCE(SUM(
-        cpd.compensation_full_payment_paid_amount +
-        cpd.compensation_part_payment_01_paid_amount +
-        cpd.compensation_part_payment_02_paid_amount
-      ), 0) as total_compensation_paid,
-      
-      -- Interest Paid: Sum from Interest Payment Details in compensation_payment_details
-      COALESCE(SUM(
-        cpd.interest_full_payment_paid_amount +
-        cpd.interest_part_payment_01_paid_amount +
-        cpd.interest_part_payment_02_paid_amount
-      ), 0) as total_interest_paid,
-      
-      -- Latest update date
-      MAX(COALESCE(cpd.updated_at, l.updated_at)) as last_updated
-      
+        THEN 'Yes'
+        ELSE 'No' 
+      END as court_case,
+      COALESCE(p.compensation_type, 'regulation') as compensation_type
     FROM plans pl
     JOIN projects p ON pl.project_id = p.id
     JOIN lots l ON l.plan_id = pl.id
-    LEFT JOIN lot_owners lo ON lo.lot_id = l.id AND lo.status = 'active'
     LEFT JOIN compensation_payment_details cpd ON cpd.plan_id = pl.id AND cpd.lot_id = l.id
     LEFT JOIN lot_valuations lv ON lv.lot_id = l.id AND lv.plan_id = pl.id
     WHERE pl.id = ?
-    GROUP BY p.id, p.name, pl.plan_identifier, p.compensation_type
-    ORDER BY p.name ASC
+    ORDER BY l.lot_no + 0 ASC
   `;
 
   const [physicalData] = await db.query(physicalProgressSql, [planId]);
+  console.log('Physical data found:', physicalData.length);
 
-  // Calculate summary statistics
-  const totalLots = physicalData.reduce((sum, row) => sum + parseInt(row.total_lots || 0), 0);
-  const totalAcquiredLots = physicalData.reduce((sum, row) => sum + parseInt(row.acquired_lots_count || 0), 0);
-  const totalExtent = physicalData.reduce((sum, row) => sum + parseFloat(row.total_extent_ha || 0), 0);
-  
-  // Get actual project progress using progress service for Overall Progress
-  let overallProgress = 0;
+  // Get owner information for each lot
+  const ownerDataSql = `
+    SELECT 
+      l.id as lot_id,
+      COUNT(DISTINCT lo.owner_id) as owners_count,
+      GROUP_CONCAT(o.name SEPARATOR ', ') as owner_names
+    FROM lots l
+    LEFT JOIN lot_owners lo ON lo.lot_id = l.id AND lo.status = 'active'
+    LEFT JOIN owners o ON o.id = lo.owner_id
+    WHERE l.plan_id = ?
+    GROUP BY l.id
+  `;
+
+  const [ownerData] = await db.query(ownerDataSql, [planId]);
+  console.log('Owner data found:', ownerData.length);
+
+  // Create a map for quick lookup
+  const ownerMap = new Map();
+  ownerData.forEach(row => {
+    ownerMap.set(row.lot_id, {
+      owners_count: row.owners_count || 0,
+      primary_owner_name: row.owner_names ? row.owner_names.split(', ')[0] : 'No Owner Assigned'
+    });
+  });
+
+  // Get project progress using progress service
+  let projectProgress = 0;
   try {
     const progressData = await progressService.getProjectProgress(planDetails[0].project_id);
-    overallProgress = Math.round(progressData.totalProgress || 0);
+    projectProgress = Math.round(progressData.overall_percent || 0);
   } catch (error) {
-    console.error(`Error getting project progress for project ${planDetails[0].project_id}:`, error);
-    // Fallback to acquisition progress calculation
-    overallProgress = totalLots > 0 ? Math.round((totalAcquiredLots / totalLots) * 100) : 0;
+    console.error(`Error getting project progress:`, error);
+    // Fallback calculation
+    const totalLots = physicalData.length;
+    const totalAcquiredLots = physicalData.filter(row => row.acquisition_status === 'Acquired').length;
+    projectProgress = totalLots > 0 ? Math.round((totalAcquiredLots / totalLots) * 100) : 0;
   }
 
+  // Format data for the new table structure
+  const tableData = physicalData.map((row, index) => {
+    const ownerInfo = ownerMap.get(row.lot_id) || { owners_count: 0, primary_owner_name: 'No Owner Assigned' };
+    
+    return {
+      no: index + 1,
+      project_name: row.project_name,
+      plan_no: row.plan_no,
+      lot_no: row.lot_no,
+      owner_name: ownerInfo.primary_owner_name,
+      lot_extent_ha: parseFloat(row.lot_extent_ha).toFixed(2),
+      acquisition_status: row.acquisition_status,
+      owners_count: ownerInfo.owners_count,
+      court_case: row.court_case,
+      compensation_type: row.compensation_type
+    };
+  });
+
   return {
-    report_type: "Physical Progress Report",
+    report_type: "Physical Progress Details",
     report_date: new Date().toISOString().split('T')[0],
-    plan_details: planDetails[0],
-    physical_progress_data: physicalData,
+    project_name: planDetails[0].project_name,
+    plan_no: planDetails[0].plan_identifier,
+    overall_project_progress: projectProgress,
+    plan_details: {
+      ...planDetails[0],
+      overall_progress_percent: projectProgress
+    },
+    physical_progress_data: tableData,
     summary: {
-      total_lots: totalLots,
-      total_acquired_lots: totalAcquiredLots,
-      total_extent_ha: totalExtent,
-      overall_progress_percent: overallProgress,
-      total_owners: physicalData.reduce((sum, row) => sum + parseInt(row.total_owners || 0), 0),
-      total_court_cases: physicalData.reduce((sum, row) => sum + parseInt(row.court_cases || 0), 0),
-      total_compensation_paid: physicalData.reduce((sum, row) => sum + parseFloat(row.total_compensation_paid || 0), 0),
-      total_interest_paid: physicalData.reduce((sum, row) => sum + parseFloat(row.total_interest_paid || 0), 0),
-      report_period: "Physical Progress Report"
+      total_lots: physicalData.length,
+      total_acquired_lots: physicalData.filter(row => row.acquisition_status === 'Acquired').length,
+      total_extent_ha: physicalData.reduce((sum, row) => sum + parseFloat(row.lot_extent_ha || 0), 0),
+      overall_progress_percent: projectProgress,
+      total_owners: physicalData.reduce((sum, row) => sum + parseInt(row.owners_count || 0), 0),
+      total_court_cases: physicalData.filter(row => row.court_case === 'Yes').length
     }
   };
+  } catch (error) {
+    console.error('Error in getPhysicalProgressByPlan:', error);
+    throw error;
+  }
 }
 
 // Helper function to get physical progress data for all plans in a project  
 async function getPhysicalProgressByProject(projectId) {
-  // Get project details including Divisional Secretary from plans
+  // Get project details
   const projectDetailsSql = `
     SELECT 
       p.name as project_name,
       p.description as project_description,
-      pl.divisional_secretary,
       p.created_at as project_created_date,
       p.compensation_type
     FROM projects p
-    LEFT JOIN plans pl ON pl.project_id = p.id
     WHERE p.id = ?
-    LIMIT 1
   `;
 
   const [projectDetails] = await db.query(projectDetailsSql, [projectId]);
@@ -435,63 +424,129 @@ async function getPhysicalProgressByProject(projectId) {
     throw new Error(`No project found with ID: ${projectId}`);
   }
 
-  // Get all plans for this project
-  const plansSql = `SELECT id, plan_identifier FROM plans WHERE project_id = ? ORDER BY plan_identifier`;
-  const [plans] = await db.query(plansSql, [projectId]);
+  // Get aggregated physical progress data grouped by plans
+  const physicalProgressSql = `
+    SELECT DISTINCT
+      p.name as project_name,
+      pl.plan_identifier as plan_no,
+      l.lot_no as lot_no,
+      l.id as lot_id,
+      COALESCE(l.preliminary_plan_extent_ha, 0) as lot_extent_ha,
+      CASE 
+        WHEN cpd.final_compensation_amount IS NOT NULL 
+        AND (cpd.compensation_full_payment_paid_amount > 0 
+             OR cpd.compensation_part_payment_01_paid_amount > 0 
+             OR cpd.compensation_part_payment_02_paid_amount > 0)
+        THEN 'Acquired'
+        ELSE 'Not Acquired' 
+      END as acquisition_status,
+      CASE 
+        WHEN lv.court_amount IS NOT NULL AND lv.court_amount > 0 
+        THEN 'Yes'
+        ELSE 'No' 
+      END as court_case,
+      COALESCE(p.compensation_type, 'regulation') as compensation_type,
+      pl.id as plan_id
+    FROM projects p
+    JOIN plans pl ON pl.project_id = p.id
+    JOIN lots l ON l.plan_id = pl.id
+    LEFT JOIN compensation_payment_details cpd ON cpd.plan_id = pl.id AND cpd.lot_id = l.id
+    LEFT JOIN lot_valuations lv ON lv.lot_id = l.id AND lv.plan_id = pl.id
+    WHERE p.id = ?
+    ORDER BY pl.plan_identifier, l.lot_no + 0 ASC
+  `;
 
-  const allPhysicalData = [];
-  let projectSummary = {
-    total_lots: 0,
-    total_acquired_lots: 0,
-    total_extent_ha: 0,
-    total_court_cases: 0,
-    total_owners: 0,
-    total_compensation_paid: 0,
-    total_interest_paid: 0
-  };
-  
-  for (const plan of plans) {
-    try {
-      const planPhysicalData = await getPhysicalProgressByPlan(plan.id);
-      allPhysicalData.push({
-        plan_id: plan.id,
-        plan_identifier: plan.plan_identifier,
-        ...planPhysicalData
-      });
-      
-      // Aggregate project summary
-      projectSummary.total_lots += planPhysicalData.summary.total_lots;
-      projectSummary.total_acquired_lots += planPhysicalData.summary.total_acquired_lots;
-      projectSummary.total_extent_ha += planPhysicalData.summary.total_extent_ha;
-      projectSummary.total_court_cases += planPhysicalData.summary.total_court_cases;
-      projectSummary.total_owners += planPhysicalData.summary.total_owners;
-      projectSummary.total_compensation_paid += planPhysicalData.summary.total_compensation_paid;
-      projectSummary.total_interest_paid += planPhysicalData.summary.total_interest_paid;
-      
-    } catch (error) {
-      console.error(`Error getting physical data for plan ${plan.id}:`, error);
-      allPhysicalData.push({
-        plan_id: plan.id,
-        plan_identifier: plan.plan_identifier,
-        error: error.message
-      });
-    }
+  const [physicalData] = await db.query(physicalProgressSql, [projectId]);
+
+  // Get owner information for all lots in the project
+  const ownerDataSql = `
+    SELECT 
+      l.id as lot_id,
+      COUNT(DISTINCT lo.owner_id) as owners_count,
+      GROUP_CONCAT(o.name SEPARATOR ', ') as owner_names
+    FROM lots l
+    LEFT JOIN lot_owners lo ON lo.lot_id = l.id AND lo.status = 'active'
+    LEFT JOIN owners o ON o.id = lo.owner_id
+    JOIN plans pl ON l.plan_id = pl.id
+    WHERE pl.project_id = ?
+    GROUP BY l.id
+  `;
+
+  const [ownerData] = await db.query(ownerDataSql, [projectId]);
+
+  // Create a map for quick lookup
+  const ownerMap = new Map();
+  ownerData.forEach(row => {
+    ownerMap.set(row.lot_id, {
+      owners_count: row.owners_count || 0,
+      primary_owner_name: row.owner_names ? row.owner_names.split(', ')[0] : 'No Owner Assigned'
+    });
+  });
+
+  // Get project progress using progress service
+  let projectProgress = 0;
+  try {
+    const progressData = await progressService.getProjectProgress(projectId);
+    projectProgress = Math.round(progressData.overall_percent || 0);
+  } catch (error) {
+    console.error(`Error getting project progress:`, error);
+    // Fallback calculation
+    const totalLots = physicalData.length;
+    const totalAcquiredLots = physicalData.filter(row => row.acquisition_status === 'Acquired').length;
+    projectProgress = totalLots > 0 ? Math.round((totalAcquiredLots / totalLots) * 100) : 0;
   }
 
-  // Calculate overall project progress
-  projectSummary.overall_progress_percent = projectSummary.total_lots > 0 ? 
-    Math.round((projectSummary.total_acquired_lots / projectSummary.total_lots) * 100) : 0;
+  // Group data by plans for hierarchical display
+  const plansMap = new Map();
+  let lotCounter = 1;
+
+  physicalData.forEach((row) => {
+    if (!plansMap.has(row.plan_no)) {
+      plansMap.set(row.plan_no, {
+        plan_no: row.plan_no,
+        lots: []
+      });
+    }
+    
+    const ownerInfo = ownerMap.get(row.lot_id) || { owners_count: 0, primary_owner_name: 'No Owner Assigned' };
+    
+    plansMap.get(row.plan_no).lots.push({
+      no: lotCounter++,
+      project_name: row.project_name,
+      plan_no: row.plan_no,
+      lot_no: row.lot_no,
+      owner_name: ownerInfo.primary_owner_name,
+      lot_extent_ha: parseFloat(row.lot_extent_ha).toFixed(2),
+      acquisition_status: row.acquisition_status,
+      owners_count: ownerInfo.owners_count,
+      court_case: row.court_case,
+      compensation_type: row.compensation_type
+    });
+  });
+
+  // Convert to array for frontend
+  const tableData = [];
+  for (const [planNo, planData] of plansMap) {
+    tableData.push(...planData.lots);
+  }
 
   return {
-    report_type: "Physical Progress Report - Project Level",
+    report_type: "Physical Progress Details - Project Level",
     report_date: new Date().toISOString().split('T')[0],
+    project_name: projectDetails[0].project_name,
+    plan_no: plansMap.size > 1 ? 'Multiple Plans' : Array.from(plansMap.keys())[0],
+    overall_project_progress: projectProgress,
     project_details: projectDetails[0],
-    plans_data: allPhysicalData,
-    project_summary: {
-      ...projectSummary,
-      total_plans: plans.length,
-      plans_with_data: allPhysicalData.filter(plan => !plan.error).length,
-      report_period: "Physical Progress Report"
+    plans_structure: Array.from(plansMap.values()),
+    physical_progress_data: tableData,
+    summary: {
+      total_lots: physicalData.length,
+      total_acquired_lots: physicalData.filter(row => row.acquisition_status === 'Acquired').length,
+      total_extent_ha: physicalData.reduce((sum, row) => sum + parseFloat(row.lot_extent_ha || 0), 0),
+      overall_progress_percent: projectProgress,
+      total_owners: physicalData.reduce((sum, row) => sum + parseInt(row.owners_count || 0), 0),
+      total_court_cases: physicalData.filter(row => row.court_case === 'Yes').length,
+      total_plans: plansMap.size
     }
   };
 }

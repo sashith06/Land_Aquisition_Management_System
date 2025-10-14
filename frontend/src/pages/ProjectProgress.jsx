@@ -9,6 +9,7 @@ import api from '../api';
 import ProjectProgressChart from '../components/charts/ProjectProgressChart';
 import PlanProgressChart from '../components/charts/PlanProgressChart';
 import LotProgressChart from '../components/charts/LotProgressChart';
+import TestLotProgress from '../components/TestLotProgress';
 
 const ProjectProgress = () => {
   const [chartData, setChartData] = useState({ projects: [], plans: [], lots: [] });
@@ -37,15 +38,59 @@ const ProjectProgress = () => {
     }
   });
 
-  // Fetch charts/progress data only
+  // Real-time stage participation data from database tables
+  const [stageParticipationData, setStageParticipationData] = useState({
+    'Owner Details': 0,
+    'Land Details': 0, 
+    'Valuation': 0,
+    'Compensation': 0,
+    'Completed': 0
+  });
+
+  // Fetch charts/progress data with real progress calculation
   const fetchProgressData = async () => {
     try {
       setLoading(true);
-      // Reuse existing endpoint to populate charts-related data
-      const response = await api.get(`/api/stats/project-hierarchy`);
+      // Get project hierarchy data with cache busting
+      const cacheBuster = Date.now();
+      const response = await api.get(`/api/stats/project-hierarchy?_t=${cacheBuster}`);
       
       if (response.data.success) {
-        setChartData(response.data.data.charts || { projects: [], plans: [], lots: [] });
+        const hierarchyData = response.data.data;
+        
+        // Process lots data - use the lots from charts which should have better progress data
+        let lotsWithProgress = hierarchyData.charts?.lots || [];
+        
+        // If charts don't have lots data, process from projects hierarchy
+        if (lotsWithProgress.length === 0) {
+          for (const project of hierarchyData.projects || []) {
+            for (const plan of project.plans || []) {
+              for (const lot of plan.lots || []) {
+                lotsWithProgress.push({
+                  id: lot.id,
+                  plan_id: plan.id,
+                  project_id: project.id,
+                  project_name: project.name,
+                  plan_identifier: plan.plan_identifier,
+                  lot_no: lot.lot_no,
+                  status: lot.status,
+                  extent_ha: lot.extent_ha || 0,
+                  extent_perch: lot.extent_perch || 0,
+                  land_type: lot.land_type,
+                  overall_percent: lot.progress || 0,
+                  last_completed_section: null,
+                  sections: []
+                });
+              }
+            }
+          }
+        }
+        
+        setChartData({
+          projects: hierarchyData.charts?.projects || [],
+          plans: hierarchyData.charts?.plans || [],
+          lots: lotsWithProgress
+        });
         setLastUpdated(response.data.lastUpdated);
         setError(null);
       } else {
@@ -62,6 +107,53 @@ const ProjectProgress = () => {
   useEffect(() => {
     fetchProgressData();
   }, []);
+
+  // Fetch real-time stage participation data from database tables
+  useEffect(() => {
+    const fetchStageParticipation = async () => {
+      try {
+        const projectFilter = chartFilters.lots.projectId !== 'all' ? chartFilters.lots.projectId : null;
+        const planFilter = chartFilters.lots.planId !== 'all' ? chartFilters.lots.planId : null;
+        
+        const params = new URLSearchParams();
+        if (projectFilter) params.append('project_id', projectFilter);
+        if (planFilter) params.append('plan_id', planFilter);
+        
+        const response = await fetch(`http://localhost:5000/api/stats/stage-participation?${params}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          const data = result.data; // Extract the actual data from the API response
+          console.log('=== REAL-TIME DATABASE TABLE COUNTS ===');
+          console.log('Full API response:', result);
+          console.log('Stage participation data from API:', data);
+          console.log('- Owner Details (from owners table):', data['Owner Details']);
+          console.log('- Land Details (from lots table):', data['Land Details']);
+          console.log('- Valuation (from lot_valuations table):', data['Valuation']);
+          console.log('- Compensation (from compensation_payment_details table):', data['Compensation']);
+          console.log('- Completed (progress >= 100%):', data['Completed']);
+          console.log('=== END REAL-TIME DATA ===');
+          setStageParticipationData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching stage participation:', error);
+        // Set default values if request fails
+        setStageParticipationData({
+          'Owner Details': 0,
+          'Land Details': 0,
+          'Valuation': 0,
+          'Compensation': 0,
+          'Completed': 0
+        });
+      }
+    };
+    
+    fetchStageParticipation();
+  }, [chartFilters.lots.projectId, chartFilters.lots.planId]);
 
   // Chart filter handlers
   const handleChartFilterChange = (chartType, key, value) => {
@@ -218,10 +310,12 @@ const ProjectProgress = () => {
                   onChange={(e) => handleChartFilterChange('lots', 'status', e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="approved">Approved</option>
-                  <option value="active">Active</option>
+                  <option value="all">All Status</option>
+                  <option value="owner_details">Owner Details</option>
+                  <option value="land_details">Land Details</option>
+                  <option value="valuation">Valuation</option>
+                  <option value="compensation">Compensation</option>
                   <option value="completed">Completed</option>
-                  <option value="surveyed">Surveyed</option>
                 </select>
                 <select
                   value={chartFilters.lots.chartType}
@@ -234,52 +328,39 @@ const ProjectProgress = () => {
                 </select>
               </div>
             </div>
-            {/* Calculate lots at each progress step with filters */}
+            {/* Real-time Lot Progress using actual database table counts */}
             {(() => {
-              let lots = chartData.lots || [];
-              // Apply project filter
-              if (chartFilters.lots.projectId && chartFilters.lots.projectId !== 'all') {
-                lots = lots.filter(lot => String(lot.project_id) === String(chartFilters.lots.projectId));
-              }
-              // Apply plan filter
-              if (chartFilters.lots.planId && chartFilters.lots.planId !== 'all') {
-                lots = lots.filter(lot => String(lot.plan_id) === String(chartFilters.lots.planId));
-              }
-              // Apply status filter (for step, not lot.status)
-              // If status is not 'all', only include lots at that step
-              let statusFilter = chartFilters.lots.status;
-              // Map status filter to step
-              const statusToStep = {
-                'completed': 'Completed',
-                'owner_details': 'Owner Details',
-                'land_details': 'Land Details',
-                'valuation_details': 'Valuation',
-                'compensation': 'Compensation',
-              };
-              // Count steps
-              const stepCounts = {
-                'Owner Details': 0,
-                'Land Details': 0,
-                'Valuation': 0,
-                'Compensation': 0,
-                'Completed': 0
-              };
-              lots.forEach(lot => {
-                let step = 'Owner Details';
-                if (lot.overall_percent === 100 || lot.last_completed_section === 'Compensation') {
-                  step = 'Completed';
-                } else if (lot.last_completed_section === 'Valuation') {
-                  step = 'Compensation';
-                } else if (lot.last_completed_section === 'Land Details') {
-                  step = 'Valuation';
-                } else if (lot.last_completed_section === 'Owner Details') {
-                  step = 'Land Details';
+              const statusFilter = chartFilters.lots.status;
+
+              // Use the real-time stage participation data from the component state
+              // This data comes from actual database table counts
+              let stepCounts = { ...stageParticipationData };
+              
+              // Apply status filter to show only specific category if selected
+              if (statusFilter && statusFilter !== 'all') {
+                const filteredCounts = {
+                  'Owner Details': 0,
+                  'Land Details': 0, 
+                  'Valuation': 0,
+                  'Compensation': 0,
+                  'Completed': 0
+                };
+                
+                if (statusFilter === 'owner_details') {
+                  filteredCounts['Owner Details'] = stepCounts['Owner Details'];
+                } else if (statusFilter === 'land_details') {
+                  filteredCounts['Land Details'] = stepCounts['Land Details'];
+                } else if (statusFilter === 'valuation') {
+                  filteredCounts['Valuation'] = stepCounts['Valuation'];
+                } else if (statusFilter === 'compensation') {
+                  filteredCounts['Compensation'] = stepCounts['Compensation'];
+                } else if (statusFilter === 'completed') {
+                  filteredCounts['Completed'] = stepCounts['Completed'];
                 }
-                // Only count if matches status filter or filter is 'all'
-                if (!statusFilter || statusFilter === 'all' || statusToStep[statusFilter] === step) {
-                  stepCounts[step]++;
-                }
-              });
+                
+                stepCounts = filteredCounts;
+              }
+
               // Prepare chart data for steps
               const lotStepData = [
                 { label: 'Owner Details', count: stepCounts['Owner Details'] },
@@ -288,6 +369,19 @@ const ProjectProgress = () => {
                 { label: 'Compensation', count: stepCounts['Compensation'] },
                 { label: 'Completed', count: stepCounts['Completed'] }
               ];
+
+              // Debug output to console
+              console.log('=== CHART DISPLAY DEBUG ===');
+              console.log('Current filters - Project:', chartFilters.lots.projectId, 'Plan:', chartFilters.lots.planId, 'Status:', statusFilter);
+              console.log('Real-time counts being displayed:');
+              console.log('- Owner Details:', stepCounts['Owner Details']);
+              console.log('- Land Details:', stepCounts['Land Details']);
+              console.log('- Valuation:', stepCounts['Valuation']);
+              console.log('- Compensation:', stepCounts['Compensation']);
+              console.log('- Completed:', stepCounts['Completed']);
+              console.log('Final chart data:', lotStepData);
+              console.log('=== END CHART DEBUG ===');
+
               return (
                 <LotProgressChart
                   data={lotStepData}
@@ -300,6 +394,8 @@ const ProjectProgress = () => {
             })()}
           </div>
       </div>
+
+
 
       {/* Last Updated */}
       {lastUpdated && (
