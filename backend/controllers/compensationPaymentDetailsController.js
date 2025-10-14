@@ -414,7 +414,7 @@ const createOrUpdateCompensation = (req, res) => {
       interest_part_payment_02_paid_amount: req.body.interest_part_payment_02_paid_amount || 0,
       
       // Account division
-      account_division_sent_date: req.body.account_division_sent_date || null,
+      account_division_sent_date: req.body.account_division_sent_date || req.body.send_account_division_date || null,
       account_division_cheque_no: req.body.account_division_cheque_no || null,
       account_division_deducted_amount: req.body.account_division_deducted_amount || 0,
       account_division_paid_amount: req.body.account_division_paid_amount || 0,
@@ -737,7 +737,7 @@ const getCompensationByLot = (req, res) => {
         },
         accountDivision: {
           sentDate: {
-            ...convertDateToComponents(result.send_account_division_date || result.account_division_sent_date),
+            ...convertDateToComponents(result.account_division_sent_date),
             chequeNo: result.account_division_cheque_no || '',
             deductedAmount: result.account_division_deducted_amount || 0,
             paidAmount: result.account_division_paid_amount || 0

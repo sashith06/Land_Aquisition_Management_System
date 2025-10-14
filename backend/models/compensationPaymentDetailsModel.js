@@ -53,12 +53,10 @@ class CompensationPaymentDetails {
       interest_part_payment_02_paid_amount,
       
       // Account Division Details (optional)
-      send_account_division_date,
+      send_account_division_date, // frontend field name (alias for account_division_sent_date)
       calculated_interest_amount,
       account_division_sent_date,
-      account_division_cheque_no,
-      account_division_deducted_amount,
-      account_division_paid_amount,
+      
       
       // Metadata
       created_by,
@@ -107,9 +105,8 @@ class CompensationPaymentDetails {
             interest_part_payment_02_cheque_no = ?,
             interest_part_payment_02_deducted_amount = ?,
             interest_part_payment_02_paid_amount = ?,
-            send_account_division_date = ?,
-            calculated_interest_amount = ?,
             account_division_sent_date = ?,
+            calculated_interest_amount = ?,
             updated_by = ?,
             updated_at = NOW()
           WHERE id = ?
@@ -142,21 +139,19 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
-          send_account_division_date || null,
+          send_account_division_date || account_division_sent_date || null,
           calculated_interest_amount || 0,
-          account_division_sent_date || null,
           updated_by,
           checkResult[0].id
         ];
 
         console.log('🔄 UPDATE: Payment details with ID:', checkResult[0].id);
         console.log('📅 ACCOUNT DIVISION DATES:', {
-          send_account_division_date: updateValues[26], // position 26
-          calculated_interest_amount: updateValues[27], // position 27
-          account_division_sent_date: updateValues[28], // position 28
+          send_account_division_date: updateValues[25], // position 25
+          calculated_interest_amount: updateValues[26], // position 26
         });
-        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[27]);
-        console.log('�🔄 UPDATE Values (part payments):', {
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', updateValues[26]);
+        console.log('🔄 UPDATE Values (part payments):', {
           part01_date: updateValues[6], // compensation_part_payment_01_date
           part01_cheque: updateValues[7], // compensation_part_payment_01_cheque_no
           part01_deducted: updateValues[8], // compensation_part_payment_01_deducted_amount
@@ -184,9 +179,9 @@ class CompensationPaymentDetails {
             interest_part_payment_01_deducted_amount, interest_part_payment_01_paid_amount,
             interest_part_payment_02_date, interest_part_payment_02_cheque_no,
             interest_part_payment_02_deducted_amount, interest_part_payment_02_paid_amount,
-            send_account_division_date, calculated_interest_amount, account_division_sent_date,
+            account_division_sent_date, calculated_interest_amount,
             created_by, updated_by
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const insertValues = [
@@ -219,9 +214,8 @@ class CompensationPaymentDetails {
           interest_part_payment_02_cheque_no || null,
           interest_part_payment_02_deducted_amount || 0,
           interest_part_payment_02_paid_amount || 0,
-          send_account_division_date || null,
+          send_account_division_date || account_division_sent_date || null,
           calculated_interest_amount || 0,
-          account_division_sent_date || null,
           created_by,
           updated_by
         ];
@@ -237,7 +231,7 @@ class CompensationPaymentDetails {
           part02_deducted: insertValues[15], // compensation_part_payment_02_deducted_amount
           part02_paid: insertValues[16] // compensation_part_payment_02_paid_amount
         });
-        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[30]); // calculated_interest_amount is at position 30
+        console.log('💰 CALCULATED INTEREST BEING SAVED:', insertValues[29]); // calculated_interest_amount is at position 29
         db.query(insertQuery, insertValues, callback);
       }
     });

@@ -5,6 +5,7 @@ const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const User = require("../models/userModel");
 const Notification = require("../models/notificationModel");
+const { validatePassword, generateSecurePassword } = require("../utils/passwordValidator");
 
 // ===================== EMAIL SETUP =====================
 const normalizedEmailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : undefined;
@@ -27,9 +28,9 @@ transporter.verify((error, success) => {
 });
 
 // ===================== HELPER =====================
-function generatePassword(length = 8) {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+function generatePassword(length = 12) {
+  // Use the secure password generator from our validator
+  return generateSecurePassword(length);
 }
 
 // ===================== REGISTER =====================
@@ -48,7 +49,22 @@ exports.register = async (req, res) => {
   }
 
   try {
-    const plainPassword = password || generatePassword();
+    let plainPassword = password;
+    
+    // If password is provided, validate it
+    if (password) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          error: "Password does not meet security requirements", 
+          passwordErrors: passwordValidation.errors 
+        });
+      }
+    } else {
+      // Generate a secure password if none provided
+      plainPassword = generatePassword();
+    }
+
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
     User.create({ firstName, lastName, email, role, password: hashedPassword }, (err, result) => {
@@ -289,6 +305,15 @@ exports.updateUser = (req, res) => {
   const userData = req.body;
 
   if (userData.password) {
+    // Validate new password
+    const passwordValidation = validatePassword(userData.password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: "Password does not meet security requirements", 
+        passwordErrors: passwordValidation.errors 
+      });
+    }
+
     bcrypt.hash(userData.password, 10, (err, hashed) => {
       if (err) return res.status(500).json({ error: err });
       userData.password = hashed;
@@ -365,6 +390,15 @@ exports.resetPassword = (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
   if (!newPassword) return res.status(400).json({ error: "New password required" });
+
+  // Validate new password
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.isValid) {
+    return res.status(400).json({ 
+      error: "Password does not meet security requirements", 
+      passwordErrors: passwordValidation.errors 
+    });
+  }
 
   User.findByResetToken(token, async (err, rows) => {
     if (err) return res.status(500).json({ error: err });

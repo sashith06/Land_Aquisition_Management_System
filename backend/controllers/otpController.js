@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const transporter = require("../config/emailTransporter"); // your nodemailer transporter
 const OTP = require("../models/otpModel"); // expects callback-based methods used below
 const User = require("../models/userModel");
+const { validatePassword } = require("../utils/passwordValidator");
 
 // ---------- CONFIG ----------
 const OTP_LENGTH = 6;
@@ -19,9 +20,9 @@ function generateNumericOtp() {
 }
 
 function isStrongPassword(pw) {
-  // min 8 chars, at least 1 upper, 1 lower, 1 number, 1 special char
-  const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%\^&\*()_\-+=\[\]{};:'"\\|,.<>\/?]).{8,}$/;
-  return re.test(pw);
+  // Use our comprehensive password validator instead of simple regex
+  const validation = validatePassword(pw);
+  return validation.isValid;
 }
 
 function generateOtpEmail(name, otp) {
@@ -177,9 +178,10 @@ exports.resetPasswordWithOTP = async (req, res) => {
     }
 
     if (!isStrongPassword(newPassword)) {
+      const validation = validatePassword(newPassword);
       return res.status(400).json({
-        error:
-          "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character",
+        error: "Password does not meet security requirements",
+        passwordErrors: validation.errors
       });
     }
 
