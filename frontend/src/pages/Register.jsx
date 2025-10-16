@@ -153,7 +153,7 @@ const Register = () => {
                   className={`w-full px-4 py-2 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                     passwordError ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="uppercase, lowercase, number, special character"
+                  placeholder="Exact 8 chars (e.g., Abc123@!)"
                 />
                 <button
                   type="button"

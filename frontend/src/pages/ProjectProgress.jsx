@@ -21,7 +21,7 @@ const ProjectProgress = () => {
   // Chart filter states
   const [chartFilters, setChartFilters] = useState({
     projects: { 
-      status: 'all', 
+      status: 'approved', 
       progressRange: 'all', 
       chartType: 'bar' 
     },
@@ -194,10 +194,7 @@ const ProjectProgress = () => {
               <RefreshCw className="h-4 w-4" />
               Refresh
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              <Download className="h-4 w-4" />
-              Export
-            </button>
+
           </div>
         </div>
 
@@ -229,9 +226,9 @@ const ProjectProgress = () => {
                   
                   
                   <option value="approved">Approved</option>
-                  <option value="in_progress">In Progress</option>
+                  
                   <option value="completed">Completed</option>
-                  <option value="on_hold">On Hold</option>
+                 
                 </select>
                 <select
                   value={chartFilters.projects.progressRange || 'all'}

@@ -26,7 +26,7 @@ const Services = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="max-w-3xl mx-auto">
           {/* Property and Progress Card */}
           <Link 
             to="/landowner" 
@@ -54,10 +54,7 @@ const Services = () => {
               
               {/* Features */}
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center text-sm text-gray-300">
-                  <MapPin size={16} className="mr-2 text-green-400" />
-                  <span>Property Mapping</span>
-                </div>
+
                 <div className="flex items-center text-sm text-gray-300">
                   <Clock size={16} className="mr-2 text-blue-400" />
                   <span>Real-time Updates</span>
@@ -78,58 +75,6 @@ const Services = () => {
               </div>
             </div>
           </Link>
-
-          {/* View Projects Card */}
-          <a 
-            href="#view-projects" 
-            className="group relative block overflow-hidden rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 hover:-translate-y-3"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-600 to-red-700"></div>
-            <img
-              src="/image4.png"
-              alt="Project management and overview"
-              className="w-full h-[400px] md:h-[500px] object-cover object-center transition-transform duration-700 group-hover:scale-110 opacity-80"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-            
-            <div className="absolute inset-0 p-8 md:p-10 flex flex-col justify-end text-white">
-              <div className="mb-6">
-                <div className="w-16 h-16 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <BarChart3 size={32} className="text-white" />
-                </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-4">Project Overview & Analytics</h3>
-                <p className="text-lg text-gray-200 leading-relaxed mb-6">
-                  Explore comprehensive details of ongoing and completed development projects with interactive dashboards, progress metrics, and detailed project information.
-                </p>
-              </div>
-              
-              {/* Features */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center text-sm text-gray-300">
-                  <BarChart3 size={16} className="mr-2 text-green-400" />
-                  <span>Project Analytics</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-300">
-                  <MapPin size={16} className="mr-2 text-blue-400" />
-                  <span>Location Mapping</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-300">
-                  <Clock size={16} className="mr-2 text-purple-400" />
-                  <span>Timeline Tracking</span>
-                </div>
-                <div className="flex items-center text-sm text-gray-300">
-                  <FileText size={16} className="mr-2 text-orange-400" />
-                  <span>Detailed Reports</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center text-green-300 font-semibold group-hover:text-green-200 transition-colors">
-                <span className="mr-2">View Projects</span>
-                <ArrowRight size={20} className="group-hover:translate-x-2 transition-transform duration-300" />
-              </div>
-            </div>
-          </a>
         </div>
 
 

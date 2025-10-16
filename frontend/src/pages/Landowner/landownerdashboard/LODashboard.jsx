@@ -525,16 +525,7 @@ function LODashboard() {
                           }
                         </span>
                       </li>
-                      <li className="flex justify-between">
-                        <span className="font-semibold text-gray-600">Status:</span>
-                        <span className={`px-3 py-1 rounded text-sm font-semibold ${
-                          selectedLot.lot.compensationStatus === 'completed' ? 'bg-green-100 text-green-800' :
-                          selectedLot.lot.compensationStatus === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedLot.lot.compensationStatus || 'Pending'}
-                        </span>
-                      </li>
+
                     </ul>
                   </div>
                 </div>

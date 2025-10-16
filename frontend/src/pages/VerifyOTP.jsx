@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { resetPasswordWithOTP } from '../api'; // use the new combined function
-import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
 import { validatePassword } from '../utils/passwordValidator';
 
 const VerifyOTP = () => {
@@ -141,7 +140,7 @@ const VerifyOTP = () => {
                   className={`w-full px-4 py-2 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                     passwordError ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="Enter new password"
+                  placeholder="Exact 8 chars (e.g., Abc123@!)"
                 />
                 <button
                   type="button"
@@ -188,7 +187,7 @@ const VerifyOTP = () => {
                   className={`w-full px-4 py-2 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 ${
                     passwordError ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="Confirm new password"
+                  placeholder="Re-enter password"
                 />
                 <button
                   type="button"
@@ -223,28 +222,7 @@ const VerifyOTP = () => {
 
             {/* Password Error */}
             {passwordError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{passwordError}</p>
-              </div>
-            )}
-
-            {/* Password Strength Indicator */}
-            {newPassword && (
-              <div className="mt-3">
-                <PasswordStrengthIndicator 
-                  password={newPassword} 
-                  showRequirements={true} 
-                />
-              </div>
-            )}
-
-            {/* Password Match Indicator */}
-            {confirmPassword && (
-              <div className={`text-sm ${
-                newPassword === confirmPassword ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {newPassword === confirmPassword ? '✅ Passwords match' : '❌ Passwords do not match'}
-              </div>
+              <p className="mt-1 text-sm text-red-600">{passwordError}</p>
             )}
 
             <button

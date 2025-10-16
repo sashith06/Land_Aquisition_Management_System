@@ -83,36 +83,42 @@ async function getFinancialProgressByPlan(planId) {
       pl.plan_identifier as plan_name,
       p.name as name_of_road,  -- Name of Road
       
-      -- Individual Lot Details
+      -- Individual Lot Details (AGGREGATED BY LOT)
       l.lot_no as lot_number,
       l.id as lot_id,
       
-      -- Full Compensation: Final compensation amount for this specific lot
-      COALESCE(cpd.final_compensation_amount, 0) as full_compensation,
+      -- Full Compensation: SUM of all final compensation amounts for this lot
+      COALESCE(SUM(cpd.final_compensation_amount), 0) as full_compensation,
       
-      -- Payment Done: Actual payments made for this specific lot
-      COALESCE(
-        cpd.compensation_full_payment_paid_amount +
-        cpd.compensation_part_payment_01_paid_amount +
-        cpd.compensation_part_payment_02_paid_amount, 0
-      ) as payment_done,
+      -- Payment Done: SUM of all actual payments made for this lot (all owners)
+      COALESCE(SUM(
+        COALESCE(cpd.compensation_full_payment_paid_amount, 0) +
+        COALESCE(cpd.compensation_part_payment_01_paid_amount, 0) +
+        COALESCE(cpd.compensation_part_payment_02_paid_amount, 0)
+      ), 0) as payment_done,
       
       -- Balance Due: Full Compensation - Payment Done for this lot
-      COALESCE(cpd.final_compensation_amount, 0) - COALESCE(
-        cpd.compensation_full_payment_paid_amount +
-        cpd.compensation_part_payment_01_paid_amount +
-        cpd.compensation_part_payment_02_paid_amount, 0
-      ) as balance_due,
+      COALESCE(SUM(cpd.final_compensation_amount), 0) - COALESCE(SUM(
+        COALESCE(cpd.compensation_full_payment_paid_amount, 0) +
+        COALESCE(cpd.compensation_part_payment_01_paid_amount, 0) +
+        COALESCE(cpd.compensation_part_payment_02_paid_amount, 0)
+      ), 0) as balance_due,
       
-      -- Interest to be paid: Use calculated interest amount from database
-      COALESCE(cpd.calculated_interest_amount, 0) as interest_7_percent,
+      -- Interest to be paid: Calculate 7% annual interest from gazette_date to today
+      COALESCE(SUM(
+        CASE 
+          WHEN cpd.gazette_date IS NOT NULL AND cpd.final_compensation_amount > 0 
+          THEN cpd.final_compensation_amount * 0.07 * (DATEDIFF(CURDATE(), cpd.gazette_date) / 365.0)
+          ELSE 0 
+        END
+      ), 0) as interest_7_percent,
       
-      -- Interest Paid: Interest payments for this specific lot
-      COALESCE(
-        cpd.interest_full_payment_paid_amount +
-        cpd.interest_part_payment_01_paid_amount +
-        cpd.interest_part_payment_02_paid_amount, 0
-      ) as interest_paid,
+      -- Interest Paid: SUM of all interest payments for this lot (all owners)
+      COALESCE(SUM(
+        COALESCE(cpd.interest_full_payment_paid_amount, 0) +
+        COALESCE(cpd.interest_part_payment_01_paid_amount, 0) +
+        COALESCE(cpd.interest_part_payment_02_paid_amount, 0)
+      ), 0) as interest_paid,
       
       pl.created_at as report_date
       
@@ -121,6 +127,7 @@ async function getFinancialProgressByPlan(planId) {
     JOIN lots l ON l.plan_id = pl.id
     LEFT JOIN compensation_payment_details cpd ON cpd.plan_id = pl.id AND cpd.lot_id = l.id
     WHERE pl.id = ?
+    GROUP BY l.id, l.lot_no, p.name, pl.plan_identifier, pl.created_at
     ORDER BY l.lot_no ASC
   `;
 

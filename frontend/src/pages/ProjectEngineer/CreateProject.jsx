@@ -186,7 +186,7 @@ const CreateProject = () => {
                   value={formData.initial_estimated_cost}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter cost in USD"
+                  placeholder="Enter cost in Rs"
                   step="0.01"
                 />
               </div>

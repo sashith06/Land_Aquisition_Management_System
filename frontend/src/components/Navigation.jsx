@@ -72,12 +72,14 @@ const Navigation = () => {
 
         {/* Right Side */}
         <div className="flex items-center space-x-4 relative">
-          {/* Real-time Notification Bell */}
-          <NotificationDropdown
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onRefresh={handleNotificationsRefresh}
-          />
+          {/* Real-time Notification Bell - Hidden for Landowners */}
+          {!isUserLandowner && (
+            <NotificationDropdown
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onRefresh={handleNotificationsRefresh}
+            />
+          )}
 
           {/* User Avatar + Dropdown */}
           <div className="relative">
