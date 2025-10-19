@@ -1,0 +1,673 @@
+-- ================================================
+-- LAMS (Land Acquisition Management System)
+-- Complete Database Setup for WampServer
+-- Updated: September 10, 2025
+-- Includes: Status column fix for lots table
+-- ================================================
+
+-- Set foreign key checks off to avoid constraint issues during setup
+SET FOREIGN_KEY_CHECKS = 0;
+
+
+
+USE land_acqusition;
+
+-- ================================================
+-- TABLE: users
+-- ================================================
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('LO','PE','FO','CE','admin') NOT NULL COMMENT 'CE is system admin - only admin@lams.gov.lk allowed',
+  `first_name` varchar(50) NOT NULL,
+  `last_name` varchar(50) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `address` text,
+  `status` enum('pending','approved','rejected') DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: projects (Enhanced with complete form fields)
+-- ================================================
+DROP TABLE IF EXISTS `projects`;
+CREATE TABLE `projects` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text,
+  `status` enum('pending','approved','in_progress','completed','on_hold','rejected') DEFAULT 'pending',
+  `created_by` int NOT NULL,
+  `approved_by` int DEFAULT NULL,
+  `rejected_by` int DEFAULT NULL,
+  `rejection_reason` text DEFAULT NULL,
+  
+  -- Cost and Extent Information
+  `initial_estimated_cost` decimal(15,2) DEFAULT NULL,
+  `final_cost` decimal(15,2) DEFAULT NULL,
+  `initial_extent_ha` decimal(10,4) DEFAULT NULL,
+  `initial_extent_perch` decimal(10,4) DEFAULT NULL,
+  
+  -- Section 02 Information
+  `section_2_order` date DEFAULT NULL,
+  `section_2_com` date DEFAULT NULL,
+  
+  -- Advance Tracing Information
+  `advance_tracing_no` varchar(100) DEFAULT NULL,
+  `advance_tracing_date` date DEFAULT NULL,
+  
+  -- Section 05 Gazette Information
+  `section_5_no` varchar(100) DEFAULT NULL,
+  `section_5_no_date` date DEFAULT NULL,
+  
+  -- Type of Acquisition
+  `compensation_type` enum('regulation','larc/super larc','special Committee Decision') DEFAULT 'regulation',
+  
+  -- Additional Notes
+  `notes` text DEFAULT NULL,
+  
+  -- Project Timeline
+  `start_date` date DEFAULT NULL,
+  `expected_completion_date` date DEFAULT NULL,
+  `actual_completion_date` date DEFAULT NULL,
+  
+  -- Timestamps
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `approved_at` timestamp NULL DEFAULT NULL,
+  `rejected_at` timestamp NULL DEFAULT NULL,
+  
+  PRIMARY KEY (`id`),
+  KEY `created_by` (`created_by`),
+  KEY `approved_by` (`approved_by`),
+  KEY `rejected_by` (`rejected_by`),
+  KEY `status` (`status`),
+  CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `projects_ibfk_2` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `projects_ibfk_3` FOREIGN KEY (`rejected_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: plans (Simplified - Single Plan Identifier)
+-- ================================================
+DROP TABLE IF EXISTS `plans`;
+CREATE TABLE `plans` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `plan_identifier` varchar(100) NOT NULL COMMENT 'Combined Plan No / Cadastral No',
+  `project_id` int NOT NULL,
+  `description` text DEFAULT NULL,
+  `location` varchar(255) DEFAULT NULL,
+  `total_extent` decimal(10,4) DEFAULT NULL,
+  `estimated_cost` decimal(15,2) DEFAULT NULL,
+  `estimated_extent` varchar(100) DEFAULT NULL,
+  `advance_tracing_no` varchar(100) DEFAULT NULL,
+  `divisional_secretary` varchar(255) DEFAULT NULL,
+  `current_extent_value` decimal(15,2) DEFAULT NULL,
+  `section_07_gazette_no` varchar(100) DEFAULT NULL,
+  `section_07_gazette_date` date DEFAULT NULL,
+  `section_38_gazette_no` varchar(100) DEFAULT NULL,
+  `section_38_gazette_date` date DEFAULT NULL,
+  `section_5_gazette_no` varchar(100) DEFAULT NULL,
+  `pending_cost_estimate` decimal(15,2) DEFAULT NULL,
+  `status` enum('pending','in_progress','completed','on_hold') DEFAULT 'pending',
+  `created_by` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `has_valuation` tinyint(1) DEFAULT '0',
+  `has_compensation` tinyint(1) DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `plan_identifier` (`plan_identifier`,`project_id`),
+  KEY `created_by` (`created_by`),
+  KEY `project_id` (`project_id`),
+  CONSTRAINT `plans_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `plans_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: lots (Enhanced structure with status column)
+-- ================================================
+DROP TABLE IF EXISTS `lots`;
+CREATE TABLE `lots` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `plan_id` int NOT NULL,
+  `lot_no` int NOT NULL,
+  `extent_ha` decimal(10,4) DEFAULT NULL,
+  `extent_perch` decimal(10,4) DEFAULT NULL,
+  `land_type` enum('State','Private','Development Only') DEFAULT 'Private',
+  `advance_tracing_no` varchar(100) DEFAULT NULL,
+  `advance_tracing_extent_ha` decimal(10,4) DEFAULT NULL,
+  `advance_tracing_extent_perch` decimal(10,4) DEFAULT NULL,
+  `preliminary_plan_extent_ha` decimal(10,4) DEFAULT NULL,
+  `preliminary_plan_extent_perch` decimal(10,4) DEFAULT NULL,
+  `status` enum('active','pending','completed') DEFAULT 'active',
+  `created_by` int NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_lot` (`plan_id`,`lot_no`),
+  KEY `plan_id` (`plan_id`),
+  KEY `created_by` (`created_by`),
+  KEY `updated_by` (`updated_by`),
+  CONSTRAINT `lots_ibfk_1` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `lots_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lots_ibfk_3` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: project_assignments
+-- ================================================
+DROP TABLE IF EXISTS `project_assignments`;
+CREATE TABLE `project_assignments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `land_officer_id` int NOT NULL,
+  `assigned_by` int NOT NULL,
+  `assigned_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` enum('active','inactive','completed') DEFAULT 'active',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_assignment` (`project_id`,`land_officer_id`),
+  KEY `project_id` (`project_id`),
+  KEY `land_officer_id` (`land_officer_id`),
+  KEY `assigned_by` (`assigned_by`),
+  CONSTRAINT `project_assignments_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`),
+  CONSTRAINT `project_assignments_ibfk_2` FOREIGN KEY (`land_officer_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `project_assignments_ibfk_3` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: notifications
+-- ================================================
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE `notifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `type` enum('info','success','warning','error') DEFAULT 'info',
+  `is_read` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: messages
+-- ================================================
+DROP TABLE IF EXISTS `messages`;
+CREATE TABLE `messages` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `sender_id` int NOT NULL,
+  `receiver_id` int NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT '0',
+  `has_attachments` tinyint(1) DEFAULT '0',
+  `priority` enum('low','normal','high','urgent') DEFAULT 'normal',
+  `message_type` enum('general','project_related','official') DEFAULT 'general',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `sender_id` (`sender_id`),
+  KEY `receiver_id` (`receiver_id`),
+  KEY `is_read` (`is_read`),
+  KEY `created_at` (`created_at`),
+  CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `messages_ibfk_2` FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: message_attachments (For documents/images in messages)
+-- ================================================
+DROP TABLE IF EXISTS `message_attachments`;
+CREATE TABLE `message_attachments` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `message_id` int NOT NULL,
+  `filename` varchar(255) NOT NULL,
+  `original_filename` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `file_type` enum('image','document','pdf','other') DEFAULT 'other',
+  `upload_status` enum('uploading','completed','failed') DEFAULT 'completed',
+  `uploaded_by` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `message_id` (`message_id`),
+  KEY `uploaded_by` (`uploaded_by`),
+  KEY `file_type` (`file_type`),
+  CONSTRAINT `message_attachments_ibfk_1` FOREIGN KEY (`message_id`) REFERENCES `messages` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `message_attachments_ibfk_2` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: project_documents (For project-related document storage)
+-- ================================================
+DROP TABLE IF EXISTS `project_documents`;
+CREATE TABLE `project_documents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `document_type` enum('proposal','approval','gazette','plan','survey','legal','other') DEFAULT 'other',
+  `filename` varchar(255) NOT NULL,
+  `original_filename` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint NOT NULL,
+  `mime_type` varchar(100) NOT NULL,
+  `file_type` enum('image','document','pdf','dwg','other') DEFAULT 'other',
+  `description` text DEFAULT NULL,
+  `upload_status` enum('uploading','completed','failed') DEFAULT 'completed',
+  `uploaded_by` int NOT NULL,
+  `is_public` tinyint(1) DEFAULT '0',
+  `version` int DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `project_id` (`project_id`),
+  KEY `uploaded_by` (`uploaded_by`),
+  KEY `document_type` (`document_type`),
+  KEY `file_type` (`file_type`),
+  CONSTRAINT `project_documents_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `project_documents_ibfk_2` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: valuations (For Financial Officer functionality)
+-- ================================================
+DROP TABLE IF EXISTS `valuations`;
+CREATE TABLE `valuations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `lot_id` int NOT NULL,
+  `plan_id` int NOT NULL,
+  `valuation_amount` decimal(15,2) NOT NULL,
+  `valuation_date` date NOT NULL,
+  `valuation_method` varchar(100) DEFAULT NULL,
+  `market_rate` decimal(10,2) DEFAULT NULL,
+  `government_rate` decimal(10,2) DEFAULT NULL,
+  `notes` text,
+  `created_by` int NOT NULL,
+  `approved_by` int DEFAULT NULL,
+  `status` enum('draft','submitted','approved','rejected') DEFAULT 'draft',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `lot_id` (`lot_id`),
+  KEY `plan_id` (`plan_id`),
+  KEY `created_by` (`created_by`),
+  KEY `approved_by` (`approved_by`),
+  CONSTRAINT `valuations_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`),
+  CONSTRAINT `valuations_ibfk_2` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `valuations_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `valuations_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: compensations (For Financial Officer functionality)
+-- ================================================
+DROP TABLE IF EXISTS `compensations`;
+CREATE TABLE `compensations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `lot_id` int NOT NULL,
+  `plan_id` int NOT NULL,
+  `compensation_amount` decimal(15,2) NOT NULL,
+  `compensation_date` date NOT NULL,
+  `payment_method` varchar(100) DEFAULT NULL,
+  `bank_details` text,
+  `notes` text,
+  `created_by` int NOT NULL,
+  `approved_by` int DEFAULT NULL,
+  `status` enum('draft','submitted','approved','paid') DEFAULT 'draft',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `lot_id` (`lot_id`),
+  KEY `plan_id` (`plan_id`),
+  KEY `created_by` (`created_by`),
+  KEY `approved_by` (`approved_by`),
+  CONSTRAINT `compensations_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`),
+  CONSTRAINT `compensations_ibfk_2` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `compensations_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `compensations_ibfk_4` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: owners (Master table for property owners)
+-- ================================================
+DROP TABLE IF EXISTS `owners`;
+CREATE TABLE `owners` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `nic` varchar(20) NOT NULL,
+  `mobile` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `owner_type` enum('Individual','Company','Government','Trust') DEFAULT 'Individual',
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_by` int NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `nic` (`nic`),
+  KEY `created_by` (`created_by`),
+  KEY `updated_by` (`updated_by`),
+  CONSTRAINT `owners_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `owners_ibfk_2` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: lot_owners (Bridge table between lots and owners)
+-- ================================================
+DROP TABLE IF EXISTS `lot_owners`;
+CREATE TABLE `lot_owners` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `lot_id` int NOT NULL,
+  `owner_id` int NOT NULL,
+  `plan_id` int NOT NULL,
+  `ownership_percentage` decimal(5,2) DEFAULT 100.00,
+  `status` enum('active','inactive','transferred') DEFAULT 'active',
+  `created_by` int NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `lot_id` (`lot_id`),
+  KEY `owner_id` (`owner_id`),
+  KEY `plan_id` (`plan_id`),
+  KEY `created_by` (`created_by`),
+  KEY `updated_by` (`updated_by`),
+  CONSTRAINT `lot_owners_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lot_owners_ibfk_2` FOREIGN KEY (`owner_id`) REFERENCES `owners` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lot_owners_ibfk_3` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `lot_owners_ibfk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lot_owners_ibfk_5` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: lot_valuations (Detailed valuation for each lot)
+-- ================================================
+DROP TABLE IF EXISTS `lot_valuations`;
+CREATE TABLE `lot_valuations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `lot_id` int NOT NULL,
+  `plan_id` int NOT NULL,
+  `statutorily_amount` decimal(15,2) DEFAULT 0.00,
+  `addition_amount` decimal(15,2) DEFAULT 0.00,
+  `development_amount` decimal(15,2) DEFAULT 0.00,
+  `court_amount` decimal(15,2) DEFAULT 0.00,
+  `thirty_three_amount` decimal(15,2) DEFAULT 0.00,
+  `board_of_review_amount` decimal(15,2) DEFAULT 0.00,
+  `total_value` decimal(15,2) NOT NULL,
+  `assessment_date` date NOT NULL,
+  `assessor_name` varchar(255) DEFAULT NULL,
+  `notes` text,
+  `status` enum('draft','submitted','approved','rejected') DEFAULT 'draft',
+  `created_by` int NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `approved_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_lot_valuation` (`lot_id`,`plan_id`),
+  KEY `lot_id` (`lot_id`),
+  KEY `plan_id` (`plan_id`),
+  KEY `created_by` (`created_by`),
+  KEY `updated_by` (`updated_by`),
+  KEY `approved_by` (`approved_by`),
+  CONSTRAINT `lot_valuations_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lot_valuations_ibfk_2` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `lot_valuations_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lot_valuations_ibfk_4` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lot_valuations_ibfk_5` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: lot_compensations (Detailed compensation for each lot)
+-- ================================================
+DROP TABLE IF EXISTS `lot_compensations`;
+CREATE TABLE `lot_compensations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `lot_id` int NOT NULL,
+  `plan_id` int NOT NULL,
+  `owner_data` longtext DEFAULT NULL,
+  `compensation_payment` longtext DEFAULT NULL,
+  `interest_payment` longtext DEFAULT NULL,
+  `interest_voucher` longtext DEFAULT NULL,
+  `account_division` longtext DEFAULT NULL,
+  `total_compensation` decimal(15,2) DEFAULT 0.00,
+  `status` enum('pending','in_progress','completed','approved','rejected') DEFAULT 'pending',
+  `payment_status` enum('pending','processing','paid','failed') DEFAULT 'pending',
+  `created_by` int NOT NULL,
+  `updated_by` int DEFAULT NULL,
+  `approved_by` int DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_lot_compensation` (`lot_id`,`plan_id`),
+  KEY `lot_id` (`lot_id`),
+  KEY `plan_id` (`plan_id`),
+  KEY `created_by` (`created_by`),
+  KEY `updated_by` (`updated_by`),
+  KEY `approved_by` (`approved_by`),
+  CONSTRAINT `lot_compensations_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lot_compensations_ibfk_2` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`),
+  CONSTRAINT `lot_compensations_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lot_compensations_ibfk_4` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `lot_compensations_ibfk_5` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: documents (Document management)
+-- ================================================
+DROP TABLE IF EXISTS `documents`;
+CREATE TABLE `documents` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `plan_id` int DEFAULT NULL,
+  `lot_id` int DEFAULT NULL,
+  `document_type` enum('plan_document','survey_document','legal_document','valuation_document','compensation_document','gazette','court_order','other') NOT NULL,
+  `document_name` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint DEFAULT NULL,
+  `mime_type` varchar(100) DEFAULT NULL,
+  `description` text,
+  `uploaded_by` int NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `plan_id` (`plan_id`),
+  KEY `lot_id` (`lot_id`),
+  KEY `uploaded_by` (`uploaded_by`),
+  KEY `document_type` (`document_type`),
+  CONSTRAINT `documents_ibfk_1` FOREIGN KEY (`plan_id`) REFERENCES `plans` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `documents_ibfk_2` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `documents_ibfk_3` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: audit_logs (System audit trail)
+-- ================================================
+DROP TABLE IF EXISTS `audit_logs`;
+CREATE TABLE `audit_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `table_name` varchar(50) NOT NULL,
+  `record_id` int NOT NULL,
+  `old_values` longtext,
+  `new_values` longtext,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `action` (`action`),
+  KEY `table_name` (`table_name`),
+  KEY `created_at` (`created_at`),
+  CONSTRAINT `audit_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: password_reset_otps (For OTP-based password reset)
+-- ================================================
+DROP TABLE IF EXISTS `password_reset_otps`;
+CREATE TABLE `password_reset_otps` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `otp_code` varchar(255) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `is_used` tinyint(1) DEFAULT 0,
+  `attempts` int DEFAULT 0,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `email` (`email`),
+  KEY `expires_at` (`expires_at`),
+  KEY `is_used` (`is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: landowner_otps (For landowner OTP-based login)
+-- ================================================
+DROP TABLE IF EXISTS `landowner_otps`;
+CREATE TABLE `landowner_otps` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nic` varchar(12) NOT NULL,
+  `mobile` varchar(15) NOT NULL,
+  `otp_code` varchar(255) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `is_used` tinyint(1) DEFAULT 0,
+  `attempts` int DEFAULT 0,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `nic` (`nic`),
+  KEY `mobile` (`mobile`),
+  KEY `expires_at` (`expires_at`),
+  KEY `is_used` (`is_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: landowner_documents (For ID and Bank Book uploads)
+-- ================================================
+DROP TABLE IF EXISTS `landowner_documents`;
+CREATE TABLE `landowner_documents` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `landowner_id` INT NOT NULL,
+  `document_type` ENUM('id_card', 'bank_book') NOT NULL,
+  `file_name` VARCHAR(255) NOT NULL,
+  `file_path` VARCHAR(500) NOT NULL,
+  `file_size` INT NOT NULL,
+  `mime_type` VARCHAR(100) NOT NULL,
+  `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`landowner_id`) REFERENCES `owners` (`id`) ON DELETE CASCADE,
+  UNIQUE KEY `unique_landowner_document` (`landowner_id`, `document_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: system_settings (Application configuration)
+-- ================================================
+DROP TABLE IF EXISTS `system_settings`;
+CREATE TABLE `system_settings` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `setting_key` varchar(100) NOT NULL,
+  `setting_value` longtext,
+  `setting_type` enum('string','number','boolean','json') DEFAULT 'string',
+  `description` text,
+  `is_editable` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `setting_key` (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: inquiries
+-- ================================================
+DROP TABLE IF EXISTS `inquiries`;
+CREATE TABLE `inquiries` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `lot_id` INT NOT NULL,
+    `landowner_id` INT NOT NULL,
+    `inquiry_text` TEXT NOT NULL,
+    `status` ENUM('pending','resolved') DEFAULT 'pending',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY `lot_id` (`lot_id`),
+    KEY `landowner_id` (`landowner_id`),
+    CONSTRAINT `inquiries_ibfk_1` FOREIGN KEY (`lot_id`) REFERENCES `lots` (`id`),
+    CONSTRAINT `inquiries_ibfk_2` FOREIGN KEY (`landowner_id`) REFERENCES `owners` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- TABLE: inquiry_attachments
+-- ================================================
+DROP TABLE IF EXISTS `inquiry_attachments`;
+CREATE TABLE `inquiry_attachments` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `inquiry_id` INT NOT NULL,
+    `file_name` VARCHAR(255) NOT NULL,
+    `file_path` VARCHAR(255) NOT NULL,
+    `uploaded_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY `inquiry_id` (`inquiry_id`),
+    CONSTRAINT `inquiry_attachments_ibfk_1` FOREIGN KEY (`inquiry_id`) REFERENCES `inquiries` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================
+-- ESSENTIAL DATA - SYSTEM ADMINISTRATOR ONLY
+-- ================================================
+
+-- Insert system administrator (CE role - only admin@lams.gov.lk allowed)
+INSERT INTO `users` (`username`, `email`, `password`, `role`, `first_name`, `last_name`, `status`) VALUES
+('admin', 'admin@lams.gov.lk', '$2b$10$rG8qDjF5kL3mN9pQ7tS6UuVXYZ1AB2CD3EF4GH5IJ6KL7MN8OP9QR', 'CE', 'Chief', 'Engineer', 'approved');
+
+-- Insert essential system settings
+INSERT INTO `system_settings` (`setting_key`, `setting_value`, `setting_type`, `description`, `is_editable`) VALUES
+('system_name', 'Land Acquisition Management System', 'string', 'Application name', 1),
+('version', '1.0.0', 'string', 'System version', 0),
+('max_file_size', '10485760', 'number', 'Maximum file upload size in bytes (10MB)', 1),
+('allowed_file_types', '["pdf","doc","docx","jpg","jpeg","png","gif","xls","xlsx"]', 'json', 'Allowed file types for document upload', 1),
+('default_pagination_limit', '20', 'number', 'Default number of records per page', 1),
+('system_timezone', 'Asia/Colombo', 'string', 'System default timezone', 1),
+('enable_audit_logging', 'true', 'boolean', 'Enable system audit logging', 1),
+('password_min_length', '8', 'number', 'Minimum password length requirement', 1),
+('session_timeout', '3600', 'number', 'Session timeout in seconds (1 hour)', 1),
+('backup_retention_days', '30', 'number', 'Number of days to retain database backups', 1);
+
+-- Turn foreign key checks back on
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ================================================
+-- DATABASE SETUP VERIFICATION
+-- ================================================
+
+-- Verify database and tables created successfully
+SELECT 'LAMS Database Setup Completed Successfully!' as Status;
+
+-- Show basic table verification
+SHOW TABLES;
+
+-- Verify essential system data
+SELECT 'System Administrator Created' as Status FROM users WHERE role = 'CE' LIMIT 1;
+SELECT COUNT(*) as system_settings_count FROM system_settings;
+
+-- Show table structure for key tables
+DESCRIBE users;
+DESCRIBE projects;
+DESCRIBE plans;
+DESCRIBE lots;
+
+-- ================================================
+-- DATA MIGRATION: NOT REQUIRED FOR FRESH INSTALLATION
+-- This section is only needed when migrating from an existing database
+-- For fresh installations, skip this section as all tables are created new
+-- ================================================
+
+-- No migration needed for fresh database setup
+
+-- ================================================
+-- END OF SETUP
+-- ================================================

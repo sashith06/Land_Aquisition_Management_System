@@ -1,0 +1,442 @@
+const db = require("../config/db");
+
+const Plan = {};
+
+// Create new plan with simplified schema
+Plan.create = (plan, userId, callback) => {
+  console.log('=== DEBUG: Plan.create called ===');
+  console.log('Plan data:', plan);
+  console.log('User ID:', userId);
+  
+  // Map the input data to actual database columns - save ALL form data
+  const sql = `
+    INSERT INTO plans 
+    (project_id, plan_identifier, description, location, total_extent, status, created_by, 
+     estimated_cost, estimated_extent, advance_tracing_no, divisional_secretary, 
+     current_extent_value, section_07_gazette_no, section_07_gazette_date, 
+     section_38_gazette_no, section_38_gazette_date, section_5_gazette_no, pending_cost_estimate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  
+  const params = [
+    plan.project_id || null,
+    plan.plan_identifier || plan.plan_number || null,  // Use single identifier field
+    plan.description || null,
+    plan.location || plan.divisional_secretary || null,
+    plan.total_extent || null,
+    plan.status || 'pending',
+    userId,
+    // Convert empty strings to null for numeric fields
+    (plan.estimated_cost === '' ? null : plan.estimated_cost) || null,
+    (plan.estimated_extent === '' ? null : plan.estimated_extent) || null,
+    plan.advance_tracing_no || plan.advance_trading_no || null,
+    plan.divisional_secretary || null,
+    (plan.current_extent_value === '' ? null : plan.current_extent_value) || null,
+    plan.section_07_gazette_no || null,
+    (plan.section_07_gazette_date === '' ? null : plan.section_07_gazette_date) || null,
+    plan.section_38_gazette_no || null,
+    (plan.section_38_gazette_date === '' ? null : plan.section_38_gazette_date) || null,
+    plan.section_5_gazette_no || null,
+    (plan.pending_cost_estimate === '' ? null : plan.pending_cost_estimate) || null
+  ];
+
+  console.log('Executing SQL with simplified schema...');
+  console.log('SQL:', sql);
+  console.log('Params:', params);
+  
+  db.query(sql, params, callback);
+};
+
+// Get all plans - the actual table doesn't have project_id, so get all plans
+Plan.getByProject = (project_id, callback) => {
+  const sql = `
+    SELECT p.*, 
+           pr.name as project_name,
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE p.project_id = ?
+    ORDER BY p.created_at DESC
+  `;
+  db.query(sql, [project_id], callback);
+};
+
+// Get single plan
+Plan.findById = (id, callback) => {
+  const sql = `
+    SELECT p.*,
+           pr.name as project_name,
+           pr.status as project_status,
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+           CONCAT(pe.first_name, ' ', pe.last_name) as project_engineer_name,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id) as lots_count,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id AND l.status = 'active') as active_lots,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id AND l.status = 'completed') as completed_lots,
+           (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id AND l.status = 'pending') as pending_lots
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    LEFT JOIN users pe ON pr.created_by = pe.id
+    WHERE p.id = ?
+  `;
+  db.query(sql, [id], callback);
+};
+
+// Get plans created by a specific user
+Plan.getByCreator = (userId, callback) => {
+  const sql = `
+    SELECT p.*, 
+           pr.name as project_name,
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE p.created_by = ?
+    ORDER BY p.created_at DESC
+  `;
+  db.query(sql, [userId], callback);
+};
+
+// Update plan
+Plan.update = (id, plan, userId, callback) => {
+  console.log('=== Plan.update MODEL DEBUG START ===');
+  console.log('Plan ID:', id);
+  console.log('User ID:', userId);
+  console.log('Plan data received:', JSON.stringify(plan, null, 2));
+  
+  let fields = [];
+  let values = [];
+
+  // Only allow updates from the plan creator - using actual database columns
+  const allowedFields = [
+    'plan_identifier', 'description', 'location', 'total_extent', 'status',
+    'estimated_cost', 'estimated_extent', 'advance_tracing_no', 
+    'divisional_secretary', 'current_extent_value', 'section_07_gazette_no',
+    'section_07_gazette_date', 'section_38_gazette_no', 'section_38_gazette_date',
+    'section_5_gazette_no', 'pending_cost_estimate'
+  ];
+
+  console.log('Allowed fields:', allowedFields);
+
+  // Define fields that should convert empty strings to null (numeric and date fields)
+  const emptyStringToNullFields = [
+    'estimated_cost', 'estimated_extent', 'current_extent_value', 'pending_cost_estimate',
+    'section_07_gazette_date', 'section_38_gazette_date'
+  ];
+
+  for (const [key, value] of Object.entries(plan)) {
+    console.log(`Processing field: ${key} = ${value} (allowed: ${allowedFields.includes(key)})`);
+    
+    // Handle field name mapping for advance_trading_no -> advance_tracing_no
+    let dbField = key;
+    if (key === 'advance_trading_no') {
+      dbField = 'advance_tracing_no';
+    }
+    
+    if (value !== undefined && (allowedFields.includes(key) || allowedFields.includes(dbField))) {
+      // Convert empty strings to null for numeric and date fields
+      let processedValue = value;
+      if (emptyStringToNullFields.includes(dbField) && value === '') {
+        console.log(`Converting empty string to null for field: ${dbField}`);
+        processedValue = null;
+      }
+      
+      console.log(`Adding field to update: ${dbField} = ${processedValue}`);
+      fields.push(`${dbField} = ?`);
+      values.push(processedValue);
+    }
+  }
+
+  console.log('Fields to update:', fields);
+  console.log('Values for update:', values);
+
+  if (fields.length === 0) {
+    console.log('No valid fields to update');
+    console.log('=== Plan.update MODEL DEBUG END (NO FIELDS) ===');
+    return callback(new Error('No valid fields to update'));
+  }
+
+  fields.push("updated_at = CURRENT_TIMESTAMP");
+
+  const sql = `UPDATE plans SET ${fields.join(", ")} WHERE id = ? AND created_by = ?`;
+  values.push(id, userId);
+
+  console.log('Final SQL:', sql);
+  console.log('Final values:', values);
+  console.log('=== Plan.update MODEL DEBUG END ===');
+
+  db.query(sql, values, callback);
+};
+
+// Delete plan - only by creator (with cascading deletes)
+Plan.delete = (id, userId, callback) => {
+  console.log('Plan.delete called with id:', id, 'userId:', userId);
+  
+  // Start a transaction to handle cascading deletes
+  db.beginTransaction((err) => {
+    if (err) {
+      console.log('Transaction begin error:', err);
+      return callback(err);
+    }
+    
+    console.log('Starting cascading deletion for plan ID:', id);
+    
+    // First, delete related lot_owners records
+    const deleteLotOwnersQuery = "DELETE FROM lot_owners WHERE plan_id = ?";
+    console.log('Executing query:', deleteLotOwnersQuery, 'with params:', [id]);
+    
+    db.query(deleteLotOwnersQuery, [id], (err, result) => {
+      if (err) {
+        console.log('Error deleting lot_owners:', err);
+        return db.rollback(() => {
+          callback(err);
+        });
+      }
+      
+      console.log('Lot owners deleted:', result.affectedRows, 'records');
+      
+      // Then delete related lots
+      const deleteLotsQuery = "DELETE FROM lots WHERE plan_id = ?";
+      console.log('Executing query:', deleteLotsQuery, 'with params:', [id]);
+      
+      db.query(deleteLotsQuery, [id], (err, result) => {
+        if (err) {
+          console.log('Error deleting lots:', err);
+          return db.rollback(() => {
+            callback(err);
+          });
+        }
+        
+        console.log('Lots deleted:', result.affectedRows, 'records');
+        
+        // Finally, delete the plan itself (only if created by user)
+        const deletePlanQuery = "DELETE FROM plans WHERE id = ? AND created_by = ?";
+        console.log('Executing query:', deletePlanQuery, 'with params:', [id, userId]);
+        
+        db.query(deletePlanQuery, [id, userId], (err, result) => {
+          if (err) {
+            console.log('Error deleting plan:', err);
+            return db.rollback(() => {
+              callback(err);
+            });
+          }
+          
+          console.log('Plan deletion result:', result);
+          
+          // Commit the transaction
+          db.commit((err) => {
+            if (err) {
+              console.log('Transaction commit error:', err);
+              return db.rollback(() => {
+                callback(err);
+              });
+            }
+            
+            console.log('Plan and related records deleted successfully');
+            callback(null, result);
+          });
+        });
+      });
+    });
+  });
+};
+
+// Get plans with permissions for Land Officers - simplified for actual schema
+Plan.getByProjectWithPermissions = (project_id, userId, userRole, callback) => {
+  const sql = `
+    SELECT p.*, 
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE p.created_by = ?
+    ORDER BY p.created_at DESC
+  `;
+  db.query(sql, [userId], callback);
+};
+
+// Get plans with role-based access control
+Plan.getByUserRole = (userId, userRole, callback) => {
+  let sql = `
+    SELECT p.*, 
+           pr.name as project_name,
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+  `;
+  
+  let whereCondition = '';
+  let params = [];
+  
+  switch(userRole) {
+    case 'CE': // Chief Engineer - can see all plans
+    case 'chief_engineer':
+      whereCondition = '';
+      break;
+      
+    case 'PE': // Project Engineer - only plans for projects they created
+    case 'project_engineer':
+      whereCondition = 'WHERE pr.created_by = ?';
+      params = [userId];
+      break;
+      
+    case 'FO': // Financial Officer - only plans for approved projects
+    case 'financial_officer':
+      whereCondition = 'WHERE pr.status = ?';
+      params = ['approved'];
+      break;
+      
+    case 'LO': // Land Officer - only plans for assigned projects or plans they created
+    case 'land_officer':
+      sql = `
+        SELECT DISTINCT p.*, 
+               pr.name as project_name,
+               CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+        FROM plans p
+        LEFT JOIN projects pr ON p.project_id = pr.id
+        LEFT JOIN users u ON p.created_by = u.id
+        LEFT JOIN project_assignments pa ON pr.id = pa.project_id
+        WHERE (pa.land_officer_id = ? AND pa.status = 'active' AND pr.status = 'approved')
+           OR p.created_by = ?
+      `;
+      params = [userId, userId];
+      break;
+      
+    default:
+      return callback(new Error('Invalid user role'));
+  }
+  
+  const finalSql = sql + whereCondition + ' ORDER BY p.created_at DESC';
+  db.query(finalSql, params, callback);
+};
+
+// Get plans by project with role-based access
+Plan.getByProjectWithRole = (project_id, userId, userRole, callback) => {
+  // First check if user has access to this project
+  const accessCheckSql = `
+    SELECT p.id, p.created_by, p.status
+    FROM projects p
+    LEFT JOIN project_assignments pa ON p.id = pa.project_id
+    WHERE p.id = ? AND (
+      ? IN ('CE', 'chief_engineer') OR 
+      (? IN ('PE', 'project_engineer') AND p.created_by = ?) OR
+      (? IN ('FO', 'financial_officer') AND p.status = 'approved') OR
+      (? IN ('LO', 'land_officer') AND (pa.land_officer_id = ? AND pa.status = 'active'))
+    )
+  `;
+  
+  db.query(accessCheckSql, [project_id, userRole, userRole, userId, userRole, userRole, userId], (accessErr, accessRows) => {
+    if (accessErr) return callback(accessErr);
+    if (accessRows.length === 0) {
+      return callback(new Error('Access denied: You do not have permission to view plans for this project'));
+    }
+    
+    // If access is granted, get the plans
+    Plan.getByProject(project_id, callback);
+  });
+};
+
+// Get all plans for assigned projects
+Plan.getAllPlansForAssignedProjects = (landOfficerId, callback) => {
+  const sql = `
+    SELECT p.*, 
+           CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN users u ON p.created_by = u.id
+    ORDER BY p.created_at DESC
+  `;
+  db.query(sql, [], callback);
+};
+
+// Update plan status
+Plan.updateStatus = (id, status, callback) => {
+  const sql = "UPDATE plans SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+  db.query(sql, [status, id], callback);
+};
+
+// Dashboard-specific methods for CE and PE viewing
+Plan.getAllPlansWithProjectInfo = (callback) => {
+  const sql = `
+    SELECT 
+      p.*, 
+      pr.name as project_name,
+      pr.status as project_status,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      CONCAT(pe.first_name, ' ', pe.last_name) as project_engineer_name,
+      (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id) as lots_count
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    LEFT JOIN users pe ON pr.created_by = pe.id
+    ORDER BY pr.name ASC, p.created_at DESC
+  `;
+  db.query(sql, [], callback);
+};
+
+// Get plans for a specific Project Engineer (only their assigned projects)
+Plan.getPlansForProjectEngineer = (projectEngineerId, callback) => {
+  const sql = `
+    SELECT 
+      p.*, 
+      pr.name as project_name,
+      pr.status as project_status,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+      (SELECT COUNT(*) FROM lots l WHERE l.plan_id = p.id) as lots_count
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE pr.created_by = ?
+    ORDER BY pr.name ASC, p.created_at DESC
+  `;
+  db.query(sql, [projectEngineerId], callback);
+};
+
+// Get plans with lots for a specific project (for detailed view)
+Plan.getPlansWithLotsForProject = (projectId, callback) => {
+  const sql = `
+    SELECT 
+      p.*, 
+      pr.name as project_name,
+      CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+    FROM plans p
+    LEFT JOIN projects pr ON p.project_id = pr.id
+    LEFT JOIN users u ON p.created_by = u.id
+    WHERE p.project_id = ?
+    ORDER BY p.created_at DESC
+  `;
+  
+  db.query(sql, [projectId], (err, plans) => {
+    if (err) return callback(err);
+    
+    if (plans.length === 0) return callback(null, []);
+    
+    // Get lots for each plan
+    let completedPlans = 0;
+    plans.forEach((plan) => {
+      const lotsSql = `
+        SELECT l.*, CONCAT(lu.first_name, ' ', lu.last_name) as created_by_name
+        FROM lots l
+        LEFT JOIN users lu ON l.created_by = lu.id
+        WHERE l.plan_id = ?
+        ORDER BY l.lot_no ASC
+      `;
+      
+      db.query(lotsSql, [plan.id], (lotsErr, lots) => {
+        if (lotsErr) {
+          console.error('Error fetching lots for plan', plan.id, ':', lotsErr);
+          plan.lots = [];
+        } else {
+          plan.lots = lots;
+        }
+        
+        completedPlans++;
+        if (completedPlans === plans.length) {
+          callback(null, plans);
+        }
+      });
+    });
+  });
+};
+
+module.exports = Plan;
