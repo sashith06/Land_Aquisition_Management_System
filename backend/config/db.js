@@ -35,37 +35,42 @@ const dbPromise = mysql.createConnection({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 }).promise();
 
-db.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-    console.error("Please ensure MySQL server is running and credentials are correct");
-    console.error("Connection details:");
-    console.error("- Host:", process.env.DB_HOST || process.env.MYSQLHOST);
-    console.error("- Port:", process.env.DB_PORT || process.env.MYSQLPORT);
-    console.error("- Database:", process.env.DB_NAME || process.env.MYSQLDATABASE);
-    console.error("- User:", process.env.DB_USER || process.env.MYSQLUSER);
+// Comment out database connection for initial deployment
+// db.connect((err) => {
+//   if (err) {
+//     console.error("Database connection failed:", err);
+//     console.error("Please ensure MySQL server is running and credentials are correct");
+//     console.error("Connection details:");
+//     console.error("- Host:", process.env.DB_HOST || process.env.MYSQLHOST);
+//     console.error("- Port:", process.env.DB_PORT || process.env.MYSQLPORT);
+//     console.error("- Database:", process.env.DB_NAME || process.env.MYSQLDATABASE);
+//     console.error("- User:", process.env.DB_USER || process.env.MYSQLUSER);
     
-    // For Railway deployment, don't exit immediately - let the app start and retry later
-    if (process.env.NODE_ENV === 'production') {
-      console.log("Railway deployment detected - continuing without DB connection");
-      console.log("Database will retry connection on first API call");
-    } else {
-      process.exit(1); // Exit gracefully in development
-    }
-  } else {
-    console.log("Connected to MySQL database");
-  }
-});
+//     // For Railway deployment, don't exit immediately - let the app start and retry later
+//     if (process.env.NODE_ENV === 'production') {
+//       console.log("Railway deployment detected - continuing without DB connection");
+//       console.log("Database will retry connection on first API call");
+//     } else {
+//       process.exit(1); // Exit gracefully in development
+//     }
+//   } else {
+//     console.log("Connected to MySQL database");
+//   }
+// });
 
-// Test the pool connection
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error("Pool connection failed:", err);
-  } else {
-    console.log("Database pool created successfully");
-    connection.release();
-  }
-});
+console.log("Database connection skipped for initial deployment");
+
+// Test the pool connection (also commented out)
+// pool.getConnection((err, connection) => {
+//   if (err) {
+//     console.error("Pool connection failed:", err);
+//   } else {
+//     console.log("Database pool created successfully");
+//     connection.release();
+//   }
+// });
+
+console.log("Pool connection test skipped for initial deployment");
 
 // Export both connections and pool
 module.exports = db;

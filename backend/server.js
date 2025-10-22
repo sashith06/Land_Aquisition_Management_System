@@ -43,22 +43,42 @@ if (process.env.NODE_ENV === 'production') {
 
 // Simple health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
-    timestamp: new Date().toISOString(),
-    service: "LAMS System",
-    environment: process.env.NODE_ENV || 'development'
-  });
+  try {
+    res.status(200).json({ 
+      status: "OK", 
+      timestamp: new Date().toISOString(),
+      service: "LAMS System",
+      environment: process.env.NODE_ENV || 'development',
+      port: process.env.PORT || 5000
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: "ERROR", 
+      error: error.message 
+    });
+  }
+});
+
+// Even simpler health check
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
 });
 
 // API health check
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
-    timestamp: new Date().toISOString(),
-    service: "LAMS API",
-    environment: process.env.NODE_ENV || 'development'
-  });
+  try {
+    res.status(200).json({ 
+      status: "OK", 
+      timestamp: new Date().toISOString(),
+      service: "LAMS API",
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: "ERROR", 
+      error: error.message 
+    });
+  }
 });
 
 const authRoutes = require("./routes/authRoutes");
@@ -145,8 +165,16 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  await initializeDatabase();
+  console.log(`Health check available at: http://localhost:${PORT}/health`);
+  console.log(`Simple ping available at: http://localhost:${PORT}/ping`);
+  
+  // Initialize database asynchronously without blocking server startup (commented out for initial deployment)
+  // initializeDatabase().catch(error => {
+  //   console.error('Database initialization failed, but server is still running:', error);
+  // });
+  
+  console.log('Database initialization skipped for initial deployment');
 });
