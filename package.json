@@ -9,7 +9,7 @@
     "postinstall": "echo 'Dependencies installed'"
   },
   "engines": {
-    "node": ">=16.0.0",
+    "node": "18.x",
     "npm": ">=8.0.0"
   },
   "keywords": [
@@ -61,6 +61,6 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "nodemon": "^3.1.10",
-    "vite": "^7.0.4"
+    "vite": "^5.4.0"
   }
 }
