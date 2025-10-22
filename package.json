@@ -1,0 +1,46 @@
+{
+  "name": "lams-land-acquisition-system",
+  "version": "1.0.0",
+  "description": "Land Acquisition Management System - Full Stack Application",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
+    "frontend:build": "cd frontend && npm run build",
+    "backend:start": "cd backend && npm start",
+    "install-deps": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "land-acquisition",
+    "management-system",
+    "express",
+    "react",
+    "mysql"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.1.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.14.3",
+    "nodemailer": "^7.0.5",
+    "twilio": "^5.10.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

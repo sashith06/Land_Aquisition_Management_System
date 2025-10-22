@@ -2,14 +2,29 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const path = require("path");
 const AssignmentModel = require("./models/assignmentModel");
 const inquiryRoutes = require('./routes/inquiryRoutes');
 
 const app = express();
 
-// Configure CORS with more specific options
+// Configure CORS for production and development
+const allowedOrigins = [
+  'http://localhost:3000', 
+  'http://localhost:5173', 
+  'http://localhost:5174', 
+  'http://127.0.0.1:3000', 
+  'http://127.0.0.1:5173', 
+  'http://127.0.0.1:5174'
+];
+
+// Add Railway domain when in production
+if (process.env.NODE_ENV === 'production' && process.env.RAILWAY_STATIC_URL) {
+  allowedOrigins.push(`https://${process.env.RAILWAY_STATIC_URL}`);
+}
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -18,7 +33,13 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Serve uploaded files
 app.use('/uploads', express.static('uploads'));
+
+// Serve static files from frontend build (for production)
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+}
 
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
@@ -91,8 +112,21 @@ async function initializeDatabase() {
   }
 }
 
+// Serve frontend for all non-API routes (for production)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    // Only serve frontend for non-API routes
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/uploads')) {
+      res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+    } else {
+      res.status(404).json({ message: 'API endpoint not found' });
+    }
+  });
+}
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   await initializeDatabase();
 });

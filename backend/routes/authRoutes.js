@@ -3,6 +3,16 @@ const router = express.Router();
 const authController = require("../controllers/authController");
 const { verifyToken, requireChiefEngineer, requireSystemAdmin } = require("../middleware/authMiddleware");
 
+// Health check endpoint for Railway
+router.get("/health", (req, res) => {
+  res.status(200).json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    service: "LAMS Backend",
+    version: "1.0.0"
+  });
+});
+
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 
