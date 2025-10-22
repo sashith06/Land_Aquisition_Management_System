@@ -73,6 +73,8 @@ console.log("Database connection skipped for initial deployment");
 console.log("Pool connection test skipped for initial deployment");
 
 // Export both connections and pool
-module.exports = db;
-module.exports.promise = dbPromise;
-module.exports.pool = pool;
+module.exports = {
+  db,
+  pool,
+  promise: dbPromise
+};
