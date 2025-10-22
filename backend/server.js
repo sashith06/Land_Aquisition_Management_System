@@ -6,6 +6,21 @@ const path = require("path");
 const AssignmentModel = require("./models/assignmentModel");
 const inquiryRoutes = require('./routes/inquiryRoutes');
 
+// Add process error handlers for debugging
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+console.log('🔄 Starting LAMS application...');
+console.log('📦 Environment check:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- PORT:', process.env.PORT);
+
 const app = express();
 
 // Configure CORS for production and development
@@ -61,7 +76,20 @@ app.get('/health', (req, res) => {
 
 // Even simpler health check
 app.get('/ping', (req, res) => {
+  console.log('🏥 Health check pinged at', new Date().toISOString());
   res.status(200).send('pong');
+});
+
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error('❌ Application error:', err);
+  res.status(500).json({ error: 'Internal server error', message: err.message });
+});
+
+// Handle 404 for non-existent routes
+app.use((req, res) => {
+  console.log(`❓ 404 - Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'Route not found', path: req.path });
 });
 
 // API health check
@@ -165,16 +193,19 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Health check available at: http://localhost:${PORT}/health`);
-  console.log(`Simple ping available at: http://localhost:${PORT}/ping`);
+const HOST = '0.0.0.0'; // Railway requires binding to 0.0.0.0, not localhost
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 LAMS Server running on http://${HOST}:${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🏥 Health check available at: http://${HOST}:${PORT}/ping`);
+  console.log(`📍 Simple ping available at: http://${HOST}:${PORT}/ping`);
+  console.log('✅ Server is ready and listening for connections');
   
   // Initialize database asynchronously without blocking server startup (commented out for initial deployment)
   // initializeDatabase().catch(error => {
   //   console.error('Database initialization failed, but server is still running:', error);
   // });
   
-  console.log('Database initialization skipped for initial deployment');
+  console.log('💾 Database initialization skipped for initial deployment');
 });
