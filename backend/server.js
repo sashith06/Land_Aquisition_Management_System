@@ -41,6 +41,26 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
 }
 
+// Simple health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    service: "LAMS System",
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// API health check
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    service: "LAMS API",
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
 
