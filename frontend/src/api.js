@@ -1,14 +1,19 @@
 import axios from "axios";
 import { logout } from "./utils/auth";
 
+// Use environment variable for API URL, fallback to localhost for development
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+console.log('API Base URL:', BASE_URL); // For debugging
+
 // ✅ Create a general API instance for all endpoints
 const api = axios.create({
-  baseURL: "http://localhost:5000",
+  baseURL: BASE_URL,
 });
 
 // ✅ Use /api/auth since backend is mounted there  
 const API = axios.create({
-  baseURL: "http://localhost:5000/api/auth",
+  baseURL: `${BASE_URL}/api/auth`,
 });
 
 // Add authorization header to all requests

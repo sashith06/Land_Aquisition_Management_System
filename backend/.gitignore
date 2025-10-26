@@ -1,17 +1,33 @@
-# Env
+# Environment variables
 .env
 .env.*
+.env.local
+.env.production
 
 # Dependencies
-node_modules
+node_modules/
+
+# Uploads and temporary files
+uploads/
+temp/
 
 # Logs
 *.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS + IDE
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # Build
 dist/
+build/
