@@ -117,7 +117,7 @@ const OwnerDetailsWithDocuments = ({ owner, ownerIndex, totalOwners }) => {
                       <span className="text-green-800 text-sm font-medium">Document Uploaded</span>
                     </div>
                     <a
-                      href={`http://localhost:5000/${ownerDocuments.id_card.file_path}`}
+                      href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${ownerDocuments.id_card.file_path}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -162,7 +162,7 @@ const OwnerDetailsWithDocuments = ({ owner, ownerIndex, totalOwners }) => {
                       <span className="text-green-800 text-sm font-medium">Document Uploaded</span>
                     </div>
                     <a
-                      href={`http://localhost:5000/${ownerDocuments.bank_book.file_path}`}
+                      href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${ownerDocuments.bank_book.file_path}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -1243,7 +1243,7 @@ const LotsPage = () => {
                               {inquiry.attachments.map((att) => (
                                 <a
                                   key={att.id}
-                                  href={`http://localhost:5000/${att.file_path}`}
+                                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${att.file_path}`}
                                   download={att.file_name}
                                   className="inline-flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded transition-colors"
                                 >
@@ -1564,3 +1564,4 @@ const LotsPage = () => {
 };
 
 export default LotsPage;
+

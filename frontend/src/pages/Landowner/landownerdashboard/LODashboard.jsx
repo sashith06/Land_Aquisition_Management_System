@@ -24,7 +24,7 @@ import Navigation from "../../../components/Navigation";
 import api from "../../../api";
 
 const NAVBAR_HEIGHT = "64px"; // define navbar height
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 
 function LODashboard() {

@@ -26,8 +26,9 @@ const useStatistics = (detailed = false) => {
     try {
       setStats(prev => ({ ...prev, loading: true, error: null }));
       
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const endpoint = detailed ? '/api/stats/detailed' : '/api/stats/dashboard';
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

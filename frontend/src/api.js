@@ -86,7 +86,7 @@ export const updateUser = (userId, updatedData) => API.put(`/users/${userId}`, u
 
 // ================= NOTIFICATIONS =================
 const NOTIFICATIONS_API = axios.create({
-  baseURL: "http://localhost:5000/api/notifications",
+  baseURL: `${BASE_URL}/api/notifications`,
 });
 
 // Add authorization header to notification requests  
@@ -102,7 +102,7 @@ export const markAllNotificationsAsRead = () => NOTIFICATIONS_API.put("/mark-all
 
 // ================= PLANS API =================
 const PLANS_API = axios.create({
-  baseURL: "http://localhost:5000/api/plans",
+  baseURL: `${BASE_URL}/api/plans`,
 });
 
 // Add authorization header to plan requests  
@@ -144,7 +144,7 @@ export const getCompensationsByPlan = (planId) =>
 
 // ================= OTP API =================
 const OTP_API = axios.create({
-  baseURL: "http://localhost:5000/api/otp",
+  baseURL: `${BASE_URL}/api/otp`,
 });
 
 // Add authorization headers if needed (optional for OTP)

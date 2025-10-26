@@ -14,6 +14,8 @@ import {
   PhotoIcon
 } from '@heroicons/react/24/outline';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Messages = () => {
   const [currentView, setCurrentView] = useState('inbox'); // inbox, outbox, compose, view
   const [messages, setMessages] = useState([]);
@@ -94,7 +96,7 @@ const Messages = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/messages/users', {
+      const response = await fetch('${API_BASE_URL}/api/messages/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -126,7 +128,7 @@ const Messages = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/messages/unread-count', {
+      const response = await fetch('${API_BASE_URL}/api/messages/unread-count', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -203,7 +205,7 @@ const Messages = () => {
         formData.append('attachments', file);
       });
 
-      const response = await fetch('http://localhost:5000/api/messages', {
+      const response = await fetch('${API_BASE_URL}/api/messages', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
