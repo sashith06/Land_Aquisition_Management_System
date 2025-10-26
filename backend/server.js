@@ -2,12 +2,14 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+
 const AssignmentModel = require("./models/assignmentModel");
 const inquiryRoutes = require('./routes/inquiryRoutes');
 
 const app = express();
 
-// Configure CORS - Allow frontend URL from environment variable
+// === CORS SETUP ===
+// Only use relative paths in app.use(); URLs are only for origin checking
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
@@ -18,34 +20,33 @@ const allowedOrigins = [
   'https://land-aquisition-management-system.vercel.app'
 ];
 
-// Add production frontend URL if specified
-if (process.env.FRONTEND_URL) {
+if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
   allowedOrigins.push(process.env.FRONTEND_URL);
-  console.log('Added FRONTEND_URL to allowed origins:', process.env.FRONTEND_URL);
+  console.log('✅ Added FRONTEND_URL to allowed origins:', process.env.FRONTEND_URL);
 }
 
 console.log('Allowed CORS origins:', allowedOrigins);
 
+// CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin) return callback(null, true); // allow mobile apps / Postman
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      console.log('❌ CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
 }));
 
-// ✅ Handle preflight (OPTIONS) requests globally
-app.options("*", cors());
+// Handle OPTIONS preflight globally
+app.options('*', cors());
 
+// === BODY PARSERS ===
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
@@ -72,6 +73,7 @@ app.use("/api/assignments", assignmentRoutes);
 const messageRoutes = require("./routes/messageRoutes");
 app.use("/api/messages", messageRoutes);
 
+// Namespaced routes for safety
 const statsRoutes = require("./routes/statsRoutes");
 app.use("/api/stats", statsRoutes);
 
@@ -102,19 +104,20 @@ app.use('/api/reports', reportRoutes);
 async function initializeDatabase() {
   try {
     await AssignmentModel.createTable();
-    
+
     const MessageModel = require('./models/messageModel');
     await MessageModel.createTables();
 
     const InquiryModel = require('./models/inquiryModel');
     await InquiryModel.createTables();
   } catch (error) {
-    // Tables may already exist
+    console.log('⚠️ Database tables might already exist:', error.message);
   }
 }
 
+// === START SERVER ===
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
   await initializeDatabase();
 });
