@@ -20,7 +20,10 @@ const allowedOrigins = [
 // Add production frontend URL if specified
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
+  console.log('Added FRONTEND_URL to allowed origins:', process.env.FRONTEND_URL);
 }
+
+console.log('Allowed CORS origins:', allowedOrigins);
 
 app.use(cors({
   origin: function (origin, callback) {
