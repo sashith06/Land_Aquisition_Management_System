@@ -43,15 +43,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// ✅ Handle preflight (OPTIONS) requests globally
+app.options("*", cors());
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
 app.use('/uploads', express.static('uploads'));
 
+// === ROUTES ===
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
-
-
 
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
@@ -91,31 +92,24 @@ app.use("/api/land-valuation", landValuationRoutes);
 
 app.use('/api/inquiries', inquiryRoutes);
 
-// Progress routes (plan/lot progress tracking)
 const progressRoutes = require('./routes/progressRoutes');
 app.use('/api', progressRoutes);
 
-// Report routes (financial and physical progress reports)
 const reportRoutes = require('./routes/reportRoutes');
 app.use('/api/reports', reportRoutes);
 
-
-
-
-// Initialize database tables
+// === DATABASE INIT ===
 async function initializeDatabase() {
   try {
     await AssignmentModel.createTable();
     
-    // Initialize message tables
     const MessageModel = require('./models/messageModel');
     await MessageModel.createTables();
 
-    // Initialize inquiry tables
     const InquiryModel = require('./models/inquiryModel');
     await InquiryModel.createTables();
   } catch (error) {
-    // Tables may already exist, continue
+    // Tables may already exist
   }
 }
 
