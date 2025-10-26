@@ -76,10 +76,10 @@ const statsRoutes = require("./routes/statsRoutes");
 app.use("/api/stats", statsRoutes);
 
 const valuationRoutes = require("./routes/valuationRoutes");
-app.use("/api", valuationRoutes);
+app.use("/api/valuation", valuationRoutes);
 
 const compensationRoutes = require("./routes/compensationRoutes");
-app.use("/api", compensationRoutes);
+app.use("/api/compensation", compensationRoutes);
 
 const otpRoutes = require("./routes/otpRoutes");
 app.use("/api/otp", otpRoutes);
@@ -93,7 +93,7 @@ app.use("/api/land-valuation", landValuationRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 
 const progressRoutes = require('./routes/progressRoutes');
-app.use('/api', progressRoutes);
+app.use('/api/progress', progressRoutes);
 
 const reportRoutes = require('./routes/reportRoutes');
 app.use('/api/reports', reportRoutes);
