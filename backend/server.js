@@ -19,11 +19,11 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174',
-  'https://land-aquisition-management-system.vercel.app'
+  'http://127.0.0.1:5174'
 ];
 
-if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+// Add production frontend URL from environment
+if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
   console.log('✅ Added FRONTEND_URL to allowed origins:', process.env.FRONTEND_URL);
 }
