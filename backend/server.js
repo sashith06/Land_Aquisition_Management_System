@@ -6,6 +6,9 @@ const cors = require("cors");
 const AssignmentModel = require("./models/assignmentModel");
 const inquiryRoutes = require('./routes/inquiryRoutes');
 
+console.log('🚀 Starting server...');
+console.log('📝 FRONTEND_URL from env:', process.env.FRONTEND_URL);
+
 const app = express();
 
 // === CORS SETUP ===
