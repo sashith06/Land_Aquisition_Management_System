@@ -76,18 +76,19 @@ app.use("/api/assignments", assignmentRoutes);
 const messageRoutes = require("./routes/messageRoutes");
 app.use("/api/messages", messageRoutes);
 
+// TEMPORARILY COMMENTED OUT TO DEBUG path-to-regexp ERROR
 // Namespaced routes for safety
-const statsRoutes = require("./routes/statsRoutes");
-app.use("/api/stats", statsRoutes);
+// const statsRoutes = require("./routes/statsRoutes");
+// app.use("/api/stats", statsRoutes);
 
-const valuationRoutes = require("./routes/valuationRoutes");
-app.use("/api/valuation", valuationRoutes);
+// const valuationRoutes = require("./routes/valuationRoutes");
+// app.use("/api/valuation", valuationRoutes);
 
-const compensationRoutes = require("./routes/compensationRoutes");
-app.use("/api/compensation", compensationRoutes);
+// const compensationRoutes = require("./routes/compensationRoutes");
+// app.use("/api/compensation", compensationRoutes);
 
-const otpRoutes = require("./routes/otpRoutes");
-app.use("/api/otp", otpRoutes);
+// const otpRoutes = require("./routes/otpRoutes");
+// app.use("/api/otp", otpRoutes);
 
 // TEMPORARILY COMMENTED OUT TO DEBUG path-to-regexp ERROR
 // const landownerRoutes = require("./routes/landownerRoutes");
