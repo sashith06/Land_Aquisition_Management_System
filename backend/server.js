@@ -89,19 +89,20 @@ app.use("/api/compensation", compensationRoutes);
 const otpRoutes = require("./routes/otpRoutes");
 app.use("/api/otp", otpRoutes);
 
-const landownerRoutes = require("./routes/landownerRoutes");
-app.use("/api/landowner", landownerRoutes);
+// TEMPORARILY COMMENTED OUT TO DEBUG path-to-regexp ERROR
+// const landownerRoutes = require("./routes/landownerRoutes");
+// app.use("/api/landowner", landownerRoutes);
 
-const landValuationRoutes = require("./routes/landValuationRoutes");
-app.use("/api/land-valuation", landValuationRoutes);
+// const landValuationRoutes = require("./routes/landValuationRoutes");
+// app.use("/api/land-valuation", landValuationRoutes);
 
-app.use('/api/inquiries', inquiryRoutes);
+// app.use('/api/inquiries', inquiryRoutes);
 
-const progressRoutes = require('./routes/progressRoutes');
-app.use('/api/progress', progressRoutes);
+// const progressRoutes = require('./routes/progressRoutes');
+// app.use('/api/progress', progressRoutes);
 
-const reportRoutes = require('./routes/reportRoutes');
-app.use('/api/reports', reportRoutes);
+// const reportRoutes = require('./routes/reportRoutes');
+// app.use('/api/reports', reportRoutes);
 
 // === DATABASE INIT ===
 async function initializeDatabase() {
