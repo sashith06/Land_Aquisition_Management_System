@@ -42,12 +42,13 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Handle OPTIONS preflight globally
-app.options('*', cors());
+// Handle OPTIONS preflight globally - removed as it's causing path-to-regexp error
+// The CORS middleware above already handles OPTIONS requests
+// app.options('*', cors());
 
 // === BODY PARSERS ===
 app.use(bodyParser.json());
@@ -76,34 +77,32 @@ app.use("/api/assignments", assignmentRoutes);
 const messageRoutes = require("./routes/messageRoutes");
 app.use("/api/messages", messageRoutes);
 
-// TEMPORARILY COMMENTED OUT TO DEBUG path-to-regexp ERROR
 // Namespaced routes for safety
-// const statsRoutes = require("./routes/statsRoutes");
-// app.use("/api/stats", statsRoutes);
+const statsRoutes = require("./routes/statsRoutes");
+app.use("/api/stats", statsRoutes);
 
-// const valuationRoutes = require("./routes/valuationRoutes");
-// app.use("/api/valuation", valuationRoutes);
+const valuationRoutes = require("./routes/valuationRoutes");
+app.use("/api/valuation", valuationRoutes);
 
-// const compensationRoutes = require("./routes/compensationRoutes");
-// app.use("/api/compensation", compensationRoutes);
+const compensationRoutes = require("./routes/compensationRoutes");
+app.use("/api/compensation", compensationRoutes);
 
-// const otpRoutes = require("./routes/otpRoutes");
-// app.use("/api/otp", otpRoutes);
+const otpRoutes = require("./routes/otpRoutes");
+app.use("/api/otp", otpRoutes);
 
-// TEMPORARILY COMMENTED OUT TO DEBUG path-to-regexp ERROR
-// const landownerRoutes = require("./routes/landownerRoutes");
-// app.use("/api/landowner", landownerRoutes);
+const landownerRoutes = require("./routes/landownerRoutes");
+app.use("/api/landowner", landownerRoutes);
 
-// const landValuationRoutes = require("./routes/landValuationRoutes");
-// app.use("/api/land-valuation", landValuationRoutes);
+const landValuationRoutes = require("./routes/landValuationRoutes");
+app.use("/api/land-valuation", landValuationRoutes);
 
-// app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 
-// const progressRoutes = require('./routes/progressRoutes');
-// app.use('/api/progress', progressRoutes);
+const progressRoutes = require('./routes/progressRoutes');
+app.use('/api/progress', progressRoutes);
 
-// const reportRoutes = require('./routes/reportRoutes');
-// app.use('/api/reports', reportRoutes);
+const reportRoutes = require('./routes/reportRoutes');
+app.use('/api/reports', reportRoutes);
 
 // === DATABASE INIT ===
 async function initializeDatabase() {
