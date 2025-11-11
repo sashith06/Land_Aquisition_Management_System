@@ -55,6 +55,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
+// === HEALTH CHECK ===
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ message: 'Land Acquisition Management System API', status: 'running' });
+});
+
 // === ROUTES ===
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes);
