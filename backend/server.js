@@ -130,7 +130,9 @@ async function initializeDatabase() {
 
 // === START SERVER ===
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, async () => {
-  console.log(`✅ Server running on port ${PORT}`);
+const HOST = '0.0.0.0'; // Bind to all network interfaces for Railway
+
+app.listen(PORT, HOST, async () => {
+  console.log(`✅ Server running on ${HOST}:${PORT}`);
   await initializeDatabase();
 });
